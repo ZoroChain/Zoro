@@ -1,2 +1,2 @@
  # Zoro
-	Zoro is a High speed side chain of NEO, it provide stand alone chain for each DApp, and a tunnel for transfer assets between NEO and Zoro chain, Zoro can handle massive concurrent chains for many DApps
+    Zoro is a High speed side chain of NEO, it provide stand alone chain for each DApp, and a tunnel for transfer assets between NEO and Zoro chain, Zoro can handle massive concurrent chains for many DApps
