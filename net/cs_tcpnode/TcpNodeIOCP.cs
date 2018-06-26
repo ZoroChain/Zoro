@@ -110,7 +110,7 @@ namespace Zoro.Net
                 return;
             }
             Connects[handle].Socket.Close();
-
+            Connects[handle].ClientArgs.Dispose();
             Connects.TryRemove(handle, out Link link);
             OnSocketClose?.Invoke(handle);
             //SocketAsyncEventArgs eventArgs = GetFreeEventArgs();
@@ -126,7 +126,7 @@ namespace Zoro.Net
 
             args.UserToken = Connects[handle];
             args.SetBuffer(data, 0, data.Length);
-            args.RemoteEndPoint = Connects[handle].Socket.RemoteEndPoint;
+            //args.RemoteEndPoint = Connects[handle].Socket.RemoteEndPoint;
             try
             {
                 bool basync = Connects[handle].Socket.SendToAsync(args);
@@ -134,7 +134,7 @@ namespace Zoro.Net
                 {
                     ReuseSocketAsyncEventArgs(args);//复用这个发送参数
                     //这个操作同步完成了
-                    OnSocketSend(handle);
+                    OnSocketSend?.Invoke(handle);
                 }
             }
             catch (Exception err)
@@ -160,18 +160,20 @@ namespace Zoro.Net
 
 
         //以下几个方法都是为了初始化EventArgs
-        private SocketAsyncEventArgs NewArgs()
-        {
-            var args = new SocketAsyncEventArgs();
-            args.Completed += this._OnCompleted;
-            return args;
-        }
+
         private void InitEventArgs()
         {
             for (var i = 0; i < 1000; i++)
             {
                 ReuseSocketAsyncEventArgs(NewArgs());
+                ReuseRecvSocketAsyncEventArgs(NewRecvArgs());
             }
+        }
+        private SocketAsyncEventArgs NewArgs()
+        {
+            var args = new SocketAsyncEventArgs();
+            args.Completed += this._OnCompleted;
+            return args;
         }
 
         private void ReuseSocketAsyncEventArgs(SocketAsyncEventArgs args)
@@ -187,14 +189,40 @@ namespace Zoro.Net
             }
             return outea;
         }
+        private SocketAsyncEventArgs NewRecvArgs()
+        {
+            var args = new SocketAsyncEventArgs();
+            args.Completed += this._OnCompleted;
+
+            lock (recvBuffers)
+            {
+                if (recvBuffers.Count == 0 || recvBufferOffset >= 1024 * 1024)
+                {
+                    recvBuffers.Add(new byte[1024 * 1014]);
+                    recvBufferOffset = 0;
+                }
+                args.SetBuffer(recvBuffers[recvBuffers.Count - 1], recvBufferOffset, 1024);
+                recvBufferOffset += 1024;
+            }
+            return args;
+        }
+        private void ReuseRecvSocketAsyncEventArgs(SocketAsyncEventArgs args)
+        {
+            freeRecvEventArgs.Push(args);
+        }
+
+        private SocketAsyncEventArgs GetFreerecvEventArgs()
+        {
+            freeRecvEventArgs.TryPop(out SocketAsyncEventArgs outea);
+            if (outea == null)
+            {
+                outea = NewArgs();
+            }
+            return outea;
+        }
         private void SetRecivce(Link info)
         {
-            var recvargs = GetFreeEventArgs();
-            if (recvargs.Buffer == null || recvargs.Buffer.Length != 1024)
-            {
-                byte[] buffer = new byte[1024];
-                recvargs.SetBuffer(buffer, 0, 1024);
-            }
+            var recvargs = GetFreerecvEventArgs();
             recvargs.UserToken = info;
             info.Socket.ReceiveAsync(recvargs);
         }
@@ -271,14 +299,14 @@ namespace Zoro.Net
                             var hash = (args.UserToken as Link).Handle;
                             if (args.BytesTransferred == 0 || args.SocketError != SocketError.Success)
                             {
-                                freeEventArgs.Push(args);//断链，复用这个接受参数
+                                ReuseRecvSocketAsyncEventArgs(args);//断链，复用这个接受参数
                                 CloseConnect(hash);
                                 return;
                             }
                             else
                             {
                                 byte[] recv = new byte[args.BytesTransferred];
-                                Buffer.BlockCopy(args.Buffer, 0, recv, 0, args.BytesTransferred);
+                                Buffer.BlockCopy(args.Buffer, args.Offset, recv, 0, args.BytesTransferred);
                                 (args.UserToken as Link).Socket.ReceiveAsync(args);//直接复用
                                 OnSocketRecv?.Invoke(hash, recv);
                             }

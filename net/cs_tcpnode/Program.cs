@@ -16,9 +16,9 @@ namespace cs_tcpnode
                      Console.Write("connect=" + _in);
 
                      int creal = 0;
-                     foreach(var k in zoroNode.Connects)
+                     foreach (var k in zoroNode.Connects)
                      {
-                         if(k.Value.Socket.Connected)
+                         if (k.Value.Socket.Connected)
                          {
                              creal++;
                          }
@@ -44,8 +44,9 @@ namespace cs_tcpnode
                 }
                 if (cmd == "c")
                 {
-                    Console.WriteLine("start link 10000");
-                    for (var i = 0; i < 1; i++)
+                    int linkcount = 100;
+                    Console.WriteLine("start link " + linkcount);
+                    for (var i = 0; i < linkcount; i++)
                     {
                         zoroNode.Connect("127.0.0.1", 12345);
                     }
@@ -54,7 +55,7 @@ namespace cs_tcpnode
                 {
                     foreach (long i in zoroNode.Connects.Keys)
                     {
-                        if(zoroNode.Connects.ContainsKey(i))
+                        if (zoroNode.Connects.ContainsKey(i))
                         {
                             if (zoroNode.Connects[i].IsHost == true)
                             {
@@ -68,11 +69,11 @@ namespace cs_tcpnode
                 {
                     foreach (var i in zoroNode.Connects.Values)
                     {
-                        if(i.IsHost==false)
+                        if (i.IsHost == false)
                         {
-                            zoroNode.Send(i.Handle,System.Text.Encoding.UTF8.GetBytes("what a fuck."));
+                            zoroNode.Send(i.Handle, System.Text.Encoding.UTF8.GetBytes("what a fuck."));
                         }
-                       
+
                     }
                 }
             }
