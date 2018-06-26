@@ -4,7 +4,7 @@ namespace cs_tcpnode
 {
     class Program
     {
-        static Zoro.Net.TcpNodeIOCP clientNode = new Zoro.Net.TcpNodeIOCP();
+        static Zoro.Net.TcpNodeIOCP zoroNode = new Zoro.Net.TcpNodeIOCP();
         static void InitThread()
         {
             System.Threading.Thread t = new System.Threading.Thread(() =>
@@ -12,8 +12,18 @@ namespace cs_tcpnode
                  while (true)
                  {
                      System.Threading.Thread.Sleep(1000);
-                     var _in = clientNode.Connects.Count;
+                     var _in = zoroNode.Connects.Count;
                      Console.Write("connect=" + _in);
+
+                     int creal = 0;
+                     foreach(var k in zoroNode.Connects)
+                     {
+                         if(k.Value.Socket.Connected)
+                         {
+                             creal++;
+                         }
+                     }
+                     Console.Write("connect real=" + creal);
 
                  }
              });
@@ -30,31 +40,37 @@ namespace cs_tcpnode
                 if (cmd == "s")
                 {
                     Console.WriteLine("start server");
-                    clientNode.Listen("127.0.0.1", 12345);
+                    zoroNode.Listen("127.0.0.1", 12345);
                 }
                 if (cmd == "c")
                 {
                     Console.WriteLine("start link 10000");
-                    for (var i = 0; i < 10000; i++)
+                    for (var i = 0; i < 1; i++)
                     {
-                        clientNode.Connect("127.0.0.1", 12345);
+                        zoroNode.Connect("127.0.0.1", 12345);
                     }
                 }
                 if (cmd == "cs")
                 {
-                    foreach (long i in clientNode.Connects.Keys)
+                    foreach (long i in zoroNode.Connects.Keys)
                     {
-                        clientNode.CloseConnect(i);
+                        if(zoroNode.Connects.ContainsKey(i))
+                        {
+                            if (zoroNode.Connects[i].IsHost == true)
+                            {
+                                zoroNode.CloseConnect(i);
+                            }
+                        }
                     }
 
                 }
                 if (cmd == "css")
                 {
-                    foreach (var i in clientNode.Connects.Values)
+                    foreach (var i in zoroNode.Connects.Values)
                     {
-                        if(i.InConnect==false)
+                        if(i.IsHost==false)
                         {
-                            clientNode.Send(i.Handle,System.Text.Encoding.UTF8.GetBytes("what a fuck."));
+                            zoroNode.Send(i.Handle,System.Text.Encoding.UTF8.GetBytes("what a fuck."));
                         }
                        
                     }

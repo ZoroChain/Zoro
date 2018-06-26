@@ -11,11 +11,11 @@ namespace Zoro.Net
     /// </summary>
     public class Link
     {
-        public Link(Socket socket, bool inConnect)
+        public Link(Socket socket, SocketAsyncEventArgs clientArgs = null)
         {
             this.Socket = socket;
-            this.InConnect = inConnect;
-
+            this.ClientArgs = clientArgs;
+            this.IsHost = (clientArgs == null);
         }
         public long Handle
         {
@@ -27,16 +27,19 @@ namespace Zoro.Net
         public Socket Socket
         {
             get;
-            private set;
         }
         /// <summary>
-        /// Inconnect true 表示这是自己listen，对方connect 产生的连接，否则反之
+        /// IsHost true 表示这是自己listen，对方connect 产生的连接，否则反之
         /// </summary>
-        public bool InConnect
+        public bool IsHost
         {
             get;
-            private set;
         }
+        public SocketAsyncEventArgs ClientArgs
+        {
+            get;
+        }
+
     }
     /// <summary>
     /// TCP节点对象，使用SocketAsyncEventArgs封装，windows采用iocp，linux是epoll 等
@@ -48,16 +51,12 @@ namespace Zoro.Net
             InitEventArgs();
         }
 
-        //空闲的SocketAsyncEventArgs对象，可以复用
-        System.Collections.Concurrent.ConcurrentStack<SocketAsyncEventArgs> freeEventArgs = new System.Collections.Concurrent.ConcurrentStack<SocketAsyncEventArgs>();
-        //用来监听的socket对象
-        Socket listenSocket = null;
-        //已经接通的连接对象
-        public System.Collections.Concurrent.ConcurrentDictionary<Int64, Link> Connects = new System.Collections.Concurrent.ConcurrentDictionary<Int64, Link>();
-        public event Action<long> onSocketIn;//有连接进来
-        public event Action<long> onSocketLinked;//连接成了
-        public event Action<Socket> onSocketLinkedError;//连接出错
-        public event Action<long, byte[]> onSocketRecv;//收到数据
+        public event Action<long> OnSocketAccept;//有连接进来
+        public event Action<long> OnSocketLinked;//连接成了
+        public event Action<Socket> OnSocketError;//连接出错
+        public event Action<long, byte[]> OnSocketRecv;//收到数据
+        public event Action<long> OnSocketSend;//发出数据
+        public event Action<long> OnSocketClose;//socket 断开
         //监听
         public void Listen(string ip, int port)
         {
@@ -94,37 +93,94 @@ namespace Zoro.Net
 
         public void CloseConnect(long handle)
         {
-            SocketAsyncEventArgs eventArgs = GetFreeEventArgs();
-            eventArgs.UserToken = Connects[handle];
-            Connects[handle].Socket.DisconnectAsync(eventArgs);
+            if (Connects.ContainsKey(handle) == false)
+            {
+                return;
+            }
+            try
+            {
+                Connects[handle].Socket.Shutdown(SocketShutdown.Both);
+            }
+            // throws if client process has already closed
+            catch (Exception)
+            {
+            }
+            if (Connects.ContainsKey(handle) == false)
+            {
+                return;
+            }
+            Connects[handle].Socket.Close();
+
+            Connects.TryRemove(handle, out Link link);
+            OnSocketClose?.Invoke(handle);
+            //SocketAsyncEventArgs eventArgs = GetFreeEventArgs();
+            //eventArgs.UserToken = Connects[handle];
+            //Connects[handle].Socket.DisconnectAsync(eventArgs);
         }
 
         public void Send(long handle, byte[] data)
         {
             var args = GetFreeEventArgs();
+            //var args = new SocketAsyncEventArgs();
+            //args.Completed += onCompletedSend;
+
             args.UserToken = Connects[handle];
             args.SetBuffer(data, 0, data.Length);
-            Connects[handle].Socket.SendAsync(args);
+            args.RemoteEndPoint = Connects[handle].Socket.RemoteEndPoint;
+            try
+            {
+                bool basync = Connects[handle].Socket.SendToAsync(args);
+                if (basync == false)
+                {
+                    ReuseSocketAsyncEventArgs(args);//复用这个发送参数
+                    //这个操作同步完成了
+                    OnSocketSend(handle);
+                }
+            }
+            catch (Exception err)
+            {
+                ReuseSocketAsyncEventArgs(args);//复用这个发送参数
+
+                CloseConnect(handle);//
+            }
         }
+        //空闲的SocketAsyncEventArgs对象，可以复用
+        System.Collections.Concurrent.ConcurrentStack<SocketAsyncEventArgs> freeEventArgs = new System.Collections.Concurrent.ConcurrentStack<SocketAsyncEventArgs>();
+
+        //空闲的接收专用SocketAsyncEventArgs 对象，因为接收缓冲区可以轻易复用，所以独立出来
+        System.Collections.Concurrent.ConcurrentStack<SocketAsyncEventArgs> freeRecvEventArgs = new System.Collections.Concurrent.ConcurrentStack<SocketAsyncEventArgs>();
+        List<byte[]> recvBuffers = new List<byte[]>();
+        int recvBufferOffset = 0;
+
+        //用来监听的socket对象
+        Socket listenSocket = null;
+        //已经接通的连接对象
+
+        public System.Collections.Concurrent.ConcurrentDictionary<Int64, Link> Connects = new System.Collections.Concurrent.ConcurrentDictionary<Int64, Link>();
+
 
         //以下几个方法都是为了初始化EventArgs
         private SocketAsyncEventArgs NewArgs()
         {
             var args = new SocketAsyncEventArgs();
-            args.Completed += this.onCompleted;
+            args.Completed += this._OnCompleted;
             return args;
         }
         private void InitEventArgs()
         {
             for (var i = 0; i < 1000; i++)
             {
-                freeEventArgs.Push(NewArgs());
+                ReuseSocketAsyncEventArgs(NewArgs());
             }
         }
-        SocketAsyncEventArgs GetFreeEventArgs()
+
+        private void ReuseSocketAsyncEventArgs(SocketAsyncEventArgs args)
         {
-            SocketAsyncEventArgs outea = null;
-            freeEventArgs.TryPop(out outea);
+            freeEventArgs.Push(args);
+        }
+        private SocketAsyncEventArgs GetFreeEventArgs()
+        {
+            freeEventArgs.TryPop(out SocketAsyncEventArgs outea);
             if (outea == null)
             {
                 outea = NewArgs();
@@ -142,76 +198,101 @@ namespace Zoro.Net
             recvargs.UserToken = info;
             info.Socket.ReceiveAsync(recvargs);
         }
-        private void onCompleted(object sender, SocketAsyncEventArgs args)
+        private void _OnCompleted(object sender, SocketAsyncEventArgs args)
         {
             //try
             {
                 switch (args.LastOperation)
                 {
-                    case SocketAsyncOperation.Accept:
-                        {
-                            var info = new Link(args.AcceptSocket, true);
-                            Connects[info.Handle] = info;
-
-                            //直接复用
-                            args.AcceptSocket = null;
-                            listenSocket.AcceptAsync(args);
-
-                            onSocketIn?.Invoke(info.Handle);
-
-                            SetRecivce(info);
-                        }
-                        break;
-                    case SocketAsyncOperation.Connect:
+                    case SocketAsyncOperation.Accept://accept a connect
                         {
                             if (args.SocketError != SocketError.Success)
                             {
-                                onSocketLinkedError?.Invoke(args.UserToken as Socket);
+                                //直接复用
+                                args.AcceptSocket = null;
+                                listenSocket.AcceptAsync(args);
+                            }
+                            if (args.SocketError == SocketError.Success)
+                            {
+                                var info = new Link(args.AcceptSocket, null);
+                                Connects[info.Handle] = info;
+
+                                //直接复用
+                                args.AcceptSocket = null;
+                                listenSocket.AcceptAsync(args);
+                                if (args.SocketError == SocketError.Success)
+                                {
+                                    OnSocketAccept?.Invoke(info.Handle);
+                                    SetRecivce(info);
+                                }
+                            }
+                        }
+                        return;
+                    case SocketAsyncOperation.Connect://connect succ
+                        {
+                            if (args.SocketError != SocketError.Success)
+                            {
+                                OnSocketError?.Invoke(args.UserToken as Socket);
+                                args.Dispose();
                             }
                             else
                             {
-                                var info = new Link(args.ConnectSocket, false);
+                                var info = new Link(args.ConnectSocket, args);
                                 Connects[info.Handle] = info;
 
-                                onSocketLinked?.Invoke(info.Handle);
+                                OnSocketLinked?.Invoke(info.Handle);
 
                                 SetRecivce(info);
                             }
                             //connect 的这个args不能复用
                         }
-                        break;
-                    case SocketAsyncOperation.Disconnect:
+                        return;
+                    case SocketAsyncOperation.Send:
                         {
                             var hash = (args.UserToken as Link).Handle;
-                            Link socket = null;
-                            Connects.TryRemove(hash, out socket);
-                            socket.Socket.Dispose();
+                            if (args.SocketError != SocketError.Success)
+                            {
+                                ReuseSocketAsyncEventArgs(args);
+                                //断链，复用这个接受参数
+                                CloseConnect(hash);
+                            }
+                            else
+                            {
+                                //发送成功，也复用这个发送参数
+                                ReuseSocketAsyncEventArgs(args);
+                                //断链，复用这个接受参数
+                                OnSocketSend?.Invoke(hash);
+                            }
 
-                            freeEventArgs.Push(args);//这个是可以复用的
                         }
-                        break;
+                        return;
                     case SocketAsyncOperation.Receive:
                         {
                             var hash = (args.UserToken as Link).Handle;
-                            byte[] recv = new byte[args.BytesTransferred];
-                            Buffer.BlockCopy(args.Buffer, 0, recv, 0, args.BytesTransferred);
-
-                            onSocketRecv?.Invoke(hash, recv);
-
-                            freeEventArgs.Push(args);//这个是可以复用的
+                            if (args.BytesTransferred == 0 || args.SocketError != SocketError.Success)
+                            {
+                                freeEventArgs.Push(args);//断链，复用这个接受参数
+                                CloseConnect(hash);
+                                return;
+                            }
+                            else
+                            {
+                                byte[] recv = new byte[args.BytesTransferred];
+                                Buffer.BlockCopy(args.Buffer, 0, recv, 0, args.BytesTransferred);
+                                (args.UserToken as Link).Socket.ReceiveAsync(args);//直接复用
+                                OnSocketRecv?.Invoke(hash, recv);
+                            }
                         }
-                        break;
+                        return;
                     default:
                         {
 
+                            break;
                         }
-                        break;
-                }
-            }
-            //catch (Exception err)
-            //{
 
-            //}
+                }
+
+            }
         }
 
     }
