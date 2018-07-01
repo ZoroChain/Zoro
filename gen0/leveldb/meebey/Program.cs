@@ -1,25 +1,26 @@
 ﻿using System;
 
-namespace neo
+namespace meebey
 {
     class Program
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Neo LevelDB test.");
-            var op = new Neo.IO.Data.LevelDB.Options() { CreateIfMissing = true, Compression= Neo.IO.Data.LevelDB.CompressionType.kSnappyCompression };
-            var db = Neo.IO.Data.LevelDB.DB.Open("c:/newdb_neo",op );
-            var db2 = Neo.IO.Data.LevelDB.DB.Open("c:/newdb_neo2", op);
+            Console.WriteLine("meebey LevelDB test.");
+            var op = new LevelDB.Options() { CreateIfMissing = true, Compression = LevelDB.CompressionType.SnappyCompression };
+            // Neo.IO.Data.LevelDB.Options() { CreateIfMissing = true, Compression = Neo.IO.Data.LevelDB.CompressionType.kSnappyCompression };
+            var db = LevelDB.DB.Open(op,"c:/newdb_neo");
+            //var db2 = Neo.IO.Data.LevelDB.DB.Open("c:/newdb_neo2", op);
             int count = 0;
             Random r = new Random();
             DateTime timeBegin = DateTime.Now;
+            var wop = new LevelDB.WriteOptions();
             for (var i = 0; i < 1000000; i++)
             {
                 byte[] testkey = System.Text.Encoding.UTF8.GetBytes("testkey" + count);
                 byte[] testv = new byte[1024];
                 r.NextBytes(testv);
-                db.Put(Neo.IO.Data.LevelDB.WriteOptions.Default, testkey, testv);
-                db2.Put(Neo.IO.Data.LevelDB.WriteOptions.Default, testkey, testv);
+                db.Put(wop, testkey, testv);
                 if (i % 10000 == 0)
                 {
                     Console.WriteLine("had put " + (i + 1));
