@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27703.2035
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Zoro", "Zoro\Zoro.csproj", "{35658CD6-1477-499D-9E8B-2F46D975B049}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "neo-vm", "..\neo-vm\src\neo-vm\neo-vm.csproj", "{F45C6F3F-FA83-49A1-895F-8619A84D0506}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{35658CD6-1477-499D-9E8B-2F46D975B049}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{35658CD6-1477-499D-9E8B-2F46D975B049}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{35658CD6-1477-499D-9E8B-2F46D975B049}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{35658CD6-1477-499D-9E8B-2F46D975B049}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F45C6F3F-FA83-49A1-895F-8619A84D0506}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F45C6F3F-FA83-49A1-895F-8619A84D0506}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F45C6F3F-FA83-49A1-895F-8619A84D0506}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F45C6F3F-FA83-49A1-895F-8619A84D0506}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C9D1FFD0-F4C8-4F06-8A37-3BFDF398FA9D}
+	EndGlobalSection
+EndGlobal
