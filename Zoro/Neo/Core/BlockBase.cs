@@ -53,6 +53,25 @@ namespace Neo.Core
             }
         }
 
+        // 标记属于哪个chain
+        private UInt256 _chainHash = null;
+        public UInt256 ChainHash
+        {
+            get
+            {
+                return _chainHash;
+            }
+        }
+
+        public BlockchainBase Chain
+        {
+            get
+            {
+                return BlockchainBase.GetBlockchain(_chainHash);
+            }
+        }
+
+
         Witness[] IVerifiable.Scripts
         {
             get
@@ -95,7 +114,7 @@ namespace Neo.Core
         {
             if (PrevHash == UInt256.Zero)
                 return new[] { Script.ScriptHash };
-            Header prev_header = Blockchain.Default.GetHeader(PrevHash);
+            Header prev_header = Chain.GetHeader(PrevHash);
             if (prev_header == null) throw new InvalidOperationException();
             return new UInt160[] { prev_header.NextConsensus };
         }
@@ -121,6 +140,7 @@ namespace Neo.Core
         {
             JObject json = new JObject();
             json["hash"] = Hash.ToString();
+            json["chainhash"] = ChainHash.ToString();
             json["size"] = Size;
             json["version"] = Version;
             json["previousblockhash"] = PrevHash.ToString();
@@ -128,16 +148,16 @@ namespace Neo.Core
             json["time"] = Timestamp;
             json["index"] = Index;
             json["nonce"] = ConsensusData.ToString("x16");
-            json["nextconsensus"] = Wallet.ToAddress(NextConsensus);
+            json["nextconsensus"] = KeyPair.ToAddress(NextConsensus);
             json["script"] = Script.ToJson();
             return json;
         }
 
         public bool Verify()
         {
-            if (Hash == Blockchain.GenesisBlock.Hash) return true;
-            if (Blockchain.Default.ContainsBlock(Hash)) return true;
-            Header prev_header = Blockchain.Default.GetHeader(PrevHash);
+            if (Hash == Chain.GenesisBlock.Hash) return true;
+            if (Chain.ContainsBlock(Hash)) return true;
+            Header prev_header = Chain.GetHeader(PrevHash);
             if (prev_header == null) return false;
             if (prev_header.Index + 1 != Index) return false;
             if (prev_header.Timestamp >= Timestamp) return false;

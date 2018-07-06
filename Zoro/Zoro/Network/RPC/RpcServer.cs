@@ -3,13 +3,13 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.DependencyInjection;
-using Zoro.Core;
-using Zoro.IO;
-using Zoro.IO.Json;
-using Zoro.Plugins;
-using Zoro.SmartContract;
+using Neo.Core;
+using Neo.IO;
+using Neo.IO.Json;
+using Neo.Plugins;
+using Neo.SmartContract;
 using Neo.VM;
-using Zoro.Wallets;
+using Neo.Wallets;
 using System;
 using System.IO;
 using System.IO.Compression;
@@ -18,7 +18,7 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Zoro.Network.RPC
+namespace Neo.Network.RPC
 {
     public class RpcServer : IDisposable
     {

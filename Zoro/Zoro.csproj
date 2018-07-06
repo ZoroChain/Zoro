@@ -13,17 +13,14 @@
     <Compile Remove="Impl\**" />
     <Compile Remove="Plugins\**" />
     <Compile Remove="Util\**" />
-    <Compile Remove="Zoro\**" />
     <EmbeddedResource Remove="Consensus\**" />
     <EmbeddedResource Remove="Impl\**" />
     <EmbeddedResource Remove="Plugins\**" />
     <EmbeddedResource Remove="Util\**" />
-    <EmbeddedResource Remove="Zoro\**" />
     <None Remove="Consensus\**" />
     <None Remove="Impl\**" />
     <None Remove="Plugins\**" />
     <None Remove="Util\**" />
-    <None Remove="Zoro\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -35,17 +32,13 @@
     <Compile Remove="Neo\Consensus\ConsensusState.cs" />
     <Compile Remove="Neo\Consensus\PrepareRequest.cs" />
     <Compile Remove="Neo\Consensus\PrepareResponse.cs" />
-    <Compile Remove="Neo\Core\AssetState.cs" />
-    <Compile Remove="Neo\Core\AssetType.cs" />
     <Compile Remove="Neo\Core\Block.cs" />
-    <Compile Remove="Neo\Core\BlockBase.cs" />
     <Compile Remove="Neo\Core\Blockchain.cs" />
     <Compile Remove="Neo\Core\ClaimTransaction.cs" />
     <Compile Remove="Neo\Core\CoinReference.cs" />
     <Compile Remove="Neo\Core\CoinState.cs" />
     <Compile Remove="Neo\Core\ContractTransaction.cs" />
     <Compile Remove="Neo\Core\EnrollmentTransaction.cs" />
-    <Compile Remove="Neo\Core\Header.cs" />
     <Compile Remove="Neo\Core\InvocationTransaction.cs" />
     <Compile Remove="Neo\Core\IssueTransaction.cs" />
     <Compile Remove="Neo\Core\MinerTransaction.cs" />
@@ -68,7 +61,6 @@
     <Compile Remove="Neo\Network\LocalNode.cs" />
     <Compile Remove="Neo\Network\Payloads\ConsensusPayload.cs" />
     <Compile Remove="Neo\Network\Payloads\GetBlocksPayload.cs" />
-    <Compile Remove="Neo\Network\Payloads\HeadersPayload.cs" />
     <Compile Remove="Neo\Network\Payloads\MerkleBlockPayload.cs" />
     <Compile Remove="Neo\Network\Payloads\VersionPayload.cs" />
     <Compile Remove="Neo\Network\RemoteNode.cs" />
@@ -89,6 +81,20 @@
     <Compile Remove="Neo\Wallets\Wallet.cs" />
     <Compile Remove="Neo\Wallets\WalletAccount.cs" />
     <Compile Remove="Neo\Wallets\WalletIndexer.cs" />
+    <Compile Remove="Zoro\Consensus\ChangeView.cs" />
+    <Compile Remove="Zoro\Consensus\ConsensusContext.cs" />
+    <Compile Remove="Zoro\Consensus\ConsensusMessage.cs" />
+    <Compile Remove="Zoro\Consensus\ConsensusMessageType.cs" />
+    <Compile Remove="Zoro\Consensus\ConsensusService.cs" />
+    <Compile Remove="Zoro\Consensus\ConsensusState.cs" />
+    <Compile Remove="Zoro\Consensus\PrepareRequest.cs" />
+    <Compile Remove="Zoro\Consensus\PrepareResponse.cs" />
+    <Compile Remove="Zoro\Network\LocalNode.cs" />
+    <Compile Remove="Zoro\Network\RemoteNode.cs" />
+    <Compile Remove="Zoro\Network\RPC\RpcServer.cs" />
+    <Compile Remove="Zoro\Network\TcpRemoteNode.cs" />
+    <Compile Remove="Zoro\Network\UPnP.cs" />
+    <Compile Remove="Zoro\Network\WebSocketRemoteNode.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -103,6 +109,17 @@
 
   <ItemGroup>
     <Folder Include="Neo\Consensus\" />
+    <Folder Include="Zoro\Base\" />
+    <Folder Include="Zoro\Consensus\" />
+    <Folder Include="Zoro\Core\" />
+    <Folder Include="Zoro\Impl\" />
+    <Folder Include="Zoro\Network\Payloads\" />
+    <Folder Include="Zoro\Network\RPC\" />
+    <Folder Include="Zoro\Plugins\" />
+    <Folder Include="Zoro\SmartContract\" />
+    <Folder Include="Zoro\Util\" />
+    <Folder Include="Zoro\VM\" />
+    <Folder Include="Zoro\Wallets\" />
   </ItemGroup>
 
 </Project>

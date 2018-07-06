@@ -164,8 +164,8 @@ namespace Neo.Core
             json["available"] = Available.ToString();
             json["precision"] = Precision;
             json["owner"] = Owner.ToString();
-            json["admin"] = Wallet.ToAddress(Admin);
-            json["issuer"] = Wallet.ToAddress(Issuer);
+            json["admin"] = KeyPair.ToAddress(Admin);
+            json["issuer"] = KeyPair.ToAddress(Issuer);
             json["expiration"] = Expiration;
             json["frozen"] = IsFrozen;
             return json;
