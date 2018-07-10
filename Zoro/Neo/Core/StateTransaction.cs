@@ -16,8 +16,8 @@ namespace Neo.Core
         public override int Size => base.Size + Descriptors.GetVarSize();
         public override Fixed8 SystemFee => Descriptors.Sum(p => p.SystemFee);
 
-        public StateTransaction()
-            : base(TransactionType.StateTransaction)
+        public StateTransaction(UInt256 chainhash)
+            : base(TransactionType.StateTransaction, chainhash)
         {
         }
 
@@ -85,7 +85,7 @@ namespace Neo.Core
         public override bool Verify(IEnumerable<Transaction> mempool)
         {
             foreach (StateDescriptor descriptor in Descriptors)
-                if (!descriptor.Verify())
+                if (!descriptor.Verify( ((IVerifiable)this).ChainHash) )
                     return false;
             return base.Verify(mempool);
         }

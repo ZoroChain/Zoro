@@ -27,13 +27,23 @@ namespace Neo.SmartContract
 
         public IReadOnlyList<NotifyEventArgs> Notifications => notifications;
 
+        protected IVerifiable verifying_obj;
+
+        protected BlockchainBase Chain
+        {
+            get
+            {
+                return BlockchainBase.GetBlockchain(verifying_obj.ChainHash);
+            }
+        }
+
         private DataCache<UInt160, AccountState> _accounts;
         protected virtual DataCache<UInt160, AccountState> Accounts
         {
             get
             {
                 if (_accounts == null)
-                    _accounts = Blockchain.Default.GetStates<UInt160, AccountState>();
+                    _accounts = Chain.GetStates<UInt160, AccountState>();
                 return _accounts;
             }
         }
@@ -44,7 +54,7 @@ namespace Neo.SmartContract
             get
             {
                 if (_assets == null)
-                    _assets = Blockchain.Default.GetStates<UInt256, AssetState>();
+                    _assets = Chain.GetStates<UInt256, AssetState>();
                 return _assets;
             }
         }
@@ -55,7 +65,7 @@ namespace Neo.SmartContract
             get
             {
                 if (_contracts == null)
-                    _contracts = Blockchain.Default.GetStates<UInt160, ContractState>();
+                    _contracts = Chain.GetStates<UInt160, ContractState>();
                 return _contracts;
             }
         }
@@ -66,13 +76,15 @@ namespace Neo.SmartContract
             get
             {
                 if (_storages == null)
-                    _storages = Blockchain.Default.GetStates<StorageKey, StorageItem>();
+                    _storages = Chain.GetStates<StorageKey, StorageItem>();
                 return _storages;
             }
         }
 
-        public StateReader()
+        public StateReader(IVerifiable obj)
         {
+            this.verifying_obj = obj;
+
             //Standard Library
             Register("System.Runtime.GetTrigger", Runtime_GetTrigger);
             Register("System.Runtime.CheckWitness", Runtime_CheckWitness);
@@ -293,9 +305,9 @@ namespace Neo.SmartContract
 
         protected virtual bool Runtime_GetTime(ExecutionEngine engine)
         {
-            BlockBase header = Blockchain.Default?.GetHeader(Blockchain.Default.Height);
-            if (header == null) header = Blockchain.GenesisBlock;
-            engine.EvaluationStack.Push(header.Timestamp + Blockchain.SecondsPerBlock);
+            BlockBase header = Chain.GetHeader(Chain.Height);
+            if (header == null) header = Chain.GenesisBlock;
+            engine.EvaluationStack.Push(header.Timestamp + Chain.SecondsPerBlock);
             return true;
         }
 
@@ -420,10 +432,10 @@ namespace Neo.SmartContract
 
         protected virtual bool Blockchain_GetHeight(ExecutionEngine engine)
         {
-            if (Blockchain.Default == null)
+            if (Chain == null)
                 engine.EvaluationStack.Push(0);
             else
-                engine.EvaluationStack.Push(Blockchain.Default.Height);
+                engine.EvaluationStack.Push(Chain.Height);
             return true;
         }
 
@@ -434,20 +446,20 @@ namespace Neo.SmartContract
             if (data.Length <= 5)
             {
                 uint height = (uint)new BigInteger(data);
-                if (Blockchain.Default != null)
-                    header = Blockchain.Default.GetHeader(height);
+                if (Chain != null)
+                    header = Chain.GetHeader(height);
                 else if (height == 0)
-                    header = Blockchain.GenesisBlock.Header;
+                    header = Chain.GenesisBlock.Header;
                 else
                     header = null;
             }
             else if (data.Length == 32)
             {
                 UInt256 hash = new UInt256(data);
-                if (Blockchain.Default != null)
-                    header = Blockchain.Default.GetHeader(hash);
-                else if (hash == Blockchain.GenesisBlock.Hash)
-                    header = Blockchain.GenesisBlock.Header;
+                if (Chain != null)
+                    header = Chain.GetHeader(hash);
+                else if (hash == Chain.GenesisBlock.Hash)
+                    header = Chain.GenesisBlock.Header;
                 else
                     header = null;
             }
@@ -466,20 +478,20 @@ namespace Neo.SmartContract
             if (data.Length <= 5)
             {
                 uint height = (uint)new BigInteger(data);
-                if (Blockchain.Default != null)
-                    block = Blockchain.Default.GetBlock(height);
+                if (Chain != null)
+                    block = Chain.GetBlock(height);
                 else if (height == 0)
-                    block = Blockchain.GenesisBlock;
+                    block = Chain.GenesisBlock;
                 else
                     block = null;
             }
             else if (data.Length == 32)
             {
                 UInt256 hash = new UInt256(data);
-                if (Blockchain.Default != null)
-                    block = Blockchain.Default.GetBlock(hash);
-                else if (hash == Blockchain.GenesisBlock.Hash)
-                    block = Blockchain.GenesisBlock;
+                if (Chain != null)
+                    block = Chain.GetBlock(hash);
+                else if (hash == Chain.GenesisBlock.Hash)
+                    block = Chain.GenesisBlock;
                 else
                     block = null;
             }
@@ -494,7 +506,7 @@ namespace Neo.SmartContract
         protected virtual bool Blockchain_GetTransaction(ExecutionEngine engine)
         {
             byte[] hash = engine.EvaluationStack.Pop().GetByteArray();
-            Transaction tx = Blockchain.Default?.GetTransaction(new UInt256(hash));
+            Transaction tx = Chain?.GetTransaction(new UInt256(hash));
             engine.EvaluationStack.Push(StackItem.FromInterface(tx));
             return true;
         }
@@ -503,10 +515,10 @@ namespace Neo.SmartContract
         {
             byte[] hash = engine.EvaluationStack.Pop().GetByteArray();
             int height;
-            if (Blockchain.Default == null)
+            if (Chain == null)
                 height = -1;
             else
-                Blockchain.Default.GetTransaction(new UInt256(hash), out height);
+                Chain.GetTransaction(new UInt256(hash), out height);
             engine.EvaluationStack.Push(height);
             return true;
         }
@@ -521,7 +533,7 @@ namespace Neo.SmartContract
 
         protected virtual bool Blockchain_GetValidators(ExecutionEngine engine)
         {
-            ECPoint[] validators = Blockchain.Default.GetValidators();
+            ECPoint[] validators = Chain.GetValidators();
             engine.EvaluationStack.Push(validators.Select(p => (StackItem)p.EncodePoint(true)).ToArray());
             return true;
         }
@@ -759,7 +771,7 @@ namespace Neo.SmartContract
             {
                 Transaction tx = _interface.GetInterface<Transaction>();
                 if (tx == null) return false;
-                engine.EvaluationStack.Push(Blockchain.Default.GetUnspent(tx.Hash).Select(p => StackItem.FromInterface(p)).ToArray());
+                engine.EvaluationStack.Push(Chain.GetUnspent(tx.Hash).Select(p => StackItem.FromInterface(p)).ToArray());
                 return true;
             }
             return false;

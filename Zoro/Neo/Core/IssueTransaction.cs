@@ -18,14 +18,14 @@ namespace Neo.Core
             get
             {
                 if (Version >= 1) return Fixed8.Zero;
-                if (Outputs.All(p => p.AssetId == Blockchain.GoverningToken.Hash || p.AssetId == Blockchain.UtilityToken.Hash))
+                if (Outputs.All(p => p.AssetId == BlockchainBase.GetStaticAttr().GoverningToken.Hash || p.AssetId == BlockchainBase.GetStaticAttr().UtilityToken.Hash))
                     return Fixed8.Zero;
                 return base.SystemFee;
             }
         }
 
-        public IssueTransaction()
-            : base(TransactionType.IssueTransaction)
+        public IssueTransaction(UInt256 chainhash)
+            : base(TransactionType.IssueTransaction, chainhash)
         {
         }
 
@@ -43,7 +43,7 @@ namespace Neo.Core
             HashSet<UInt160> hashes = new HashSet<UInt160>(base.GetScriptHashesForVerifying());
             foreach (TransactionResult result in GetTransactionResults().Where(p => p.Amount < Fixed8.Zero))
             {
-                AssetState asset = Blockchain.Default.GetAssetState(result.AssetId);
+                AssetState asset = Chain.GetAssetState(result.AssetId);
                 if (asset == null) throw new InvalidOperationException();
                 hashes.Add(asset.Issuer);
             }
@@ -61,7 +61,7 @@ namespace Neo.Core
             if (results == null) return false;
             foreach (TransactionResult r in results)
             {
-                AssetState asset = Blockchain.Default.GetAssetState(r.AssetId);
+                AssetState asset = Chain.GetAssetState(r.AssetId);
                 if (asset == null) return false;
                 if (asset.Amount < Fixed8.Zero) continue;
                 Fixed8 quantity_issued = asset.Available + mempool.OfType<IssueTransaction>().Where(p => p != this).SelectMany(p => p.Outputs).Where(p => p.AssetId == r.AssetId).Sum(p => p.Value);

@@ -20,6 +20,8 @@ namespace Neo.Wallets
 
         private static readonly Random rand = new Random();
 
+        public abstract UInt256 ChainHash { get; }
+
         public abstract string Name { get; }
         public abstract Version Version { get; }
         public abstract uint WalletHeight { get; }
@@ -103,7 +105,7 @@ namespace Neo.Wallets
                     sb.EmitAppCall(asset_id_160, "decimals");
                     script = sb.ToArray();
                 }
-                ApplicationEngine engine = ApplicationEngine.Run(script);
+                ApplicationEngine engine = ApplicationEngine.Run(script, ChainHash);
                 byte decimals = (byte)engine.EvaluationStack.Pop().GetBigInteger();
                 BigInteger amount = ((VMArray)engine.EvaluationStack.Pop()).Aggregate(BigInteger.Zero, (x, y) => x + y.GetBigInteger());
                 return new BigDecimal(amount, decimals);
@@ -154,7 +156,7 @@ namespace Neo.Wallets
             byte[] prikey = XOR(encryptedkey.AES256Decrypt(derivedhalf2), derivedhalf1);
             Cryptography.ECC.ECPoint pubkey = Cryptography.ECC.ECCurve.Secp256r1.G * prikey;
             UInt160 script_hash = Contract.CreateSignatureRedeemScript(pubkey).ToScriptHash();
-            string address = ToAddress(script_hash);
+            string address = KeyPair.ToAddress(script_hash);
             if (!Encoding.ASCII.GetBytes(address).Sha256().Sha256().Take(4).SequenceEqual(addresshash))
                 throw new FormatException();
             return prikey;
@@ -176,7 +178,7 @@ namespace Neo.Wallets
         {
             IEnumerable<UInt160> accounts = GetAccounts().Where(p => !p.Lock && !p.WatchOnly).Select(p => p.ScriptHash);
             IEnumerable<Coin> coins = GetCoins(accounts);
-            coins = coins.Where(p => p.Output.AssetId.Equals(Blockchain.GoverningToken.Hash));
+            coins = coins.Where(p => p.Output.AssetId.Equals(BlockchainBase.GetStaticAttr().GoverningToken.Hash));
             coins = coins.Where(p => p.State.HasFlag(CoinState.Confirmed) && p.State.HasFlag(CoinState.Spent));
             coins = coins.Where(p => !p.State.HasFlag(CoinState.Claimed) && !p.State.HasFlag(CoinState.Frozen));
             return coins;
@@ -222,19 +224,19 @@ namespace Neo.Wallets
             }).ToDictionary(p => p.AssetId);
             if (fee > Fixed8.Zero)
             {
-                if (pay_total.ContainsKey(Blockchain.UtilityToken.Hash))
+                if (pay_total.ContainsKey(BlockchainBase.GetStaticAttr().UtilityToken.Hash))
                 {
-                    pay_total[Blockchain.UtilityToken.Hash] = new
+                    pay_total[BlockchainBase.GetStaticAttr().UtilityToken.Hash] = new
                     {
-                        AssetId = Blockchain.UtilityToken.Hash,
-                        Value = pay_total[Blockchain.UtilityToken.Hash].Value + fee
+                        AssetId = BlockchainBase.GetStaticAttr().UtilityToken.Hash,
+                        Value = pay_total[BlockchainBase.GetStaticAttr().UtilityToken.Hash].Value + fee
                     };
                 }
                 else
                 {
-                    pay_total.Add(Blockchain.UtilityToken.Hash, new
+                    pay_total.Add(BlockchainBase.GetStaticAttr().UtilityToken.Hash, new
                     {
-                        AssetId = Blockchain.UtilityToken.Hash,
+                        AssetId = BlockchainBase.GetStaticAttr().UtilityToken.Hash,
                         Value = fee
                     });
                 }
@@ -285,7 +287,7 @@ namespace Neo.Wallets
             if (attributes == null) attributes = new List<TransactionAttribute>();
             if (cOutputs.Length == 0)
             {
-                tx = new ContractTransaction();
+                tx = new ContractTransaction(ChainHash);
             }
             else
             {
@@ -303,7 +305,7 @@ namespace Neo.Wallets
                             sb2.Emit(OpCode.DEPTH, OpCode.PACK);
                             script = sb2.ToArray();
                         }
-                        ApplicationEngine engine = ApplicationEngine.Run(script);
+                        ApplicationEngine engine = ApplicationEngine.Run(script, ChainHash);
                         if (engine.State.HasFlag(VMState.FAULT)) return null;
                         var balances = ((IEnumerable<StackItem>)(VMArray)engine.EvaluationStack.Pop()).Reverse().Zip(accounts, (i, a) => new
                         {
@@ -341,7 +343,7 @@ namespace Neo.Wallets
                     byte[] nonce = new byte[8];
                     rand.NextBytes(nonce);
                     sb.Emit(OpCode.RET, nonce);
-                    tx = new InvocationTransaction
+                    tx = new InvocationTransaction(ChainHash)
                     {
                         Version = 1,
                         Script = sb.ToArray()
@@ -359,9 +361,9 @@ namespace Neo.Wallets
             tx.Scripts = new Witness[0];
             if (tx is InvocationTransaction itx)
             {
-                ApplicationEngine engine = ApplicationEngine.Run(itx.Script, itx);
+                ApplicationEngine engine = ApplicationEngine.Run(itx.Script, ChainHash, itx);
                 if (engine.State.HasFlag(VMState.FAULT)) return null;
-                tx = new InvocationTransaction
+                tx = new InvocationTransaction(ChainHash)
                 {
                     Version = itx.Version,
                     Script = itx.Script,
@@ -389,6 +391,7 @@ namespace Neo.Wallets
             return fSuccess;
         }
 
+        // move to KeyPair
         //public static string ToAddress(UInt160 scriptHash)
         //{
         //    byte[] data = new byte[21];

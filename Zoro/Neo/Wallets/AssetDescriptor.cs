@@ -11,7 +11,7 @@ namespace Neo.Wallets
         public string AssetName;
         public byte Decimals;
 
-        public AssetDescriptor(UIntBase asset_id)
+        public AssetDescriptor(UIntBase asset_id, UInt256 ChainHash)
         {
             if (asset_id is UInt160 asset_id_160)
             {
@@ -22,7 +22,7 @@ namespace Neo.Wallets
                     sb.EmitAppCall(asset_id_160, "name");
                     script = sb.ToArray();
                 }
-                ApplicationEngine engine = ApplicationEngine.Run(script);
+                ApplicationEngine engine = ApplicationEngine.Run(script, ChainHash);
                 if (engine.State.HasFlag(VMState.FAULT)) throw new ArgumentException();
                 this.AssetId = asset_id;
                 this.AssetName = engine.EvaluationStack.Pop().GetString();
@@ -30,7 +30,7 @@ namespace Neo.Wallets
             }
             else
             {
-                AssetState state = Blockchain.Default.GetAssetState((UInt256)asset_id);
+                AssetState state = BlockchainBase.GetBlockchain(ChainHash).GetAssetState((UInt256)asset_id);
                 this.AssetId = state.AssetId;
                 this.AssetName = state.GetName();
                 this.Decimals = state.Precision;

@@ -12,6 +12,10 @@ namespace Neo.Network.Payloads
         public int TxCount;
         public UInt256[] Hashes;
         public byte[] Flags;
+        
+        public MerkleBlockPayload(UInt256 chainhash) : base(chainhash)
+        {
+        }
 
         public override int Size => base.Size + sizeof(int) + Hashes.GetVarSize() + Flags.GetVarSize();
 
@@ -21,7 +25,7 @@ namespace Neo.Network.Payloads
             tree.Trim(flags);
             byte[] buffer = new byte[(flags.Length + 7) / 8];
             flags.CopyTo(buffer, 0);
-            return new MerkleBlockPayload
+            return new MerkleBlockPayload(((IVerifiable)block).ChainHash)
             {
                 Version = block.Version,
                 PrevHash = block.PrevHash,

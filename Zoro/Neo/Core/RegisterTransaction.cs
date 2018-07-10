@@ -52,8 +52,8 @@ namespace Neo.Core
             }
         }
 
-        public RegisterTransaction()
-            : base(TransactionType.RegisterTransaction)
+        public RegisterTransaction(UInt256 chainhash)
+            : base(TransactionType.RegisterTransaction, chainhash)
         {
         }
 
@@ -87,9 +87,9 @@ namespace Neo.Core
         protected override void OnDeserialized()
         {
             base.OnDeserialized();
-            if (AssetType == AssetType.GoverningToken && !Hash.Equals(Blockchain.GoverningToken.Hash))
+            if (AssetType == AssetType.GoverningToken && !Hash.Equals(BlockchainBase.GetStaticAttr().GoverningToken.Hash))
                 throw new FormatException();
-            if (AssetType == AssetType.UtilityToken && !Hash.Equals(Blockchain.UtilityToken.Hash))
+            if (AssetType == AssetType.UtilityToken && !Hash.Equals(BlockchainBase.GetStaticAttr().UtilityToken.Hash))
                 throw new FormatException();
         }
 
@@ -127,7 +127,7 @@ namespace Neo.Core
             json["asset"]["amount"] = Amount.ToString();
             json["asset"]["precision"] = Precision;
             json["asset"]["owner"] = Owner.ToString();
-            json["asset"]["admin"] = Wallet.ToAddress(Admin);
+            json["asset"]["admin"] = KeyPair.ToAddress(Admin);
             return json;
         }
 

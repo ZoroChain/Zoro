@@ -70,9 +70,10 @@ namespace Neo.Core
                 {
                     if (hashes[i] != verifiable.Scripts[i].ScriptHash) return false;
                 }
-                using (StateReader service = new StateReader())
+                using (StateReader service = new StateReader(verifiable))
                 {
-                    ApplicationEngine engine = new ApplicationEngine(TriggerType.Verification, verifiable, Blockchain.Default, service, Fixed8.Zero);
+                    ApplicationEngine engine = new ApplicationEngine(TriggerType.Verification, verifiable, 
+                        BlockchainBase.GetBlockchain(verifiable.ChainHash), service, Fixed8.Zero);
                     engine.LoadScript(verification, false);
                     engine.LoadScript(verifiable.Scripts[i].InvocationScript, true);
                     if (!engine.Execute()) return false;

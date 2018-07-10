@@ -15,8 +15,8 @@ namespace Neo.Core
 
         public override int Size => base.Size + Claims.GetVarSize();
 
-        public ClaimTransaction()
-            : base(TransactionType.ClaimTransaction)
+        public ClaimTransaction(UInt256 chainhash)
+            : base(TransactionType.ClaimTransaction, chainhash)
         {
         }
 
@@ -40,7 +40,7 @@ namespace Neo.Core
             HashSet<UInt160> hashes = new HashSet<UInt160>(base.GetScriptHashesForVerifying());
             foreach (var group in Claims.GroupBy(p => p.PrevHash))
             {
-                Transaction tx = Blockchain.Default.GetTransaction(group.Key);
+                Transaction tx = Chain.GetTransaction(group.Key);
                 if (tx == null) throw new InvalidOperationException();
                 foreach (CoinReference claim in group)
                 {
@@ -82,11 +82,11 @@ namespace Neo.Core
                 return false;
             if (mempool.OfType<ClaimTransaction>().Where(p => p != this).SelectMany(p => p.Claims).Intersect(Claims).Count() > 0)
                 return false;
-            TransactionResult result = GetTransactionResults().FirstOrDefault(p => p.AssetId == Blockchain.UtilityToken.Hash);
+            TransactionResult result = GetTransactionResults().FirstOrDefault(p => p.AssetId == BlockchainBase.GetStaticAttr().UtilityToken.Hash);
             if (result == null || result.Amount > Fixed8.Zero) return false;
             try
             {
-                return Blockchain.CalculateBonus(Claims, false) == -result.Amount;
+                return Chain.CalculateBonus(Claims, false) == -result.Amount;
             }
             catch (ArgumentException)
             {

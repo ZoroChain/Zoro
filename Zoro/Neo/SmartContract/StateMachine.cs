@@ -12,7 +12,7 @@ namespace Neo.SmartContract
 {
     public class StateMachine : StateReader
     {
-        private readonly Block persisting_block;
+        // private readonly BlockBase persisting_block; // 提到StateReader中，记录为verifing_obj;
         private readonly DataCache<UInt160, AccountState> accounts;
         private readonly DataCache<UInt256, AssetState> assets;
         private readonly DataCache<UInt160, ContractState> contracts;
@@ -25,9 +25,10 @@ namespace Neo.SmartContract
         protected override DataCache<UInt160, ContractState> Contracts => contracts;
         protected override DataCache<StorageKey, StorageItem> Storages => storages;
 
-        public StateMachine(Block persisting_block, DataCache<UInt160, AccountState> accounts, DataCache<UInt256, AssetState> assets, DataCache<UInt160, ContractState> contracts, DataCache<StorageKey, StorageItem> storages)
+        public StateMachine(BlockBase persisting_block, DataCache<UInt160, AccountState> accounts, DataCache<UInt256, AssetState> assets, 
+            DataCache<UInt160, ContractState> contracts, DataCache<StorageKey, StorageItem> storages) : base(persisting_block)
         {
-            this.persisting_block = persisting_block;
+            //this.persisting_block = persisting_block;
             this.accounts = accounts.CreateSnapshot();
             this.assets = assets.CreateSnapshot();
             this.contracts = contracts.CreateSnapshot();
@@ -40,14 +41,14 @@ namespace Neo.SmartContract
             Register("System.Storage.Delete", Storage_Delete);
 
             //Neo Specified
-            Register("Neo.Asset.Create", Asset_Create);
-            Register("Neo.Asset.Renew", Asset_Renew);
+            //Register("Neo.Asset.Create", Asset_Create);
+            //Register("Neo.Asset.Renew", Asset_Renew);
             Register("Neo.Contract.Create", Contract_Create);
             Register("Neo.Contract.Migrate", Contract_Migrate);
 
             #region Old APIs
-            Register("AntShares.Asset.Create", Asset_Create);
-            Register("AntShares.Asset.Renew", Asset_Renew);
+            //Register("AntShares.Asset.Create", Asset_Create);
+            //Register("AntShares.Asset.Renew", Asset_Renew);
             Register("AntShares.Contract.Create", Contract_Create);
             Register("AntShares.Contract.Migrate", Contract_Migrate);
             Register("Neo.Contract.GetStorageContext", Contract_GetStorageContext);
@@ -71,77 +72,77 @@ namespace Neo.SmartContract
 
         protected override bool Runtime_GetTime(ExecutionEngine engine)
         {
-            engine.EvaluationStack.Push(persisting_block.Timestamp);
+            engine.EvaluationStack.Push(((BlockBase)verifying_obj).Timestamp);
             return true;
         }
 
-        private bool Asset_Create(ExecutionEngine engine)
-        {
-            InvocationTransaction tx = (InvocationTransaction)engine.ScriptContainer;
-            AssetType asset_type = (AssetType)(byte)engine.EvaluationStack.Pop().GetBigInteger();
-            if (!Enum.IsDefined(typeof(AssetType), asset_type) || asset_type == AssetType.CreditFlag || asset_type == AssetType.DutyFlag || asset_type == AssetType.GoverningToken || asset_type == AssetType.UtilityToken)
-                return false;
-            if (engine.EvaluationStack.Peek().GetByteArray().Length > 1024)
-                return false;
-            string name = Encoding.UTF8.GetString(engine.EvaluationStack.Pop().GetByteArray());
-            Fixed8 amount = new Fixed8((long)engine.EvaluationStack.Pop().GetBigInteger());
-            if (amount == Fixed8.Zero || amount < -Fixed8.Satoshi) return false;
-            if (asset_type == AssetType.Invoice && amount != -Fixed8.Satoshi)
-                return false;
-            byte precision = (byte)engine.EvaluationStack.Pop().GetBigInteger();
-            if (precision > 8) return false;
-            if (asset_type == AssetType.Share && precision != 0) return false;
-            if (amount != -Fixed8.Satoshi && amount.GetData() % (long)Math.Pow(10, 8 - precision) != 0)
-                return false;
-            ECPoint owner = ECPoint.DecodePoint(engine.EvaluationStack.Pop().GetByteArray(), ECCurve.Secp256r1);
-            if (owner.IsInfinity) return false;
-            if (!CheckWitness(engine, owner))
-                return false;
-            UInt160 admin = new UInt160(engine.EvaluationStack.Pop().GetByteArray());
-            UInt160 issuer = new UInt160(engine.EvaluationStack.Pop().GetByteArray());
-            AssetState asset = assets.GetOrAdd(tx.Hash, () => new AssetState
-            {
-                AssetId = tx.Hash,
-                AssetType = asset_type,
-                Name = name,
-                Amount = amount,
-                Available = Fixed8.Zero,
-                Precision = precision,
-                Fee = Fixed8.Zero,
-                FeeAddress = new UInt160(),
-                Owner = owner,
-                Admin = admin,
-                Issuer = issuer,
-                Expiration = Blockchain.Default.Height + 1 + 2000000,
-                IsFrozen = false
-            });
-            engine.EvaluationStack.Push(StackItem.FromInterface(asset));
-            return true;
-        }
+        //private bool Asset_Create(ExecutionEngine engine)
+        //{
+        //    InvocationTransaction tx = (InvocationTransaction)engine.ScriptContainer;
+        //    AssetType asset_type = (AssetType)(byte)engine.EvaluationStack.Pop().GetBigInteger();
+        //    if (!Enum.IsDefined(typeof(AssetType), asset_type) || asset_type == AssetType.CreditFlag || asset_type == AssetType.DutyFlag || asset_type == AssetType.GoverningToken || asset_type == AssetType.UtilityToken)
+        //        return false;
+        //    if (engine.EvaluationStack.Peek().GetByteArray().Length > 1024)
+        //        return false;
+        //    string name = Encoding.UTF8.GetString(engine.EvaluationStack.Pop().GetByteArray());
+        //    Fixed8 amount = new Fixed8((long)engine.EvaluationStack.Pop().GetBigInteger());
+        //    if (amount == Fixed8.Zero || amount < -Fixed8.Satoshi) return false;
+        //    if (asset_type == AssetType.Invoice && amount != -Fixed8.Satoshi)
+        //        return false;
+        //    byte precision = (byte)engine.EvaluationStack.Pop().GetBigInteger();
+        //    if (precision > 8) return false;
+        //    if (asset_type == AssetType.Share && precision != 0) return false;
+        //    if (amount != -Fixed8.Satoshi && amount.GetData() % (long)Math.Pow(10, 8 - precision) != 0)
+        //        return false;
+        //    ECPoint owner = ECPoint.DecodePoint(engine.EvaluationStack.Pop().GetByteArray(), ECCurve.Secp256r1);
+        //    if (owner.IsInfinity) return false;
+        //    if (!CheckWitness(engine, owner))
+        //        return false;
+        //    UInt160 admin = new UInt160(engine.EvaluationStack.Pop().GetByteArray());
+        //    UInt160 issuer = new UInt160(engine.EvaluationStack.Pop().GetByteArray());
+        //    AssetState asset = assets.GetOrAdd(tx.Hash, () => new AssetState
+        //    {
+        //        AssetId = tx.Hash,
+        //        AssetType = asset_type,
+        //        Name = name,
+        //        Amount = amount,
+        //        Available = Fixed8.Zero,
+        //        Precision = precision,
+        //        Fee = Fixed8.Zero,
+        //        FeeAddress = new UInt160(),
+        //        Owner = owner,
+        //        Admin = admin,
+        //        Issuer = issuer,
+        //        Expiration = Blockchain.Default.Height + 1 + 2000000,
+        //        IsFrozen = false
+        //    });
+        //    engine.EvaluationStack.Push(StackItem.FromInterface(asset));
+        //    return true;
+        //}
 
-        private bool Asset_Renew(ExecutionEngine engine)
-        {
-            if (engine.EvaluationStack.Pop() is InteropInterface _interface)
-            {
-                AssetState asset = _interface.GetInterface<AssetState>();
-                if (asset == null) return false;
-                byte years = (byte)engine.EvaluationStack.Pop().GetBigInteger();
-                asset = assets.GetAndChange(asset.AssetId);
-                if (asset.Expiration < Blockchain.Default.Height + 1)
-                    asset.Expiration = Blockchain.Default.Height + 1;
-                try
-                {
-                    asset.Expiration = checked(asset.Expiration + years * 2000000u);
-                }
-                catch (OverflowException)
-                {
-                    asset.Expiration = uint.MaxValue;
-                }
-                engine.EvaluationStack.Push(asset.Expiration);
-                return true;
-            }
-            return false;
-        }
+        //private bool Asset_Renew(ExecutionEngine engine)
+        //{
+        //    if (engine.EvaluationStack.Pop() is InteropInterface _interface)
+        //    {
+        //        AssetState asset = _interface.GetInterface<AssetState>();
+        //        if (asset == null) return false;
+        //        byte years = (byte)engine.EvaluationStack.Pop().GetBigInteger();
+        //        asset = assets.GetAndChange(asset.AssetId);
+        //        if (asset.Expiration < Blockchain.Default.Height + 1)
+        //            asset.Expiration = Blockchain.Default.Height + 1;
+        //        try
+        //        {
+        //            asset.Expiration = checked(asset.Expiration + years * 2000000u);
+        //        }
+        //        catch (OverflowException)
+        //        {
+        //            asset.Expiration = uint.MaxValue;
+        //        }
+        //        engine.EvaluationStack.Push(asset.Expiration);
+        //        return true;
+        //    }
+        //    return false;
+        //}
 
         private bool Contract_Create(ExecutionEngine engine)
         {

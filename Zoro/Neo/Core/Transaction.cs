@@ -65,6 +65,24 @@ namespace Neo.Core
             }
         }
 
+        // 标记属于哪个chain
+        private UInt256 _chainHash = null;
+        UInt256 IVerifiable.ChainHash
+        {
+            get
+            {
+                return _chainHash;
+            }
+        }
+
+        public BlockchainBase Chain
+        {
+            get
+            {
+                return BlockchainBase.GetBlockchain(_chainHash);
+            }
+        }
+
         /// <summary>
         /// 清单类型
         /// </summary>
@@ -77,8 +95,8 @@ namespace Neo.Core
             {
                 if (_network_fee == -Fixed8.Satoshi)
                 {
-                    Fixed8 input = References.Values.Where(p => p.AssetId.Equals(Blockchain.UtilityToken.Hash)).Sum(p => p.Value);
-                    Fixed8 output = Outputs.Where(p => p.AssetId.Equals(Blockchain.UtilityToken.Hash)).Sum(p => p.Value);
+                    Fixed8 input = References.Values.Where(p => p.AssetId.Equals(BlockchainBase.GetStaticAttr().UtilityToken.Hash)).Sum(p => p.Value);
+                    Fixed8 output = Outputs.Where(p => p.AssetId.Equals(BlockchainBase.GetStaticAttr().UtilityToken.Hash)).Sum(p => p.Value);
                     _network_fee = input - output - SystemFee;
                 }
                 return _network_fee;
@@ -98,7 +116,7 @@ namespace Neo.Core
                     Dictionary<CoinReference, TransactionOutput> dictionary = new Dictionary<CoinReference, TransactionOutput>();
                     foreach (var group in Inputs.GroupBy(p => p.PrevHash))
                     {
-                        Transaction tx = Blockchain.Default.GetTransaction(group.Key);
+                        Transaction tx = Chain.GetTransaction(group.Key);
                         if (tx == null) return null;
                         foreach (var reference in group.Select(p => new
                         {
@@ -126,9 +144,10 @@ namespace Neo.Core
         /// 用指定的类型初始化Transaction对象
         /// </summary>
         /// <param name="type">交易类型</param>
-        protected Transaction(TransactionType type)
+        protected Transaction(TransactionType type, UInt256 chainhash)
         {
             this.Type = type;
+            this._chainHash = chainhash;
         }
 
         /// <summary>
@@ -192,6 +211,7 @@ namespace Neo.Core
         private void DeserializeUnsignedWithoutType(BinaryReader reader)
         {
             Version = reader.ReadByte();
+            _chainHash = reader.ReadSerializable<UInt256>(); // TO DO : 是否要每个transaction都记录一个chainhash？
             DeserializeExclusiveData(reader);
             Attributes = reader.ReadSerializableArray<TransactionAttribute>(MaxTransactionAttributes);
             Inputs = reader.ReadSerializableArray<CoinReference>();
@@ -231,7 +251,7 @@ namespace Neo.Core
             hashes.UnionWith(Attributes.Where(p => p.Usage == TransactionAttributeUsage.Script).Select(p => new UInt160(p.Data)));
             foreach (var group in Outputs.GroupBy(p => p.AssetId))
             {
-                AssetState asset = Blockchain.Default.GetAssetState(group.Key);
+                AssetState asset = Chain.GetAssetState(group.Key);
                 if (asset == null) throw new InvalidOperationException();
                 if (asset.AssetType.HasFlag(AssetType.DutyFlag))
                 {
@@ -292,6 +312,7 @@ namespace Neo.Core
         {
             writer.Write((byte)Type);
             writer.Write(Version);
+            writer.Write(((IVerifiable)this).ChainHash); // TO DO : 是否要每个transaction都记录一个chainhash？
             SerializeExclusiveData(writer);
             writer.Write(Attributes);
             writer.Write(Inputs);
@@ -309,6 +330,7 @@ namespace Neo.Core
             json["size"] = Size;
             json["type"] = Type;
             json["version"] = Version;
+            json["chainhash"] = ((IVerifiable)this).ChainHash.ToString();
             json["attributes"] = Attributes.Select(p => p.ToJson()).ToArray();
             json["vin"] = Inputs.Select(p => p.ToJson()).ToArray();
             json["vout"] = Outputs.Select((p, i) => p.ToJson((ushort)i)).ToArray();
@@ -335,13 +357,13 @@ namespace Neo.Core
                         return false;
             if (mempool.Where(p => p != this).SelectMany(p => p.Inputs).Intersect(Inputs).Count() > 0)
                 return false;
-            if (Blockchain.Default.IsDoubleSpend(this))
+            if (Chain.IsDoubleSpend(this))
                 return false;
             foreach (var group in Outputs.GroupBy(p => p.AssetId))
             {
-                AssetState asset = Blockchain.Default.GetAssetState(group.Key);
+                AssetState asset = Chain.GetAssetState(group.Key);
                 if (asset == null) return false;
-                if (asset.Expiration <= Blockchain.Default.Height + 1 && asset.AssetType != AssetType.GoverningToken && asset.AssetType != AssetType.UtilityToken)
+                if (asset.Expiration <= Chain.Height + 1 && asset.AssetType != AssetType.GoverningToken && asset.AssetType != AssetType.UtilityToken)
                     return false;
                 foreach (TransactionOutput output in group)
                     if (output.Value.GetData() % (long)Math.Pow(10, 8 - asset.Precision) != 0)
@@ -351,7 +373,7 @@ namespace Neo.Core
             if (results == null) return false;
             TransactionResult[] results_destroy = results.Where(p => p.Amount > Fixed8.Zero).ToArray();
             if (results_destroy.Length > 1) return false;
-            if (results_destroy.Length == 1 && results_destroy[0].AssetId != Blockchain.UtilityToken.Hash)
+            if (results_destroy.Length == 1 && results_destroy[0].AssetId != BlockchainBase.GetStaticAttr().UtilityToken.Hash)
                 return false;
             if (SystemFee > Fixed8.Zero && (results_destroy.Length == 0 || results_destroy[0].Amount < SystemFee))
                 return false;
@@ -360,11 +382,11 @@ namespace Neo.Core
             {
                 case TransactionType.MinerTransaction:
                 case TransactionType.ClaimTransaction:
-                    if (results_issue.Any(p => p.AssetId != Blockchain.UtilityToken.Hash))
+                    if (results_issue.Any(p => p.AssetId != BlockchainBase.GetStaticAttr().UtilityToken.Hash))
                         return false;
                     break;
                 case TransactionType.IssueTransaction:
-                    if (results_issue.Any(p => p.AssetId == Blockchain.UtilityToken.Hash))
+                    if (results_issue.Any(p => p.AssetId == BlockchainBase.GetStaticAttr().UtilityToken.Hash))
                         return false;
                     break;
                 default:

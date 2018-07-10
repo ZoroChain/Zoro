@@ -8,8 +8,8 @@ namespace Neo.Core
     /// </summary>
     public class ContractTransaction : Transaction
     {
-        public ContractTransaction()
-            : base(TransactionType.ContractTransaction)
+        public ContractTransaction(UInt256 chainhash)
+            : base(TransactionType.ContractTransaction, chainhash)
         {
         }
 

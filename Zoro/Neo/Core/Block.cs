@@ -23,13 +23,13 @@ namespace Neo.Core
         /// <summary>
         /// 该区块的区块头
         /// </summary>
-        public Header Header
+        public override Header Header
         {
             get
             {
                 if (_header == null)
                 {
-                    _header = new Header
+                    _header = new Header(((IVerifiable)this).ChainHash)
                     {
                         PrevHash = PrevHash,
                         MerkleRoot = MerkleRoot,
@@ -44,6 +44,10 @@ namespace Neo.Core
             }
         }
 
+        public Block(UInt256 chainhash) : base(chainhash)
+        {
+        }
+
         /// <summary>
         /// 资产清单的类型
         /// </summary>
@@ -54,8 +58,8 @@ namespace Neo.Core
         public static Fixed8 CalculateNetFee(IEnumerable<Transaction> transactions)
         {
             Transaction[] ts = transactions.Where(p => p.Type != TransactionType.MinerTransaction && p.Type != TransactionType.ClaimTransaction).ToArray();
-            Fixed8 amount_in = ts.SelectMany(p => p.References.Values.Where(o => o.AssetId == Blockchain.UtilityToken.Hash)).Sum(p => p.Value);
-            Fixed8 amount_out = ts.SelectMany(p => p.Outputs.Where(o => o.AssetId == Blockchain.UtilityToken.Hash)).Sum(p => p.Value);
+            Fixed8 amount_in = ts.SelectMany(p => p.References.Values.Where(o => o.AssetId == BlockchainBase.GetStaticAttr().UtilityToken.Hash)).Sum(p => p.Value);
+            Fixed8 amount_out = ts.SelectMany(p => p.Outputs.Where(o => o.AssetId == BlockchainBase.GetStaticAttr().UtilityToken.Hash)).Sum(p => p.Value);
             Fixed8 amount_sysfee = ts.Sum(p => p.SystemFee);
             return amount_in - amount_out - amount_sysfee;
         }
@@ -101,7 +105,7 @@ namespace Neo.Core
 
         public static Block FromTrimmedData(byte[] data, int index, Func<UInt256, Transaction> txSelector)
         {
-            Block block = new Block();
+            Block block = new Block(UInt256.Zero); // chainhash will read from trimmeddata
             using (MemoryStream ms = new MemoryStream(data, index, data.Length - index, false))
             using (BinaryReader reader = new BinaryReader(ms))
             {
@@ -183,7 +187,7 @@ namespace Neo.Core
                 return false;
             if (completely)
             {
-                if (NextConsensus != Blockchain.GetConsensusAddress(Blockchain.Default.GetValidators(Transactions).ToArray()))
+                if (NextConsensus != BlockchainBase.GetConsensusAddress(Chain.GetValidators(Transactions).ToArray()))
                     return false;
                 foreach (Transaction tx in Transactions)
                     if (!tx.Verify(Transactions.Where(p => !p.Hash.Equals(tx.Hash)))) return false;

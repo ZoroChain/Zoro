@@ -32,8 +32,8 @@ namespace Neo.Core
 
         public override int Size => base.Size + PublicKey.Size;
 
-        public EnrollmentTransaction()
-            : base(TransactionType.EnrollmentTransaction)
+        public EnrollmentTransaction(UInt256 chainhash)
+            : base(TransactionType.EnrollmentTransaction, chainhash)
         {
         }
 

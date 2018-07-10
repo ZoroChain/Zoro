@@ -11,7 +11,7 @@ namespace Neo.Core
 
         public ValidatorsCountState()
         {
-            this.Votes = new Fixed8[Blockchain.MaxValidators];
+            this.Votes = new Fixed8[BlockchainBase.MaxValidators];
         }
 
         ValidatorsCountState ICloneable<ValidatorsCountState>.Clone()

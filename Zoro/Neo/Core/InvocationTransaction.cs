@@ -15,8 +15,8 @@ namespace Neo.Core
 
         public override Fixed8 SystemFee => Gas;
 
-        public InvocationTransaction()
-            : base(TransactionType.InvocationTransaction)
+        public InvocationTransaction(UInt256 chainhash)
+            : base(TransactionType.InvocationTransaction, chainhash)
         {
         }
 

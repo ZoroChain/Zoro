@@ -471,18 +471,20 @@ namespace Neo.SmartContract
             }
         }
 
-        public static ApplicationEngine Run(byte[] script, IScriptContainer container = null, Block persisting_block = null)
+        public static ApplicationEngine Run(byte[] script, UInt256 ChainHash, IScriptContainer container = null, Block persisting_block = null)
         {
+            BlockchainBase Chain = BlockchainBase.GetBlockchain(ChainHash);
+
             if (persisting_block == null)
-                persisting_block = new Block
+                persisting_block = new Block(ChainHash)
                 {
                     Version = 0,
-                    PrevHash = Blockchain.Default.CurrentBlockHash,
+                    PrevHash = Chain.CurrentBlockHash,
                     MerkleRoot = new UInt256(),
-                    Timestamp = Blockchain.Default.GetHeader(Blockchain.Default.Height).Timestamp + Blockchain.SecondsPerBlock,
-                    Index = Blockchain.Default.Height + 1,
+                    Timestamp = Chain.GetHeader(Chain.Height).Timestamp + Chain.SecondsPerBlock,
+                    Index = Chain.Height + 1,
                     ConsensusData = 0,
-                    NextConsensus = Blockchain.Default.GetHeader(Blockchain.Default.Height).NextConsensus,
+                    NextConsensus = Chain.GetHeader(Chain.Height).NextConsensus,
                     Script = new Witness
                     {
                         InvocationScript = new byte[0],
@@ -490,10 +492,10 @@ namespace Neo.SmartContract
                     },
                     Transactions = new Transaction[0]
                 };
-            DataCache<UInt160, AccountState> accounts = Blockchain.Default.GetStates<UInt160, AccountState>();
-            DataCache<UInt256, AssetState> assets = Blockchain.Default.GetStates<UInt256, AssetState>();
-            DataCache<UInt160, ContractState> contracts = Blockchain.Default.GetStates<UInt160, ContractState>();
-            DataCache<StorageKey, StorageItem> storages = Blockchain.Default.GetStates<StorageKey, StorageItem>();
+            DataCache<UInt160, AccountState> accounts = Chain.GetStates<UInt160, AccountState>();
+            DataCache<UInt256, AssetState> assets = Chain.GetStates<UInt256, AssetState>();
+            DataCache<UInt160, ContractState> contracts = Chain.GetStates<UInt160, ContractState>();
+            DataCache<StorageKey, StorageItem> storages = Chain.GetStates<StorageKey, StorageItem>();
             CachedScriptTable script_table = new CachedScriptTable(contracts);
             using (StateMachine service = new StateMachine(persisting_block, accounts, assets, contracts, storages))
             {

@@ -54,8 +54,8 @@ namespace Neo.Core
         }
 
         // 标记属于哪个chain
-        private UInt256 _chainHash = null;
-        public UInt256 ChainHash
+        protected UInt256 _chainHash = null;
+        UInt256 IVerifiable.ChainHash
         {
             get
             {
@@ -71,6 +71,14 @@ namespace Neo.Core
             }
         }
 
+        /// <summary>
+        /// 该区块的区块头
+        /// </summary>
+        public virtual Header Header
+        {
+            get;
+        }
+
 
         Witness[] IVerifiable.Scripts
         {
@@ -83,6 +91,11 @@ namespace Neo.Core
                 if (value.Length != 1) throw new ArgumentException();
                 Script = value[0];
             }
+        }
+
+        protected BlockBase(UInt256 chainhash)
+        {
+            this._chainHash = chainhash;
         }
 
         public virtual int Size => sizeof(uint) + PrevHash.Size + MerkleRoot.Size + sizeof(uint) + sizeof(uint) + sizeof(ulong) + NextConsensus.Size + 1 + Script.Size;
@@ -103,6 +116,7 @@ namespace Neo.Core
             Index = reader.ReadUInt32();
             ConsensusData = reader.ReadUInt64();
             NextConsensus = reader.ReadSerializable<UInt160>();
+            _chainHash = reader.ReadSerializable<UInt256>();
         }
 
         byte[] IScriptContainer.GetMessage()
@@ -134,13 +148,14 @@ namespace Neo.Core
             writer.Write(Index);
             writer.Write(ConsensusData);
             writer.Write(NextConsensus);
+            writer.Write(((IVerifiable)this).ChainHash);
         }
 
         public virtual JObject ToJson()
         {
             JObject json = new JObject();
             json["hash"] = Hash.ToString();
-            json["chainhash"] = ChainHash.ToString();
+            json["chainhash"] = ((IVerifiable)this).ChainHash.ToString();
             json["size"] = Size;
             json["version"] = Version;
             json["previousblockhash"] = PrevHash.ToString();

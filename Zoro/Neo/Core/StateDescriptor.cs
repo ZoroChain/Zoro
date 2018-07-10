@@ -95,12 +95,12 @@ namespace Neo.Core
             return json;
         }
 
-        internal bool Verify()
+        internal bool Verify(UInt256 ChainHash)
         {
             switch (Type)
             {
                 case StateType.Account:
-                    return VerifyAccountState();
+                    return VerifyAccountState(ChainHash);
                 case StateType.Validator:
                     return VerifyValidatorState();
                 default:
@@ -108,29 +108,30 @@ namespace Neo.Core
             }
         }
 
-        private bool VerifyAccountState()
+        private bool VerifyAccountState(UInt256 ChainHash)
         {
             switch (Field)
             {
                 case "Votes":
-                    if (Blockchain.Default == null) return false;
+                    BlockchainBase chain = BlockchainBase.GetBlockchain(ChainHash);
+                    if (chain == null) return false;
                     ECPoint[] pubkeys;
                     try
                     {
-                        pubkeys = Value.AsSerializableArray<ECPoint>((int)Blockchain.MaxValidators);
+                        pubkeys = Value.AsSerializableArray<ECPoint>((int)BlockchainBase.MaxValidators);
                     }
                     catch (FormatException)
                     {
                         return false;
                     }
                     UInt160 hash = new UInt160(Key);
-                    AccountState account = Blockchain.Default.GetAccountState(hash);
+                    AccountState account = chain.GetAccountState(hash);
                     if (account?.IsFrozen != false) return false;
                     if (pubkeys.Length > 0)
                     {
-                        if (account.GetBalance(Blockchain.GoverningToken.Hash).Equals(Fixed8.Zero)) return false;
-                        HashSet<ECPoint> sv = new HashSet<ECPoint>(Blockchain.StandbyValidators);
-                        DataCache<ECPoint, ValidatorState> validators = Blockchain.Default.GetStates<ECPoint, ValidatorState>();
+                        if (account.GetBalance(BlockchainBase.GetStaticAttr().GoverningToken.Hash).Equals(Fixed8.Zero)) return false;
+                        HashSet<ECPoint> sv = new HashSet<ECPoint>(chain.StandbyValidators);
+                        DataCache<ECPoint, ValidatorState> validators = chain.GetStates<ECPoint, ValidatorState>();
                         foreach (ECPoint pubkey in pubkeys)
                             if (!sv.Contains(pubkey) && validators.TryGet(pubkey)?.Registered != true)
                                 return false;

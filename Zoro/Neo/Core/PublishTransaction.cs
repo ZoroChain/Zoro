@@ -36,8 +36,8 @@ namespace Neo.Core
 
         public override int Size => base.Size + Script.GetVarSize() + ParameterList.GetVarSize() + sizeof(ContractParameterType) + Name.GetVarSize() + CodeVersion.GetVarSize() + Author.GetVarSize() + Email.GetVarSize() + Description.GetVarSize();
 
-        public PublishTransaction()
-            : base(TransactionType.PublishTransaction)
+        public PublishTransaction(UInt256 chainhash)
+            : base(TransactionType.PublishTransaction, chainhash)
         {
         }
 

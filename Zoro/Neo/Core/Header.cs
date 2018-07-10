@@ -7,6 +7,14 @@ namespace Neo.Core
 {
     public class Header : BlockBase, IEquatable<Header>
     {
+        public Header() : base(UInt256.Zero) // use by ReadSerializableArray
+        {
+        }
+
+        public Header(UInt256 chainhash) : base(chainhash)
+        {
+        }
+
         public override int Size => base.Size + 1;
 
         public override void Deserialize(BinaryReader reader)
@@ -29,7 +37,7 @@ namespace Neo.Core
 
         public static Header FromTrimmedData(byte[] data, int index)
         {
-            Header header = new Header();
+            Header header = new Header(UInt256.Zero); // chainhash will read from trimmeddata
             using (MemoryStream ms = new MemoryStream(data, index, data.Length - index, false))
             using (BinaryReader reader = new BinaryReader(ms))
             {

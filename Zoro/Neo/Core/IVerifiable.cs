@@ -10,6 +10,11 @@ namespace Neo.Core
     public interface IVerifiable : ISerializable, IScriptContainer
     {
         /// <summary>
+        /// 用于标记该对象所在的链的哈希值
+        /// </summary>
+        UInt256 ChainHash { get; }
+
+        /// <summary>
         /// 用于验证该对象的脚本列表
         /// </summary>
         Witness[] Scripts { get; set; }

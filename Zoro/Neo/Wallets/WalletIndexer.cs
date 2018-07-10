@@ -156,7 +156,7 @@ namespace Neo.Wallets
                 {
                     if (coins_tracked.TryGetValue(input, out Coin coin))
                     {
-                        if (coin.Output.AssetId.Equals(Blockchain.GoverningToken.Hash))
+                        if (coin.Output.AssetId.Equals(BlockchainBase.GetStaticAttr().GoverningToken.Hash))
                         {
                             coin.State |= CoinState.Spent | CoinState.Confirmed;
                             batch.Put(SliceBuilder.Begin(DataEntryPrefix.ST_Coin).Add(input), SliceBuilder.Begin().Add(coin.Output).Add((byte)coin.State));

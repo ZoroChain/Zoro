@@ -19,8 +19,8 @@ namespace Neo.Core
 
         public override int Size => base.Size + sizeof(uint);
 
-        public MinerTransaction()
-            : base(TransactionType.MinerTransaction)
+        public MinerTransaction(UInt256 chainhash)
+            : base(TransactionType.MinerTransaction, chainhash)
         {
         }
 
@@ -42,7 +42,7 @@ namespace Neo.Core
             base.OnDeserialized();
             if (Inputs.Length != 0)
                 throw new FormatException();
-            if (Outputs.Any(p => p.AssetId != Blockchain.UtilityToken.Hash))
+            if (Outputs.Any(p => p.AssetId != BlockchainBase.GetStaticAttr().UtilityToken.Hash))
                 throw new FormatException();
         }
 

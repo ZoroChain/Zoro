@@ -32,54 +32,16 @@
     <Compile Remove="Neo\Consensus\ConsensusState.cs" />
     <Compile Remove="Neo\Consensus\PrepareRequest.cs" />
     <Compile Remove="Neo\Consensus\PrepareResponse.cs" />
-    <Compile Remove="Neo\Core\Block.cs" />
     <Compile Remove="Neo\Core\Blockchain.cs" />
-    <Compile Remove="Neo\Core\ClaimTransaction.cs" />
-    <Compile Remove="Neo\Core\CoinReference.cs" />
-    <Compile Remove="Neo\Core\CoinState.cs" />
-    <Compile Remove="Neo\Core\ContractTransaction.cs" />
-    <Compile Remove="Neo\Core\EnrollmentTransaction.cs" />
-    <Compile Remove="Neo\Core\InvocationTransaction.cs" />
-    <Compile Remove="Neo\Core\IssueTransaction.cs" />
-    <Compile Remove="Neo\Core\MinerTransaction.cs" />
-    <Compile Remove="Neo\Core\PublishTransaction.cs" />
-    <Compile Remove="Neo\Core\RegisterTransaction.cs" />
-    <Compile Remove="Neo\Core\SpentCoin.cs" />
-    <Compile Remove="Neo\Core\SpentCoinState.cs" />
-    <Compile Remove="Neo\Core\StateDescriptor.cs" />
-    <Compile Remove="Neo\Core\StateTransaction.cs" />
-    <Compile Remove="Neo\Core\StateType.cs" />
-    <Compile Remove="Neo\Core\Transaction.cs" />
-    <Compile Remove="Neo\Core\TransactionAttribute.cs" />
-    <Compile Remove="Neo\Core\TransactionAttributeUsage.cs" />
-    <Compile Remove="Neo\Core\TransactionOutput.cs" />
-    <Compile Remove="Neo\Core\TransactionResult.cs" />
-    <Compile Remove="Neo\Core\TransactionType.cs" />
-    <Compile Remove="Neo\Core\UnspentCoinState.cs" />
-    <Compile Remove="Neo\Core\ValidatorsCountState.cs" />
-    <Compile Remove="Neo\Core\ValidatorState.cs" />
     <Compile Remove="Neo\Network\LocalNode.cs" />
     <Compile Remove="Neo\Network\Payloads\ConsensusPayload.cs" />
-    <Compile Remove="Neo\Network\Payloads\GetBlocksPayload.cs" />
-    <Compile Remove="Neo\Network\Payloads\MerkleBlockPayload.cs" />
     <Compile Remove="Neo\Network\Payloads\VersionPayload.cs" />
     <Compile Remove="Neo\Network\RemoteNode.cs" />
     <Compile Remove="Neo\Network\RPC\RpcServer.cs" />
     <Compile Remove="Neo\Network\TcpRemoteNode.cs" />
     <Compile Remove="Neo\Network\UPnP.cs" />
     <Compile Remove="Neo\Network\WebSocketRemoteNode.cs" />
-    <Compile Remove="Neo\Plugins\PolicyPlugin.cs" />
     <Compile Remove="Neo\Plugins\RpcPlugin.cs" />
-    <Compile Remove="Neo\SmartContract\ApplicationEngine.cs" />
-    <Compile Remove="Neo\SmartContract\StateMachine.cs" />
-    <Compile Remove="Neo\SmartContract\StateReader.cs" />
-    <Compile Remove="Neo\Wallets\AssetDescriptor.cs" />
-    <Compile Remove="Neo\Wallets\BalanceEventArgs.cs" />
-    <Compile Remove="Neo\Wallets\Coin.cs" />
-    <Compile Remove="Neo\Wallets\DataEntryPrefix.cs" />
-    <Compile Remove="Neo\Wallets\TransferOutput.cs" />
-    <Compile Remove="Neo\Wallets\Wallet.cs" />
-    <Compile Remove="Neo\Wallets\WalletAccount.cs" />
     <Compile Remove="Neo\Wallets\WalletIndexer.cs" />
     <Compile Remove="Zoro\Consensus\ChangeView.cs" />
     <Compile Remove="Zoro\Consensus\ConsensusContext.cs" />
@@ -100,11 +62,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="2.1.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="2.1.1" />
+    <PackageReference Include="Neo.VM" Version="2.2.0" />
     <PackageReference Include="System.Text.Encodings.Web" Version="4.5.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\neo-vm\src\neo-vm\neo-vm.csproj" />
   </ItemGroup>
 
   <ItemGroup>

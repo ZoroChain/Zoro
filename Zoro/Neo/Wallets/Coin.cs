@@ -16,7 +16,7 @@ namespace Neo.Wallets
             {
                 if (_address == null)
                 {
-                    _address = Wallet.ToAddress(Output.ScriptHash);
+                    _address = KeyPair.ToAddress(Output.ScriptHash);
                 }
                 return _address;
             }

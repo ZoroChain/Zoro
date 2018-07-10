@@ -53,7 +53,7 @@ namespace Neo.Core
             json["n"] = index;
             json["asset"] = AssetId.ToString();
             json["value"] = Value.ToString();
-            json["address"] = Wallet.ToAddress(ScriptHash);
+            json["address"] = KeyPair.ToAddress(ScriptHash);
             return json;
         }
     }
