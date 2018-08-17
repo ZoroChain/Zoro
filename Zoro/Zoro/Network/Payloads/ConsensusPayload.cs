@@ -32,6 +32,24 @@ namespace Neo.Network.Payloads
             }
         }
 
+        // 标记属于哪个chain
+        protected UInt256 _chainHash = null;
+        UInt256 IVerifiable.ChainHash
+        {
+            get
+            {
+                return _chainHash;
+            }
+        }
+
+        public BlockchainBase Chain
+        {
+            get
+            {
+                return BlockchainBase.GetBlockchain(((IVerifiable)this).ChainHash);
+            }
+        }
+
         InventoryType IInventory.InventoryType => InventoryType.Consensus;
 
         Witness[] IVerifiable.Scripts
@@ -59,6 +77,7 @@ namespace Neo.Network.Payloads
         void IVerifiable.DeserializeUnsigned(BinaryReader reader)
         {
             Version = reader.ReadUInt32();
+            _chainHash = reader.ReadSerializable<UInt256>();
             PrevHash = reader.ReadSerializable<UInt256>();
             BlockIndex = reader.ReadUInt32();
             ValidatorIndex = reader.ReadUInt16();
@@ -73,9 +92,9 @@ namespace Neo.Network.Payloads
 
         UInt160[] IVerifiable.GetScriptHashesForVerifying()
         {
-            if (Blockchain.Default == null)
+            if (Chain == null)
                 throw new InvalidOperationException();
-            ECPoint[] validators = Blockchain.Default.GetValidators();
+            ECPoint[] validators = Chain.GetValidators();
             if (validators.Length <= ValidatorIndex)
                 throw new InvalidOperationException();
             return new[] { Contract.CreateSignatureRedeemScript(validators[ValidatorIndex]).ToScriptHash() };
@@ -90,6 +109,7 @@ namespace Neo.Network.Payloads
         void IVerifiable.SerializeUnsigned(BinaryWriter writer)
         {
             writer.Write(Version);
+            writer.Write(((IVerifiable)this).ChainHash);
             writer.Write(PrevHash);
             writer.Write(BlockIndex);
             writer.Write(ValidatorIndex);
@@ -99,8 +119,8 @@ namespace Neo.Network.Payloads
 
         public bool Verify()
         {
-            if (Blockchain.Default == null) return false;
-            if (BlockIndex <= Blockchain.Default.Height)
+            if (Chain == null) return false;
+            if (BlockIndex <= Chain.Height)
                 return false;
             return this.VerifyScripts();
         }

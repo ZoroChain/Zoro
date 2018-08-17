@@ -51,12 +51,30 @@
     <Compile Remove="Zoro\Consensus\ConsensusState.cs" />
     <Compile Remove="Zoro\Consensus\PrepareRequest.cs" />
     <Compile Remove="Zoro\Consensus\PrepareResponse.cs" />
-    <Compile Remove="Zoro\Network\LocalNode.cs" />
-    <Compile Remove="Zoro\Network\RemoteNode.cs" />
+    <Compile Remove="Zoro\Core\Blockchain.cs" />
+    <Compile Remove="Zoro\Impl\Blockchains\LevelDB\ApplicationExecutedEventArgs.cs" />
+    <Compile Remove="Zoro\Impl\Blockchains\LevelDB\ApplicationExecutionResult.cs" />
+    <Compile Remove="Zoro\Impl\Blockchains\LevelDB\DataEntryPrefix.cs" />
+    <Compile Remove="Zoro\Impl\Blockchains\LevelDB\LevelDBBlockchain.cs" />
+    <Compile Remove="Zoro\Impl\Wallets\EntityFramework\Account.cs" />
+    <Compile Remove="Zoro\Impl\Wallets\EntityFramework\Address.cs" />
+    <Compile Remove="Zoro\Impl\Wallets\EntityFramework\Contract.cs" />
+    <Compile Remove="Zoro\Impl\Wallets\EntityFramework\Key.cs" />
+    <Compile Remove="Zoro\Impl\Wallets\EntityFramework\UserWallet.cs" />
+    <Compile Remove="Zoro\Impl\Wallets\EntityFramework\UserWalletAccount.cs" />
+    <Compile Remove="Zoro\Impl\Wallets\EntityFramework\VerificationContract.cs" />
+    <Compile Remove="Zoro\Impl\Wallets\EntityFramework\WalletDataContext.cs" />
+    <Compile Remove="Zoro\Impl\Wallets\NEP6\NEP6Account.cs" />
+    <Compile Remove="Zoro\Impl\Wallets\NEP6\NEP6Contract.cs" />
+    <Compile Remove="Zoro\Impl\Wallets\NEP6\NEP6Wallet.cs" />
+    <Compile Remove="Zoro\Impl\Wallets\NEP6\ScryptParameters.cs" />
+    <Compile Remove="Zoro\Impl\Wallets\NEP6\WalletLocker.cs" />
     <Compile Remove="Zoro\Network\RPC\RpcServer.cs" />
     <Compile Remove="Zoro\Network\TcpRemoteNode.cs" />
     <Compile Remove="Zoro\Network\UPnP.cs" />
     <Compile Remove="Zoro\Network\WebSocketRemoteNode.cs" />
+    <Compile Remove="Zoro\Plugins\RpcPlugin.cs" />
+    <Compile Remove="Zoro\Wallets\WalletIndexer.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -72,7 +90,9 @@
     <Folder Include="Zoro\Consensus\" />
     <Folder Include="Zoro\Core\" />
     <Folder Include="Zoro\Impl\" />
-    <Folder Include="Zoro\Network\Payloads\" />
+    <Folder Include="Zoro\Impl\Blockchains\LevelDB\" />
+    <Folder Include="Zoro\Impl\Wallets\EntityFramework\" />
+    <Folder Include="Zoro\Impl\Wallets\NEP6\" />
     <Folder Include="Zoro\Network\RPC\" />
     <Folder Include="Zoro\Plugins\" />
     <Folder Include="Zoro\SmartContract\" />

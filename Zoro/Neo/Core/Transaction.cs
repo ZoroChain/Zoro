@@ -79,7 +79,7 @@ namespace Neo.Core
         {
             get
             {
-                return BlockchainBase.GetBlockchain(_chainHash);
+                return BlockchainBase.GetBlockchain(((IVerifiable)this).ChainHash);
             }
         }
 

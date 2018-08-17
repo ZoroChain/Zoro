@@ -149,13 +149,16 @@ namespace Neo.Network
         private void OnGetBlocksMessageReceived(GetBlocksPayload payload)
         {
             if (!localNode.ServiceEnabled) return;
-            if (Blockchain.Default == null) return;
-            UInt256 hash = payload.HashStart.Select(p => Blockchain.Default.GetHeader(p)).Where(p => p != null).OrderBy(p => p.Index).Select(p => p.Hash).FirstOrDefault();
+
+            BlockchainBase Chain = BlockchainBase.GetBlockchain(payload.ChainHash);
+            if (Chain == null) return;
+
+            UInt256 hash = payload.HashStart.Select(p => Chain.GetHeader(p)).Where(p => p != null).OrderBy(p => p.Index).Select(p => p.Hash).FirstOrDefault();
             if (hash == null || hash == payload.HashStop) return;
             List<UInt256> hashes = new List<UInt256>();
             do
             {
-                hash = Blockchain.Default.GetNextBlockHash(hash);
+                hash = Chain.GetNextBlockHash(hash);
                 if (hash == null) break;
                 hashes.Add(hash);
             } while (hash != payload.HashStop && hashes.Count < 500);
