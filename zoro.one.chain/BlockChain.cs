@@ -20,7 +20,23 @@ namespace zoro.one.chain
             dbTable = new LevelDB.Ex.Table(db, magic);
 
             InitBlock();
+            System.Threading.Thread t = new System.Threading.Thread(TimerThread);
+            t.IsBackground = true;//设置为后台线程，主程序退出这个线程就会玩完儿了，不用特别管他
+            t.Start();
         }
+        void TimerThread()
+        {
+            while(true)
+            {
+                System.Threading.Thread.Sleep(500);
+                Tick();
+            }
+        }
+        void Tick()
+        {
+            _Test_Add();
+        }
+
         SHA256 sha256 = SHA256.Create();
         void InitBlock()
         {
