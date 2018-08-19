@@ -12,24 +12,24 @@ namespace zoro.one.http
     class httpserver
     {
         private IWebHost host;
-        public void Start(int port, bool useHttps)
+        public void Start(int port, int portForHttps = 0, string pfxpath = null, string password = null)
         {
             host = new WebHostBuilder().UseKestrel((options) =>
             {
                 options.Listen(IPAddress.Any, port, listenOptions =>
                   {
+
+                  });
+                if (portForHttps != 0)
+                {
+                    options.Listen(IPAddress.Any, portForHttps, listenOptions =>
+                      {
                       //if (!string.IsNullOrEmpty(sslCert))
-                      if (useHttps)
-                          listenOptions.UseHttps();
+                      //if (useHttps)
+                      listenOptions.UseHttps(pfxpath, password);
                       //sslCert, password);
                   });
-                options.Listen(IPAddress.Any, port+1, listenOptions =>
-                {
-                    //if (!string.IsNullOrEmpty(sslCert))
-                    //if (useHttps)
-                        listenOptions.UseHttps("http/https.cer","");
-                    //sslCert, password);
-                });
+                }
             }
             )
             .Configure(app =>
