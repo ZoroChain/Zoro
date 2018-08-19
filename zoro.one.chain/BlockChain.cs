@@ -25,7 +25,7 @@ namespace zoro.one.chain
         void InitBlock()
         {
             var snapshot = LevelDB.Ex.Helper.CreateSnapshot(db);
-            byte[] key = System.Text.Encoding.ASCII.GetBytes("blockcount");
+            byte[] key = System.Text.Encoding.ASCII.GetBytes("allblocks");
             var blocks = dbTable.GetItem(snapshot, key) as LevelDB.Ex.Map;
             if (blocks == null)
             {
@@ -35,7 +35,7 @@ namespace zoro.one.chain
             snapshot = LevelDB.Ex.Helper.CreateSnapshot(db);
             if (blocks.Count(snapshot) == 0)
             {
-                var batch = new LevelDB.WriteBatch();
+                var batch = new LevelDB.Ex.WriteBatch(db);
                 //写入创世块
                 var blockzero = new LevelDB.Ex.Map();
                 byte[] blockkey = BitConverter.GetBytes((UInt64)0);
@@ -49,7 +49,42 @@ namespace zoro.one.chain
                 byte[] hash = sha256.ComputeHash(new byte[0]);
                 blockzero.Batch_SetItem(batch, keyhash, new LevelDB.Ex.Bytes(hash));
 
-                db.Write(batch);
+                batch.Apply();
+            }
+        }
+        public ulong GetBlockCount()
+        {
+            var snapshot = LevelDB.Ex.Helper.CreateSnapshot(db);
+            byte[] key = System.Text.Encoding.ASCII.GetBytes("allblocks");
+            var blocks = dbTable.GetItem(snapshot, key) as LevelDB.Ex.Map;
+            if (blocks == null)
+            {
+                return 0;
+            }
+            return blocks.Count(snapshot);
+        }
+        public void _Test_Add()
+        {
+            var snapshot = LevelDB.Ex.Helper.CreateSnapshot(db);
+            byte[] key = System.Text.Encoding.ASCII.GetBytes("allblocks");
+            var blocks = dbTable.GetItem(snapshot, key) as LevelDB.Ex.Map;
+            var blockcount = blocks.Count(snapshot);
+            {
+                var batch = new LevelDB.Ex.WriteBatch(db);
+                //写入创世块
+                var blockadd = new LevelDB.Ex.Map();
+                byte[] blockkey = BitConverter.GetBytes((UInt64)blockcount);
+                blocks.Batch_SetItem(batch, blockkey, blockadd);
+
+                byte[] keydata = System.Text.Encoding.ASCII.GetBytes("data");
+                blockadd.Batch_SetItem(batch, keydata, new LevelDB.Ex.Bytes(new byte[0]));
+
+                byte[] keyhash = System.Text.Encoding.ASCII.GetBytes("hash");
+
+                byte[] hash = sha256.ComputeHash(new byte[0]);
+                blockadd.Batch_SetItem(batch, keyhash, new LevelDB.Ex.Bytes(hash));
+
+                batch.Apply();
             }
         }
     }

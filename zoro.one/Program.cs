@@ -41,6 +41,8 @@ namespace zoro.one
             Console.WriteLine("====menu====");
             Console.WriteLine("? or help:show this menu.");
             Console.WriteLine("exit: quit this app");
+            Console.WriteLine("count: show block count");
+            Console.WriteLine("test.add: add empty block");
         }
         static void DoMenu(string line)
         {
@@ -58,6 +60,16 @@ namespace zoro.one
                     break;
                 case "exit":
                     bExit = true;
+                    break;
+                case "count":
+                    {
+                        Console.WriteLine("count=" + blockChain.GetBlockCount());
+                    }
+                    break;
+                case "test.add":
+                    {
+                        blockChain._Test_Add();
+                    }
                     break;
             }
 

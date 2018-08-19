@@ -136,14 +136,14 @@ namespace LevelDB.Ex
 
             db.Put(key, Helper.tagValue_Map.Concat(this.Value).ToArray());
         }
-        public void Batch_PutToDB(LevelDB.WriteBatch batch, LevelDB.DB db, byte[] key)
+        public void Batch_PutToDB(WriteBatch batch, LevelDB.DB db, byte[] key)
         {
-            var snapshot = Helper.CreateSnapshot(db);
+            //var snapshot = Helper.CreateSnapshot(db);
 
             if (this.Value == null)
             {//申请新的实例ID，然后初始化存储Map
                 var key_instMax = Helper.tagKey_InstanceMax;
-                var instid = db.Get(snapshot, key_instMax);
+                var instid = batch.Get( key_instMax);
                 if (instid == null || instid.Length == 0)
                 {
                     instid = BitConverter.GetBytes((UInt64)1);
@@ -166,7 +166,7 @@ namespace LevelDB.Ex
             else
             {//检查count是否存在，
                 byte[] key_count = Helper.tagKey_MapCount.Concat(this.Value).ToArray();
-                var count = db.Get(snapshot, key_count);
+                var count = batch.Get(key_count);
                 if (count == null || count.Length == 0)
                     throw new Exception("error map instance.");
             }
@@ -215,12 +215,12 @@ namespace LevelDB.Ex
             }
 
         }
-        public void Batch_SetItem(LevelDB.WriteBatch wb,byte[] key,IValue item)
+        public void Batch_SetItem(WriteBatch wb,byte[] key,IValue item)
         {
-            var snapshot = Helper.CreateSnapshot(db);
+            //var snapshot = Helper.CreateSnapshot(db);
 
             byte[] key_count = Helper.tagKey_MapCount.Concat(this.Value).ToArray();
-            byte[] data = db.Get(snapshot, key_count);
+            byte[] data = wb.Get(key_count);
             if (data == null || data.Length == 0)
                 throw new Exception("error map in Count");
             var count = BitConverter.ToUInt64(data, 0);
@@ -229,7 +229,7 @@ namespace LevelDB.Ex
             var _key = Helper.tagKey_MapValues.Concat(this.Value).Concat(key).ToArray();
 
 
-            var value = db.Get(snapshot, _key);
+            var value = wb.Get(_key);
             bool bAdd = value == null;
 
             (item as IValueCreator).Batch_PutToDB(wb,db, _key);

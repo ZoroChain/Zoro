@@ -19,6 +19,48 @@ namespace LevelDB.Ex
 
     }
 
+    public class WriteBatch
+    {
+        LevelDB.ReadOptions snapshot;
+        LevelDB.DB db;
+        LevelDB.WriteBatch wb;
+        System.Collections.Concurrent.ConcurrentDictionary<System.Numerics.BigInteger, byte[]> cache;
+        public WriteBatch(LevelDB.DB _db, LevelDB.ReadOptions _snapshot = null)
+        {
+            this.db = _db;
+            this.snapshot = _snapshot;
+            if (this.snapshot == null)
+            {
+                this.snapshot = Helper.CreateSnapshot(db);
+            }
+            this.wb = new LevelDB.WriteBatch();
+            cache = new System.Collections.Concurrent.ConcurrentDictionary<System.Numerics.BigInteger, byte[]>();
+        }
+        public void Put(byte[] key, byte[] value)
+        {
+            System.Numerics.BigInteger nkey = new System.Numerics.BigInteger(key);
+            cache[nkey] = value;
+            this.wb.Put(key, value);
+        }
+        public void Delete(byte[] key)
+        {
+            System.Numerics.BigInteger nkey = new System.Numerics.BigInteger(key);
+            this.wb.Delete(key);
+            cache.Remove(nkey, out byte[] v);
+        }
+        public byte[] Get(byte[] key)
+        {
+            System.Numerics.BigInteger nkey = new System.Numerics.BigInteger(key);
+            if (cache.ContainsKey(nkey))
+                return cache[nkey];
+            return db.Get(snapshot, key);
+        }
+        public void Apply()
+        {
+            db.Write(wb);
+        }
+    }
+
     /// <summary>
     /// LevelDB只提供了简单的KeyValue操作，和读快照与批次写入这些操作
     /// 缺乏一些数据结构的支持，使用起来还是有一些不方便
@@ -34,7 +76,7 @@ namespace LevelDB.Ex
         public static readonly byte[] tagValue_Bytes = new byte[] { (byte)Value_DataType.Bytes };
         public static readonly byte[] tagValue_Map = new byte[] { (byte)Value_DataType.Map };
 
-        public static IValue CreateValue(LevelDB.DB db,  byte[] data)
+        public static IValue CreateValue(LevelDB.DB db, byte[] data)
         {
 
             if (data == null || data.Length == 0)
@@ -48,7 +90,7 @@ namespace LevelDB.Ex
             {
                 value = new Map();
             }
-            if(value==null)
+            if (value == null)
             {
                 throw new Exception("unknown datatype.");
             }
@@ -65,7 +107,6 @@ namespace LevelDB.Ex
         {
             return new LevelDB.ReadOptions() { Snapshot = db.CreateSnapshot() };
         }
-
         //table不是数据结构，只是给存储的数据加上前缀
         public static Table GetTable(LevelDB.DB db, byte[] tablename)
         {

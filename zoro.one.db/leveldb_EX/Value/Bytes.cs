@@ -29,7 +29,7 @@ namespace LevelDB.Ex
             var _value = Helper.tagValue_Bytes.Concat(this.Value).ToArray();
             db.Put(key, _value);
         }
-        public void Batch_PutToDB(LevelDB.WriteBatch batch, LevelDB.DB db, byte[] key)
+        public void Batch_PutToDB(WriteBatch batch, LevelDB.DB db, byte[] key)
         {
             var _value = Helper.tagValue_Bytes.Concat(this.Value).ToArray();
             batch.Put(key, _value);

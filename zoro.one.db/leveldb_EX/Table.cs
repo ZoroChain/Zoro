@@ -36,7 +36,7 @@ namespace LevelDB.Ex
             var _key = CalcKey(Helper.tagKey_Item, key);
             this.db.Delete(_key);
         }
-        public void Batch_DeleteItem(LevelDB.WriteBatch batch, byte[] key)
+        public void Batch_DeleteItem(WriteBatch batch, byte[] key)
         {
             var _key = CalcKey(Helper.tagKey_Item, key);
             batch.Delete(_key);
@@ -46,7 +46,7 @@ namespace LevelDB.Ex
             var _key = CalcKey(Helper.tagKey_Item, key);
             (value as IValueCreator).PutToDB(this.db, _key);
         }
-        public void PutItem_Batch(LevelDB.WriteBatch batch, byte[] key, IValue value)
+        public void PutItem_Batch(WriteBatch batch, byte[] key, IValue value)
         {
             var _key = CalcKey(Helper.tagKey_Item, key);
             (value as IValueCreator).Batch_PutToDB(batch, this.db, _key);
