@@ -10,6 +10,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\zoro.one.chain\zoro.one.chain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="http\214541951070440.pfx">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
