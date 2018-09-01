@@ -46,10 +46,36 @@ LevelDB的接口封装类，Key-Value数据库，常用操作接口：
   * `ToJson:` 转换成Json对象
 
 #### 1.2 AccountState
+* 继承自StateBase，定义账户通用的属性和方法
+  * `ScriptHash:`*UInt160* 地址的散列值
+  * `IsFrozen：`*bool* 标记账户是否冻结
+  * `Votes:`*ECPoint[]* 
+  * `Size：`重写StateBase的Size
+  * `GetBalance:`获取账户资产余额
+  * `Deserialize`、`Serialize`、`ToJson:`重写StateBase的对应方法
 
 #### 1.3 AssetState
+* 继承StateBase，资产定义类
+  * `AssetId:`*UInt256* 资产ID
+  * `AssetType:`*AssetType枚举* 资产类别 每种类别定义在AssetType枚举中
+  * `Name:`*String* 资产名
+  * `Amount:`*Fixed8* 总量
+  * `Available:`*Fixed8* 可用数量
+  * `Precision:`*byte* 精度
+  * `Fee:`*Fixed8* 手续费
+  * `FeeAddress:`*UInt160* 手续费地址
+  * `Owner:`*ECPoint* 所有者
+  * `Admin:`*UInt160* 管理员地址
+  * `Issuer:`*UInt160* 发行方地址
+  * `Expiration:`*uint* 期限
+  * `IsFrozen:`*bool* 标记资产是否冻结
+  * `GetName:` 获取资产名称
 
 #### 1.4 SpentCoinState
+* 继承StateBase，交易定义类
+  * `TransactionHash:`*UInt256* 交易哈希
+  * `TransactionHeight:`*uint* 交易高度
+  * `Items:`*Dictionary<ushort, uint>*
 
 #### 1.5 UnspentCoinState
 
@@ -58,6 +84,20 @@ LevelDB的接口封装类，Key-Value数据库，常用操作接口：
 #### 1.7 ValidatorsCountState
 
 #### 1.8 ContractState
+* 继承StateBase，合约定义类
+  * `Script:`*byte[]* 合约脚本
+  * `ParameterList:`*ContractParameterType[]* 合约参数列表
+  * `ReturnType:`*ContractParameterType枚举* 返回类型
+  * `ContractProperties:`*ContractParameterType枚举* 合约属性
+  * `Name:`*string* 合约名
+  * `CodeVersion:`*string* 版本
+  * `Author:`*string* 作者
+  * `Email:`*string* 邮箱
+  * `Description:`*string* 描述
+  * `HasStorage:`*bool* 是否支持存储
+  * `HasDynamicInvoke:`*bool* 是否同步调用
+  * `Payable:`*bool* 是否支持转账
+  * `ScriptHash:`*UInt160* 合约脚本哈希
 
 #### 1.9 StorageItem
 ---
