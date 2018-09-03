@@ -127,6 +127,8 @@ DataCache<ECPoint, ValidatorState> validators = Blockchain.Default.GetStates<ECP
   * `ScriptHash:`*UInt160* 合约脚本哈希
 
 #### 1.9 StorageItem
+* 继承StateBase，存储定义类
+  * `Value:`*byte[]* 存储的值
 ---
 ### 2. BlockChain相关的类
 #### 2.1 IVerifiable
@@ -173,9 +175,9 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
 
 #### 2.4 Witness
 * 继承ISerializable，见证人定义类
-  *`InvocationScript:`*byte[]* 需要验证的脚本数据
-  *`VerificationScript:`*byte[]* 指定验证哪些脚本的数据
-  *`ScriptHash:`*UInt160* VerificationScript的hash
+  * `InvocationScript:`*byte[]* 需要验证的脚本数据
+  * `VerificationScript:`*byte[]* 指定验证哪些脚本的数据
+  * `ScriptHash:`*UInt160* VerificationScript的hash
   * `Size`、`Deserialize`、`Serialize`、`ToJson:`实现ISerializable的对应方法
 #### 2.5 Block
 
