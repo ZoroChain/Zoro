@@ -78,6 +78,23 @@ LevelDB的接口封装类，Key-Value数据库，常用操作接口：
   * `Items:`*Dictionary<ushort, uint>*
 
 #### 1.5 UnspentCoinState
+* 继承StateBase，ICloneable，未花费货币定义类
+  *	`Items:`*CoinState[]* 
+  * `Size`、`Deserialize`、`Serialize`、`ToJson:`重写StateBase的对应方法
+  * `Clone`、`FromReplica:`实现ICloneable的对应方法
+#### 1.6 ValidatorState
+* 继承StateBase，ICloneable，验证器定义类
+  *	`PublicKey:`*ECPoint* 公钥
+  *	`Registered:`*bool* 标记验证器是否注册
+  *	`Votes:`*Fixed8* 投票结果
+  * `Size`、`Deserialize`、`Serialize`、`ToJson:`重写StateBase的对应方法
+  * `Clone`、`FromReplica:`实现ICloneable的对应方法
+#### 1.7 ValidatorsCountState
+* 继承StateBase，ICloneable，验证器总数定义类
+  *	`Votes:`*Fixed8[1024]* 投票结果
+  * `Size`、`Deserialize`、`Serialize`、`ToJson:`重写StateBase的对应方法
+  * `Clone`、`FromReplica:`实现ICloneable的对应方法
+=======
 * 继承StateBase，交易定义类
   * `Items:`*CoinState[]* 
 
@@ -90,7 +107,7 @@ LevelDB的接口封装类，Key-Value数据库，常用操作接口：
 #### 1.7 ValidatorsCountState
 * 继承StateBase，验证计数器定义类
   * `Votes:`*Fixed8[]* 票数
-
+  
 #### 1.8 ContractState
 * 继承StateBase，合约定义类
   * `Script:`*byte[]* 合约脚本
