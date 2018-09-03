@@ -47,7 +47,11 @@ LevelDB的接口封装类，Key-Value数据库，常用操作接口：
 ---
 ## 三、	Core模块
 ### 1.各种State的类
-对应LevelDB中保存的各类状态类数据
+对应LevelDB中保存的各类状态类数据，可通过BlockChain的GetStates函数获取对应的状态数据
+```
+DataCache<UInt160, AccountState> counts = Blockchain.Default.GetStates<UInt160, AccountState>();
+DataCache<ECPoint, ValidatorState> validators = Blockchain.Default.GetStates<ECPoint, ValidatorState>();
+```
 #### 1.1 StateBase
 * 各种State的抽象基类
 * 主要对外接口:
@@ -143,7 +147,7 @@ LevelDB的接口封装类，Key-Value数据库，常用操作接口：
   * `Verify：` 校验有效性
 
 #### 2.3 BlockBase
-* 主要成员:
+* 主要成员:
   * MerkleRoot : 该区块中所有交易的Merkle树的根	
     ```
 	该变量的生成代码:
@@ -217,7 +221,7 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
   * 索引类数据: 略
   * 系统数据: 略
  
-* 主要成员:		
+* 主要成员:		
   * `header_index : List<UInt256>`  
 	记录链上所有区块头的Hash数据，初始化时会加载并记录LevelDB中所有区块头的Hash数据
   * `header_cache : Dictionary<UInt256, Header>`  
@@ -227,9 +231,9 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
 
 * 对外主要接口:
   * `AddBlock(block)`    
-    在主线程中调用，先把要写入数据库的block保存在block_cache中，等线程函数完成数据写入后再从block_cache中删除。	
+    在主线程中调用，先把要写入数据库的block保存在block_cache中，等线程函数完成数据写入后再从block_cache中删除	
   * `GetHeader(height) / GetHeader(hash)`  
-    获取区块头，先在header_cache中找，没有再去数据库中查询。因为header_cache只是做短暂的保存，所以大部分时候是要查数据库获取的。
+    获取区块头，先在header_cache中找，没有再去数据库中查询。因为header_cache只是做短暂的保存，所以大部分时候是要查数据库获取的
   * `GetStates()`  
     获取状态类数据，并缓存在内存对象里
   * `Block GetBlock(UInt256 hash)`  
