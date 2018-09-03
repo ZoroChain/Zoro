@@ -9,14 +9,24 @@
 用来标记一个公钥
 --- 	
 ## 二、	IO模块
-#### 1.DB
+#### 1.ISerializable
+虚函数
+* `int Size()` 获得对象数据的字节数
+* `Serialize(BinaryWriter writer)` 序列化
+* `Deserialize(BinaryReader reader)` 反序列化
+
+实函数
+* `byte[] ToArray()` 转换成byte数组，定义在Helper.cs中
+
+
+#### 2.DB
 LevelDB的接口封装类，Key-Value数据库，常用操作接口：
 * `Get(key):` 获取数据
 * `Put(key, value):` 写入数据
 * `TryGet(key, out value):` 尝试获取数据
 * `Write(write_batch):` 批量写入数据
  
-#### 2.DataCache
+#### 3.DataCache
 * 用Dictionary记录key-value数据，常用接口:
    * `GetAndChange(key, factory) :`  
      用key查询内存中的Dictionary，如果没有缓存过，则查询LevelDB，并把结果缓存在Dictionary中，如果数据库中也没有，则用factory函数创建一个并缓存
@@ -79,21 +89,22 @@ LevelDB的接口封装类，Key-Value数据库，常用操作接口：
 
 #### 1.5 UnspentCoinState
 * 继承StateBase，ICloneable，未花费货币定义类
-  *	`Items:`*CoinState[]* 
+  * `Items:`*CoinState[]* 
   * `Size`、`Deserialize`、`Serialize`、`ToJson:`重写StateBase的对应方法
   * `Clone`、`FromReplica:`实现ICloneable的对应方法
 #### 1.6 ValidatorState
 * 继承StateBase，ICloneable，验证器定义类
-  *	`PublicKey:`*ECPoint* 公钥
-  *	`Registered:`*bool* 标记验证器是否注册
-  *	`Votes:`*Fixed8* 投票结果
+  * `PublicKey:`*ECPoint* 公钥
+  * `Registered:`*bool* 标记验证器是否注册
+  * `Votes:`*Fixed8* 投票结果
   * `Size`、`Deserialize`、`Serialize`、`ToJson:`重写StateBase的对应方法
   * `Clone`、`FromReplica:`实现ICloneable的对应方法
 #### 1.7 ValidatorsCountState
 * 继承StateBase，ICloneable，验证器总数定义类
-  *	`Votes:`*Fixed8[1024]* 投票结果
+  * `Votes:`*Fixed8[1024]* 投票结果
   * `Size`、`Deserialize`、`Serialize`、`ToJson:`重写StateBase的对应方法
   * `Clone`、`FromReplica:`实现ICloneable的对应方法
+  
 #### 1.8 ContractState
 * 继承StateBase，合约定义类
   * `Script:`*byte[]* 合约脚本
@@ -235,23 +246,45 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
 ---
 ## 五、Network模块
 #### Message
-
+* 继承自ISerializable
+* 主要接口函数
+  * `int Size()` 获得对象数据的字节数
+  * `Serialize(BinaryWriter writer)` 序列化
+  * `Deserialize(BinaryReader reader)` 反序列化
 #### UPnP
 
 #### LocalNode
 本地通信节点
 * 主要成员:
   * `mem_pool : Dictionary<UInt256, Transaction>`
+    * 用来记录已通过校验的，所有还未保存到块的交易
+    * 每次把块写入DB后，会从mem_pool里删除记录在块中的交易
+    * 每次出块后，会重新校验所有记录在mem_pool里的交易（___对性能有影响，后期需要优化？___）
   * `temp_pool : HashSet<Transaction>`  
-  用来记录远程节点发起的，还未处理的所有交易请求
+    * 用来还未通过校验的所有交易请求
+    * 在线程函数中对这些交易进行校验，并把通过校验的交易保存到mem_pool里
+  * HashSet\<IPEndPoint> unconnectedPeers
  
 * 程序初始化流程:
-  * 初始化时启动两个线程
-  * connectThread用来处理远程节点的连接请求
-  * poolThread用来处理远程节点发起的交易请求
+  * 初始化时创建两个线程，
+    * `connectThread:` 用来和其他的远程节点建立连接
+    * `poolThread:` 用来处理远程节点发起的交易请求
+  * 用Start函数启动本地节点，运行以上两个线程，以及两个用来处理远程节点的连接请求的异步函数
+    * `AcceptPeers:` 接受TcpSocket发起的连接请求
+    * `ProcessWebSocketAsync:` 接受WebSocket发起的连接请求
     
+* 主要成员函数
+  * `ConnectToPeersLoop: connectThread`的线程执行函数，
+  * `AddTransactionLoop: poolThread`的线程执行函数，
+  * `Relay(IInventory inventory):` 转发一个交易的广播
+
 #### RemoteNode
 远程通信节点的存根，每次接受一个远程节点的连接请求时会创建并记录该对象
+
+* 主要函数
+  * `StartProtocol:`异步函数，接收并处理远程节点发来的数据
+  * `StartSendLoop:`异步函数，向远程节点发送消息队列中的数据
+
 
 #### TcpRemoteNode
 
