@@ -156,7 +156,11 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
   * Script : 用于验证该区块的脚本  
 
 #### 2.4 Witness
-
+* 继承ISerializable，见证人定义类
+  *`InvocationScript:`*byte[]* 需要验证的脚本数据
+  *`VerificationScript:`*byte[]* 指定验证哪些脚本的数据
+  *`ScriptHash:`*UInt160* VerificationScript的hash
+  * `Size`、`Deserialize`、`Serialize`、`ToJson:`实现ISerializable的对应方法
 #### 2.5 Block
 
 #### 2.6 Header
