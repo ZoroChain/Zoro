@@ -47,9 +47,10 @@ LevelDB的接口封装类，Key-Value数据库，常用操作接口：
 ---
 ## 三、	Core模块
 ### 1.各种State的类
+对应LevelDB中保存的各类状态类数据
 #### 1.1 StateBase
 * 各种State的抽象基类
-* 主要对外接口:  
+* 主要对外接口:
   * `Size:` 返回该对象数据的字节长度
   * `Deserialize:` 解析加载
   * `Serialize:` 序列化
@@ -89,34 +90,21 @@ LevelDB的接口封装类，Key-Value数据库，常用操作接口：
 
 #### 1.5 UnspentCoinState
 * 继承StateBase，ICloneable，未花费货币定义类
-  *	`Items:`*CoinState[]* 
+  * `Items:`*CoinState[]* 
   * `Size`、`Deserialize`、`Serialize`、`ToJson:`重写StateBase的对应方法
   * `Clone`、`FromReplica:`实现ICloneable的对应方法
 #### 1.6 ValidatorState
 * 继承StateBase，ICloneable，验证器定义类
-  *	`PublicKey:`*ECPoint* 公钥
-  *	`Registered:`*bool* 标记验证器是否注册
-  *	`Votes:`*Fixed8* 投票结果
+  * `PublicKey:`*ECPoint* 公钥
+  * `Registered:`*bool* 标记验证器是否注册
+  * `Votes:`*Fixed8* 投票结果
   * `Size`、`Deserialize`、`Serialize`、`ToJson:`重写StateBase的对应方法
   * `Clone`、`FromReplica:`实现ICloneable的对应方法
 #### 1.7 ValidatorsCountState
 * 继承StateBase，ICloneable，验证器总数定义类
-  *	`Votes:`*Fixed8[1024]* 投票结果
+  * `Votes:`*Fixed8[1024]* 投票结果
   * `Size`、`Deserialize`、`Serialize`、`ToJson:`重写StateBase的对应方法
   * `Clone`、`FromReplica:`实现ICloneable的对应方法
-=======
-* 继承StateBase，交易定义类
-  * `Items:`*CoinState[]* 
-
-#### 1.6 ValidatorState
-* 继承StateBase，验证器定义类
-  * `PublicKey:`*ECPoint* 公钥
-  * `Registered:`*bool* 是否注册
-  * `Votes:`*Fixed8* 票数
-
-#### 1.7 ValidatorsCountState
-* 继承StateBase，验证计数器定义类
-  * `Votes:`*Fixed8[]* 票数
   
 #### 1.8 ContractState
 * 继承StateBase，合约定义类
@@ -218,8 +206,8 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
 ---
 ## 四、Implementations模块
 #### 1.LevelDBBlockChain
-* 数据分类:  
-  LevelDB中保存的数据分为四类:   
+* 数据分类:
+  LevelDB中保存的数据分为四类: 
   * 区块和交易数据: Block和Transaction
   * 状态类数据: Account, Coin, SpentCoin, Validator, Asset, Contract, Storage
   * 索引类数据: 略
@@ -238,12 +226,14 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
     在主线程中调用，先把要写入数据库的block保存在block_cache中，等线程函数完成数据写入后再从block_cache中删除。	
   * `GetHeader(height) / GetHeader(hash)`  
     获取区块头，先在header_cache中找，没有再去数据库中查询。因为header_cache只是做短暂的保存，所以大部分时候是要查数据库获取的。
-  * `GetState()`  
+  * `GetStates()`  
     获取状态类数据，并缓存在内存对象里
-  * `GetBlock()`  
+  * `Block GetBlock(UInt256 hash)`  
     获取一个区块，目前内存里没有缓存过区块数据，所以都是从LevelDB中查询获取
+  * `UInt256 GetBlockHash(uint height)`
+    获取一个区块的Hash，不查询LevelDB，直接返回header_index里记录的数据
 
-* 程序初始化流程:  
+* 程序初始化流程:
   * 从数据库中加载所有的区块头数据，缓存在变量header_index中
   * 如果数据库中没有区块头数据，加载所有的区块数据，并以此重新创建所有的区块头数据
   * 创建并运行一个独立线程，通过AutoResetEvent来控制线程的运行和挂起
@@ -260,10 +250,19 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
   * `int Size()` 获得对象数据的字节数
   * `Serialize(BinaryWriter writer)` 序列化
   * `Deserialize(BinaryReader reader)` 反序列化
+* 主要成员
+  * `Command:`类型字符串
+  * `Checksum:`校验和
+  * `Payload:`数据区
+     ```
+    Block block = message.Payload.AsSerializable<Block>();
+    AddrPayload payload = message.Payload.AsSerializable<AddrPayload>();
+    ```
+
 #### UPnP
 
 #### LocalNode
-本地通信节点
+本地通信节点，只有一个实例存在的对象，处理P2P网络的连接和通信流程，记录已连接上的远程节点列表
 * 主要成员:
   * `mem_pool : Dictionary<UInt256, Transaction>`
     * 用来记录已通过校验的，所有还未保存到块的交易
@@ -273,30 +272,58 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
     * 用来还未通过校验的所有交易请求
     * 在线程函数中对这些交易进行校验，并把通过校验的交易保存到mem_pool里
   * HashSet\<IPEndPoint> unconnectedPeers
+    * 还未连接的远程节点的地址列表
+    * 来源于本地Config文件中记录的Seed节点地址，或是其他远程节点发来的地址列表    
+  * List\<RemoteNode> connectedPeers
+    * 已经连接上的远程节点的列表
+    * 最多连接10~15个节点，其中10个是远程发来的地址，5个是本地记录的Seed地址
  
 * 程序初始化流程:
   * 初始化时创建两个线程，
     * `connectThread:` 用来和其他的远程节点建立连接
     * `poolThread:` 用来处理远程节点发起的交易请求
   * 用Start函数启动本地节点，运行以上两个线程，以及两个用来处理远程节点的连接请求的异步函数
-    * `AcceptPeers:` 接受TcpSocket发起的连接请求
-    * `ProcessWebSocketAsync:` 接受WebSocket发起的连接请求
+    * `AcceptPeers:` 接受TcpSocket发起的连接请求，创建并记录TcpRemoteNode
+    * `ProcessWebSocketAsync:` 接受WebSocket发起的连接请求，创建并记录WebSocketRemoteNode
     
 * 主要成员函数
   * `ConnectToPeersLoop: connectThread`的线程执行函数，
   * `AddTransactionLoop: poolThread`的线程执行函数，
-  * `Relay(IInventory inventory):` 转发一个交易的广播
+  * `Relay(IInventory inventory):` 转发一个广播，可以是Block,Transaction或Consensus
+  * `RelayDirectly:`通过RemoteNode向远程节点广播消息
 
 #### RemoteNode
 远程通信节点的存根，每次接受一个远程节点的连接请求时会创建并记录该对象
 
-* 主要函数
-  * `StartProtocol:`异步函数，接收并处理远程节点发来的数据
+* 主要函数 
   * `StartSendLoop:`异步函数，向远程节点发送消息队列中的数据
+  * `StartProtocol:`异步函数，接收并处理远程节点发来的数据
+  * `OnMessageReceived:`处理远程节点发来的数据
+  * `EnqueueMessage:`向消息队列件添加一个等待发送的数据
 
+* 各类消息说明  
+  * `getaddr`
+  * `addr`
+  * `getblocks`
+  * `block`
+  * `getheaders`
+  * `headers`
+  * `inv`
+  * `getdata`
+  * `tx`
+  * `consensus`
+  * `merkleblock`  
+  * `consensus`
+  * `mempool`
+  * `alert`
+  * `filteradd`
+  * `filterclear`
+  * `filterload`
 
 #### TcpRemoteNode
-
+* 主要函数
+    * `ReceiveMessageAsync：`接受远程节点发来的数据，并转换成Message对象
+    * `SendMessageAsync：`异步函数，向远程节点发送一个Message对象的数据
 #### WebSocketRemoteNode
 
 #### RpcServer
