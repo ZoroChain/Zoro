@@ -167,15 +167,26 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
   * Script : 用于验证该区块的脚本  
 
 #### 2.4 Witness
-* 继承ISerializable，见证人定义类
-  *`InvocationScript:`*byte[]* 需要验证的脚本数据
-  *`VerificationScript:`*byte[]* 指定验证哪些脚本的数据
-  *`ScriptHash:`*UInt160* VerificationScript的hash
+* 继承ISerializable，见证人定义类,每次交易需要添加见证人
+  * `InvocationScript:`*byte[]* 需要验证的脚本数据
+  * `VerificationScript:`*byte[]* 指定验证哪些脚本的数据
+  * `ScriptHash:`*UInt160* VerificationScript的hash
   * `Size`、`Deserialize`、`Serialize`、`ToJson:`实现ISerializable的对应方法
 #### 2.5 Block
-
+* 继承BlockBase，IInventory,IEquatable, 区块定义类
+  * `Transactions:`*Transaction[]* 交易列表
+  * `Header:`*Header* 该区块的区块头
+  * `IInventory.InventoryType:`*InventoryType* 资产清单的类型
+  * `Equals(Block):`*bool* 比较当前区块与指定区块是否相等
+  * `Verify(bool):`*bool* 验证该区块是否合法，传参是否同时验证区块每一笔交易，返回区块的合法性
+  * `Size`、`Deserialize`、`Serialize`、`ToJson:`重写BlockBase的对应方法
+  * `Trim():`*byte[]* 把区块对象变为只包含区块头和交易Hash的字节数组，去除交易数据,返回只包含区块头和交易Hash的字节数组
+  * `RebuildMerkleRoot():` 根据区块中所有交易的Hash生成MerkleRoot
+  * `CalculateNetFee(IEnumerable<Transaction>):` 计算网络费用
+  * `FromTrimmedData(byte[],int,Func<UInt256, Transaction>):`*Block* 此方法没有看懂
 #### 2.6 Header
-
+* 继承BlockBase，IEquatable, 区块头定义类,就是少了Transactions和Header的Block
+  * `Size`、`Deserialize`、`Serialize`、`ToJson:`重写BlockBase的对应方法
 ### 2.7 Blockchain
 
 ---
