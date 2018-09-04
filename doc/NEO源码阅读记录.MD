@@ -18,7 +18,6 @@
 实函数
 * `byte[] ToArray()` 转换成byte数组，定义在Helper.cs中
 
-
 #### 2.DB
 LevelDB的接口封装类，Key-Value数据库，常用操作接口：
 * `Get(key):` 获取数据
@@ -179,6 +178,7 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
   * `VerificationScript:`*byte[]* 指定验证哪些脚本的数据
   * `ScriptHash:`*UInt160* VerificationScript的hash
   * `Size`、`Deserialize`、`Serialize`、`ToJson:`实现ISerializable的对应方法
+
 #### 2.5 Block
 * 继承BlockBase，IInventory,IEquatable, 区块定义类
   * `Transactions:`*Transaction[]* 交易列表
@@ -190,21 +190,36 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
   * `Trim():`*byte[]* 把区块对象变为只包含区块头和交易Hash的字节数组，去除交易数据,返回只包含区块头和交易Hash的字节数组
   * `RebuildMerkleRoot():` 根据区块中所有交易的Hash生成MerkleRoot
   * `CalculateNetFee(IEnumerable<Transaction>):` 计算网络费用
-  * `FromTrimmedData(byte[],int,Func<UInt256, Transaction>):`*Block* 此方法没有看懂
+  * `FromTrimmedData(byte[],int,Func<UInt256, Transaction>):`*Block* 将数据库中保存的字节数组解析还原成Block的内部数据
+
 #### 2.6 Header
-* 继承BlockBase，IEquatable, 区块头定义类,就是少了Transactions和Header的Block
-  * `Size`、`Deserialize`、`Serialize`、`ToJson:`重写BlockBase的对应方法
+* 继承BlockBase，IEquatable, 
+  * 区块头定义类，Block = Header + Transactions
+
 ### 2.7 Blockchain
+* 区块链的基类，定义了区块链的各类功能接口
 
 ---
 ### 3. Transaction相关的类
 #### 3.1 TransactionAttribute
 
 #### 3.2 CoinReference
-
+* UTXO模型中的Input，用作一笔交易的某一个Input项
+* 通过Hash和索引可以定位到一笔交易中的某个Output项
+ 
 #### 3.3 TransactionOutput
+* UTXO模型中的Output
+* 包含资产类型，金额，收账人地址
 
 #### 3.4 Transaction
+* 使用UTXO模型的交易记账数据，是所有交易类型的基类
+* 主要成员
+  * `Type：`交易类型
+  * `Version：`版本号，用来在代码升级后兼容老版本的数据
+  * `Inputs：`输入项列表
+  * `Outputs：`输出项列表
+  * `Scripts:`*用于验证该交易的脚本列表?*
+  * `Hash：`交易数据的散列值
 
 #### 3.5 MinerTransaction
 
@@ -286,6 +301,7 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
   * `string Command:`类型字符串
   * `uint Checksum:`校验和
   * `byte[] Payload:`数据区
+
 #### 2.各种Payload类
   * Payload意为有效负载，指网络通信中传输的数据包里，承载实际数据的区域。在这里可以理解为Message消息里的实际数据区
   * 可以将Message里的Payload转换成对应类型的Payload类，例如：
@@ -384,8 +400,17 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
     * `ConnectAsync：`异步函数，主动向一个远程节点请求建立连接
     * `ReceiveMessageAsync：`接受远程节点发来的数据，并转换成Message对象
     * `SendMessageAsync：`异步函数，向远程节点发送一个Message对象的数据
+
 #### 7.WebSocketRemoteNode
 * 继承自RemoteNode
+* 主要函数
+    * `ReceiveMessageAsync：`接受远程节点发来的数据，并转换成Message对象
+    * `SendMessageAsync：`异步函数，向远程节点发送一个Message对象的数据
+
 #### 8.RpcServer
-  
+* 提供基于HTTP协议的远程过程调用服务
+* 主要函数
+  * `Start:`启动函数
+  * `Process：` 命令处理函数
+    * 可参考NEO技术文档<http://docs.neo.org/zh-cn/node/cli/apigen.html>
  
