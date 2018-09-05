@@ -75,7 +75,7 @@ DataCache<ECPoint, ValidatorState> validators = Blockchain.Default.GetStates<ECP
   * `Name:`*String* 资产名
   * `Amount:`*Fixed8* 总量
   * `Available:`*Fixed8* 可用数量
-  * `Precision:`*byte* 精度
+  * `Precision:`*byte* 精度, neo的精度为0，gas的精度为8
   * `Fee:`*Fixed8* 手续费
   * `FeeAddress:`*UInt160* 手续费地址
   * `Owner:`*ECPoint* 所有者
@@ -198,6 +198,19 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
 
 ### 2.7 Blockchain
 * 区块链的基类，定义了区块链的各类功能接口
+* `GoverningToken:`对应Neo币
+* `UtilityToken:`对应Gas
+
+* 主要接口函数
+  * `AddBlock(block)`
+  * `GetBlock`
+  * `ContainsBlock(hash)`
+  * `GetNextBlock(hash)`
+  * `GetNextBlockHash(hash)`
+  * `AddHeaders(headers)`
+  * `GetHeader`
+  * `ContainsTransaction(hash)`
+  * `GetTransaction(hash)`
 
 ---
 ### 3. Transaction相关的类
@@ -220,24 +233,30 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
   * `Outputs：`输出项列表
   * `Scripts:`*用于验证该交易的脚本列表?*
   * `Hash：`交易数据的散列值
+  * `SystemFee：`根据交易类型，返回需要的系统费用（系统费用在protocal.json中配置）
+* 主要函数
+  * `Verify：`验证交易是否有效
 
-#### 3.5 MinerTransaction
+##### 3.4.1 RegisterTransaction
+* 注册区块链货币，目前只有两种
+* BlockChain.GoverningToken和BlockChain.UtilityToken，分别对应neo和gas
+ 
+##### 3.4.2 MinerTransaction
+* 每次对一批交易发起共识处理时，会由议长生成一个MinerTransaction
 
-#### 3.6 IssueTransaction
+##### 3.4.3 IssueTransaction
 
-#### 3.7 ClaimTransaction
+##### 3.4.4 ClaimTransaction
 
-#### 3.8 EnrollmentTransaction
+##### 3.4.5 EnrollmentTransaction
 
-#### 3.9 RegisterTransaction
+##### 3.4.6 ContractTransaction
 
-#### 3.10 ContractTransaction
+##### 3.4.7 StateTransaction
 
-#### 3.11 StateTransaction
+##### 3.4.8 PublishTransaction
 
-#### 3.12 PublishTransaction
-
-#### 3.13 InvocationTransaction
+##### 3.4.9 InvocationTransaction
 
 ---
 ## 四、Implementations模块
@@ -278,6 +297,9 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
   * `UInt256 GetBlockHash(uint height)`
     * 获取一个区块的Hash
     * 不查询LevelDB，直接返回header_index里记录的数据
+  * `GetTransaction(hash)`
+    * 获取一个交易
+    * 内存里没有缓存，需要查询LevelDB获取数据
 
 * 程序初始化流程:
   * 从数据库中加载所有的区块头数据，缓存在变量header_index中
@@ -414,3 +436,68 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
   * `Process：` 命令处理函数
     * 可参考NEO技术文档<http://docs.neo.org/zh-cn/node/cli/apigen.html>
  
+* 主要RPC消息
+  * "sendrawtransaction":发送一个原始的交易数据，请求进行共识流程
+---
+## 六、Consensus模块
+#### ConsensusState
+* 用来记录共识节点的各种状态
+* 共有以下这些状态:
+  * `Initial：`启动或重置后的初始状态
+  * `Primary:`本轮共识中，本地节点是议长
+  * `Backup:`本轮共识中，本地节点是普通共识节点
+  * `RequestSent:`议长已经把本轮要共识的交易数据广播出去了
+  * `RequestReceived:`收到议长广播的需要共识的交易数据
+  * `SignatureSent:`
+  * `BlockSent:`
+  * `ViewChanging:`
+
+#### ConsensusMessage
+* 共识处理流程中使用到的网络消息，有三种类型：
+  * ChangeView
+  * PrepareRequest
+  * PrepareResponse
+
+#### ConsensusContext
+* 记录共识过程中的各种状态数据
+* 主要成员:
+  * `State:`当前的共识状态
+  * `PrevHash:`上个区块的Hash
+  * `BlockIndex:`新块的高度
+  * `ViewNumber:`视图编号
+    * 每次`ChangeView`时`ViewNumber`会累加
+    * 每次出块后，ViewNumber会被重置为0
+  * `Validators:`共识节点的地址列表
+  * `MyIndex:`本地节点在共识节点列表（Validators数组）中的索引
+    * 默认值-1,表示本地节点不是共识节点
+    * 如果本地节点不是共识节点，相关的程序流程不会被执行
+  * `PrimaryIndex:`本次共识的议长在共识节点列表（Validators数组）中的索引
+    * 每一轮新的共识开始时，会采用循环轮换的方式，在共识节点中选择一个议长
+    * `PrimaryIndex = (BlockIndex - ViewNumber) % Validators.Length;`
+  * `ExpectedView:`记录每个共识节点期望的，更改视图后的新编号
+  * `KeyPair:`本地节点的公私钥对，仅当本地节点是共识节点时有效
+  * `M:`通过决议的最小节点数量
+    * `Validators.Length - (Validators.Length - 1) / 3;`
+
+#### ConsensusService
+* 开启服务后，会处理本地节点接收的共识请求
+* 开启共识处理服务的方法
+  * 在cli的config.json中可以配置本地节点是否要开启共识处理
+  * 在cli的shell中输入指令"start consensus"
+* 共识处理流程
+  * RPCServer接收到"sendrawtransaction"消息后，通过本地节点的`Relay`函数把该交易请求广播给其他远程节点
+  * 收到广播消息的节点，会将交易数据验证后记录在本地节点的mem_pool里
+  * 每一轮共识会有一个最长处理时间（初始为15秒），当超过这个时长后，会更换视图并开始新一轮共识
+  * 每次开始新一轮共识时，先选出一个共识节点作为本轮的议长
+  * 议长将本地节点记录的待出块交易记录在ConsensusContext里，并在最前面插入一个新生成的MinerTransaction
+  * 议长将这些交易签名后广播出去，并把状态改成`RequestSent`
+  * 
+* 主要函数
+  * `InitializeConsensus：`开始新一轮共识
+  * `FillContext:`把本轮共识的要处理的交易保存到Context里
+  * `OnTimeout:`本轮共识过程的最长时间的倒计时函数
+  * `SignAndRelay:`将共识消息包签名后广播出去
+  * `OnPrepareRequestReceived:`收到并处理议长广播的需要共识的交易数据
+* 疑问
+  * 每次更换视图时，共识过程的最长处理时间增加一倍？
+    * `timer.Change(TimeSpan.FromSeconds(Blockchain.SecondsPerBlock << (view_number + 1)), Timeout.InfiniteTimeSpan);`
