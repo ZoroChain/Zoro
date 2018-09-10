@@ -15,8 +15,8 @@ NEO 中智能合约分为应用合约和鉴权合约
 VS中创建NEOContract项目进行开发，NeoVM的数据类型说明 <http://docs.neo.org/zh-cn/sc/quickstart/limitation.html>
 #### 部署合约
 * C#或Java合约在编译时会产生中间语言 MSIL， neo-compiler 编译器通过 Mono.Ceill 将中间语言编译成 NeoVM 的字节码，生成.avm文件；
-* 发布合约的时候，会读取.avm文件(合约脚本)并记录合约脚本hash，构造一笔InvocationTransaction类型的交易，合约脚本保存在交易数据中，不同的合约所需费用也不同，具体见 <http://docs.neo.org/zh-cn/sc/systemfees.html>，该交易其实就是给一个空地址发送合约费用，交易完成后，该合约会随着交易打包会被记录在区块链上；
+* 发布合约的时候，去读取.avm文件(合约脚本)并记录合约脚本hash，然后构造一笔InvocationTransaction类型的交易，合约脚本保存在该交易的数据中，不同的合约所需费用也不同，具体见 <http://docs.neo.org/zh-cn/sc/systemfees.html>，该交易其实就是给一个空地址发送合约费用，交易完成后，该合约会随着交易的打包被记录在区块链上；
 * 合约脚本hash是后续测试和调用合约的依据。
 #### 调用合约
-* 调用合约时需要：合约脚本hash、合约中的方法、需要传入的参数；
-* 调用合约也是构造一笔InvocationTransaction类型的交易，方法参数保存在交易数据中，交易发出之后NeoVM会运行合约，返回运行结果。
+* 调用合约时需要：合约脚本hash、合约中的方法名称、方法需要传入的参数；
+* 调用合约也是构造一笔InvocationTransaction类型的交易，方法名和参数保存在交易数据中，交易发出之后NeoVM会运行合约，返回运行结果。
