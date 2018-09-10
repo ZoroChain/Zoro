@@ -1,3 +1,19 @@
+# 学习过程
+## NEO-cli和NEO-gui使用熟悉
+* 跑起来cli，同步区块、打开rpc服务
+* 打开gui、同步区块、转账熟悉
+## UTXO学习 <https://gitee.com/lightsever/neotoy>
+* 自己写爬虫从NEOCLI得出所有的UTXO数据
+* 自己写一个程序，可实现功能：给定一个Address，得到这个Address的UTXO资产余额，数据由自己的爬虫提供。
+* 用程序实现UTXO转账功能
+## 了解thinsdk cs 和 thinsdk ts <https://github.com/NewEconoLab/neo-thinsdk-cs>
+* 基于thinsdk 和 nel公共爬虫数据源 开发能调用应用合约的程序
+* 能用自己的代码发布智能合约
+## 编写应用合约 <https://github.com/NewEconoLab/neo-ns>
+* 自己发一个nep5代币
+* 看懂NNS智能合约
+
+
 # 相关资料
 ## neo <https://github.com/neo-project/neo>
     neo 核心代码，neo 所有的算法、网络、节点的关键代码
