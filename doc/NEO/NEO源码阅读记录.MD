@@ -421,6 +421,16 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
       * 议员反馈PrepareResponse，当收到的PrepareResponse达到决议通过数时，广播新出的区块数据
       * 共识超时，发出ChangeView，更换议长，等待新一轮共识
 
+* 主要变量
+  * `missions_global：`
+    * 静态变量
+    * 避免在一分钟内反复请求同一个数据
+  * `mission_start:`
+    * 如果超过一分钟还没有收到请求的数据，则断开网络连接
+  * `missions:`
+    * 当前正在请求中的数据的数量
+    * 用来判断当前网络是否空闲，空闲时会用来同步区块数据
+
 #### 6.TcpRemoteNode
 * 继承自RemoteNode
 * 主要函数
@@ -518,3 +528,12 @@ NEO采用基于DBFT机制的共识算法，相关的技术文档可参考<http:/
   * `CheckSignatures`函数没看懂
   * 每次更换视图时，共识过程的最长处理时间增加一倍？
     * `timer.Change(TimeSpan.FromSeconds(Blockchain.SecondsPerBlock << (view_number + 1)), Timeout.InfiniteTimeSpan);`
+## 七、Wallet模块
+#### Wallet
+* 钱包的基础类
+* 在Implementations/Wallets里有两个实现类
+  * `UserWallet:`老版本的钱包，db3格式
+  * `NEP6Wallet:`基于NEP6标准的钱包，json格式
+* 提供和钱包相关的操作，例如创建账户，获取账户地址，查询资产余额之类的接口
+#### WalletIndexer
+* 钱包相关的LevelDB数据库
