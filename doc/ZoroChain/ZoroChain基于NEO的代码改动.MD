@@ -1,53 +1,53 @@
-# ZoroChain»ùÓÚNEOµÄ´úÂë¸ÄÔì
-## ¶àÁ´½á¹¹µÄ½âÊÍ
-### ¸ùÁ´ºÍÓ¦ÓÃÁ´
-* ZoroChain²ÉÓÃ¶àÁ´½á¹¹£¬·ÖÎª¸ùÁ´ºÍÓ¦ÓÃÁ´
-* ¸ùÁ´×÷Îª¹ÜÀíÁ´£¬¼ÇÂ¼Ó¦ÓÃÁ´µÄ±ä¸üÐÅÏ¢£¬ÒÔ¼°ÆäËûµÄ¿çÁ´½»Ò×ÐÅÏ¢
-* Ã¿Ò»¸öÓ¦ÓÃ»áÓÐ¶ÔÓ¦µÄÒ»ÌõÓ¦ÓÃÁ´£¬ºÍ¸ÃÓ¦ÓÃÓÐ¹ØµÄ½»Ò×ÐÅÏ¢¶¼±£´æÔÚ¸÷×ÔµÄÓ¦ÓÃÁ´ÉÏ
-### Á´µÄÊ¶±ð·½Ê½
-* ZoroChainÀïÃ¿¸öÁ´¶¼ÓÐÒ»¸öÎ¨Ò»µÄ×Ö·û´®Ãû×Ö£¬¸ÃÃû×Ö²»ÄÜºÍÆäËûµÄÁ´ÖØÃû
-* ¸ù¾Ý¸Ã×Ö·û´®Ãû×Ö£¬»áÓÐÒ»¸ö¶ÔÓ¦µÄHashÖµ£¬ÓÃÀ´¿ìËÙË÷Òý¸ÃÁ´
-## Ïà¹ØÀàµÄ´úÂë¸Ä¶¯
+# ZoroChainåŸºäºŽNEOçš„ä»£ç æ”¹é€ 
+## å¤šé“¾ç»“æž„çš„è§£é‡Š
+### æ ¹é“¾å’Œåº”ç”¨é“¾
+* ZoroChainé‡‡ç”¨å¤šé“¾ç»“æž„ï¼Œåˆ†ä¸ºæ ¹é“¾å’Œåº”ç”¨é“¾
+* æ ¹é“¾ä½œä¸ºç®¡ç†é“¾ï¼Œè®°å½•åº”ç”¨é“¾çš„å˜æ›´ä¿¡æ¯ï¼Œä»¥åŠå…¶ä»–çš„è·¨é“¾äº¤æ˜“ä¿¡æ¯
+* æ¯ä¸€ä¸ªåº”ç”¨ä¼šæœ‰å¯¹åº”çš„ä¸€æ¡åº”ç”¨é“¾ï¼Œå’Œè¯¥åº”ç”¨æœ‰å…³çš„äº¤æ˜“ä¿¡æ¯éƒ½ä¿å­˜åœ¨å„è‡ªçš„åº”ç”¨é“¾ä¸Š
+### é“¾çš„è¯†åˆ«æ–¹å¼
+* ZoroChainé‡Œæ¯ä¸ªé“¾éƒ½æœ‰ä¸€ä¸ªå”¯ä¸€çš„å­—ç¬¦ä¸²åå­—ï¼Œè¯¥åå­—ä¸èƒ½å’Œå…¶ä»–çš„é“¾é‡å
+* æ ¹æ®è¯¥å­—ç¬¦ä¸²åå­—ï¼Œä¼šæœ‰ä¸€ä¸ªå¯¹åº”çš„Hashå€¼ï¼Œç”¨æ¥å¿«é€Ÿç´¢å¼•è¯¥é“¾
+## ç›¸å…³ç±»çš„ä»£ç æ”¹åŠ¨
 #### IInventory
-* Êý¾ÝµÄÇåµ¥£¨Ä¿Â¼£©
-  * `Block, Transaction, ConsensusPayload`¼Ì³Ð×Ô`IInventory`
-* ÐÂÔöÊôÐÔ `ChainHash`
-  * ÓÃÀ´±íÊ¾¸ÃÇåµ¥µÄÊý¾Ý¹éÊôÓÚÄÄÒ»ÌõÁ´
-  * Ìá¹©`get`·½·¨£¬×ÓÀà¸÷×Ô¸ø³öÊµÏÖ
+* æ•°æ®çš„æ¸…å•ï¼ˆç›®å½•ï¼‰
+  * `Block, Transaction, ConsensusPayload`ç»§æ‰¿è‡ª`IInventory`
+* æ–°å¢žå±žæ€§ `ChainHash`
+  * ç”¨æ¥è¡¨ç¤ºè¯¥æ¸…å•çš„æ•°æ®å½’å±žäºŽå“ªä¸€æ¡é“¾
+  * æä¾›`get`æ–¹æ³•ï¼Œå­ç±»å„è‡ªç»™å‡ºå®žçŽ°
 
 #### Transaction
-* ÐÂÔö±äÁ¿ `UINT _chainHash`
-  * ÊôÐÔ`ChainHash`µÄ`get`·½·¨·µ»Ø`_chainHash`
-* ÐÞ¸Ä¹¹Ôìº¯Êý `Transaction(TransactionType type)`
-  * Ôö¼Ó²ÎÊý`chainhash`£¬¸³Öµ¸ø`_chainHash`
-* ÐÞ¸ÄËùÓÐÅÉÉúÀàµÄ¹¹Ôìº¯Êý£¬Ò²ÒªÔö¼Ó²ÎÊý`chainhash`
-* Ôö¼ÓÐÂµÄTransactionÅÉÉúÀà
+* æ–°å¢žå˜é‡ `UINT _chainHash`
+  * å±žæ€§`ChainHash`çš„`get`æ–¹æ³•è¿”å›ž`_chainHash`
+* ä¿®æ”¹æž„é€ å‡½æ•° `Transaction(TransactionType type)`
+  * å¢žåŠ å‚æ•°`chainhash`ï¼Œèµ‹å€¼ç»™`_chainHash`
+* ä¿®æ”¹æ‰€æœ‰æ´¾ç”Ÿç±»çš„æž„é€ å‡½æ•°ï¼Œä¹Ÿè¦å¢žåŠ å‚æ•°`chainhash`
+* å¢žåŠ æ–°çš„Transactionæ´¾ç”Ÿç±»
   * `AppChainBuildTransaction`
   * `AppChainChangeValidatorTransaction`
   * `AppChainChangePortTransaction`
 
 #### Block
-* ÐÂÔö±äÁ¿ `UINT _chainHash`
-  * ÊôÐÔ`ChainHash`µÄ`get`·½·¨·µ»Ø`_chainHash`
+* æ–°å¢žå˜é‡ `UINT _chainHash`
+  * å±žæ€§`ChainHash`çš„`get`æ–¹æ³•è¿”å›ž`_chainHash`
 
 #### Blockchain
-* ÐÂÔö¾²Ì¬±äÁ¿ `Dictionary<UInt256, Blockchain> blockchains;`
-  * ¼ÇÂ¼ËùÓÐµÄÁ´¶ÔÏóÊµÀý£¬°üÀ¨¸ùÁ´ºÍÓ¦ÓÃÁ´
-* ÐÂÔö¾²Ì¬º¯Êý `GetBlockchain(hash)`
-* ÐÂÔö¾²Ì¬º¯Êý `CreateBlockchain(name)`
-* ÐÂÔö¾²Ì¬º¯Êý `InitRootChain()`
-  * Îª¸ùÁ´×¼±¸µÄº¯Êý£¬±éÀúËùÓÐÇø¿éµÄ½»Ò×£¬´ÓÖÐ»ñÖªÄ¿Ç°ËùÓÐµÄÓ¦ÓÃÁ´ÐÅÏ¢
-  * ÔÚ¸ùÁ´³õÊ¼»¯Ê±µ÷ÓÃ£¬ÓÃÀ´´´½¨µ±Ç°¹Ø×¢µÄÓ¦ÓÃÁ´µÄ¶ÔÏóÊµÀý
-* ÐÞ¸Ä¾²Ì¬º¯Êý `RegisterBlockchain(blockchain)`
-  * °Ñ`blockchain`¼ÓÈëµ½`blockchains`×ÖµäÀï
-* ÐÞ¸Ä¾²Ì¬±äÁ¿ `Default`:
-  * Ä¿Ç°`Default`´ú±íNEOÀïÎ¨Ò»µÄÇø¿éÁ´¶ÔÏó
-  * °Ñ`Default`¸ÄÎª`Root`£¬´ú±íZoroÀïµÄ¸ùÁ´£¨¹ÜÀíÁ´£©
-  * ÐèÒªÐÞ¸ÄÏÖÓÐ´úÂëÀïËùÓÐÊ¹ÓÃ`Blockchain.Default`µÄµØ·½
-* °ÑÒÔÏÂÁ½¸öÎ¯ÍÐÊÂ¼þ¸ÄÎª·Ç¾²Ì¬±äÁ¿£º
+* æ–°å¢žé™æ€å˜é‡ `Dictionary<UInt256, Blockchain> blockchains;`
+  * è®°å½•æ‰€æœ‰çš„é“¾å¯¹è±¡å®žä¾‹ï¼ŒåŒ…æ‹¬æ ¹é“¾å’Œåº”ç”¨é“¾
+* æ–°å¢žé™æ€å‡½æ•° `GetBlockchain(hash)`
+* æ–°å¢žé™æ€å‡½æ•° `CreateBlockchain(name)`
+* æ–°å¢žé™æ€å‡½æ•° `InitRootChain()`
+  * ä¸ºæ ¹é“¾å‡†å¤‡çš„å‡½æ•°ï¼ŒéåŽ†æ‰€æœ‰åŒºå—çš„äº¤æ˜“ï¼Œä»Žä¸­èŽ·çŸ¥ç›®å‰æ‰€æœ‰çš„åº”ç”¨é“¾ä¿¡æ¯
+  * åœ¨æ ¹é“¾åˆå§‹åŒ–æ—¶è°ƒç”¨ï¼Œç”¨æ¥åˆ›å»ºå½“å‰å…³æ³¨çš„åº”ç”¨é“¾çš„å¯¹è±¡å®žä¾‹
+* ä¿®æ”¹é™æ€å‡½æ•° `RegisterBlockchain(blockchain)`
+  * æŠŠ`blockchain`åŠ å…¥åˆ°`blockchains`å­—å…¸é‡Œ
+* ä¿®æ”¹é™æ€å˜é‡ `Default`:
+  * ç›®å‰`Default`ä»£è¡¨NEOé‡Œå”¯ä¸€çš„åŒºå—é“¾å¯¹è±¡
+  * æŠŠ`Default`æ”¹ä¸º`Root`ï¼Œä»£è¡¨Zoroé‡Œçš„æ ¹é“¾ï¼ˆç®¡ç†é“¾ï¼‰
+  * éœ€è¦ä¿®æ”¹çŽ°æœ‰ä»£ç é‡Œæ‰€æœ‰ä½¿ç”¨`Blockchain.Default`çš„åœ°æ–¹
+* æŠŠä»¥ä¸‹ä¸¤ä¸ªå§”æ‰˜äº‹ä»¶æ”¹ä¸ºéžé™æ€å˜é‡ï¼š
   * `public static event EventHandler<Block> PersistCompleted;`
   * `public static event EventHandler<Block> PersistUnlocked;`
-* »¹Î´È·¶¨µÄÔõÃ´ÐÞ¸ÄµÄµØ·½£º 
+* è¿˜æœªç¡®å®šçš„æ€Žä¹ˆä¿®æ”¹çš„åœ°æ–¹ï¼š 
   * `StandbyValidators`
   * `GoverningToken`
   * `UtilityToken`
@@ -68,40 +68,40 @@
   * `IsDoubleSpend`
   * `ProcessAccountStateDescriptor`
   * `ProcessValidatorStateDescriptor`
-#### LevelDBBlockchain£º
-* LevelDBBlockchain»¹ÊÇ¼Ì³Ð×ÔBlockchain
-* Ã¿Ò»ÌõÁ´¶ÔÓ¦Ò»¸öLevelDBÊý¾Ý´æ´¢
-* Ã¿Ò»¸öLevelDBBlockchain¶ÔÏó»á´´½¨Ò»¸ö¶ÀÁ¢Ïß³ÌÓÃÀ´×öÊý¾Ý´æ´¢
+#### LevelDBBlockchainï¼š
+* LevelDBBlockchainè¿˜æ˜¯ç»§æ‰¿è‡ªBlockchain
+* æ¯ä¸€æ¡é“¾å¯¹åº”ä¸€ä¸ªLevelDBæ•°æ®å­˜å‚¨
+* æ¯ä¸€ä¸ªLevelDBBlockchainå¯¹è±¡ä¼šåˆ›å»ºä¸€ä¸ªç‹¬ç«‹çº¿ç¨‹ç”¨æ¥åšæ•°æ®å­˜å‚¨
   
 #### LocalNode
-* ¸ºÔð½¨Á¢ºÍÎ¬»¤P2PÍøÂçÁ¬½Ó£¬ÊÕ·¢¹ã²¥ÏûÏ¢
-* Ã¿Ò»ÌõÁ´£¨°üÀ¨¸ùÁ´ºÍÓ¦ÓÃÁ´£©µ¥¶À´î½¨Ò»×éP2PÍøÂç£¬±Ë´ËÖ®¼ä²»Ôì³É¸ÉÈÅ
-* ÐèÒªÎªÃ¿Ò»¸öÁ´´´½¨Ò»¸öLocalNode¶ÔÏóÊµÀý£¬Ã¿¸öÓ¦ÓÃÁ´ÒªÌá¹©×¨ÃÅµÄÍ¨ÐÅ¶Ë¿Ú
+* è´Ÿè´£å»ºç«‹å’Œç»´æŠ¤P2Pç½‘ç»œè¿žæŽ¥ï¼Œæ”¶å‘å¹¿æ’­æ¶ˆæ¯
+* æ¯ä¸€æ¡é“¾ï¼ˆåŒ…æ‹¬æ ¹é“¾å’Œåº”ç”¨é“¾ï¼‰å•ç‹¬æ­å»ºä¸€ç»„P2Pç½‘ç»œï¼Œå½¼æ­¤ä¹‹é—´ä¸é€ æˆå¹²æ‰°
+* éœ€è¦ä¸ºæ¯ä¸€ä¸ªé“¾åˆ›å»ºä¸€ä¸ªLocalNodeå¯¹è±¡å®žä¾‹ï¼Œæ¯ä¸ªåº”ç”¨é“¾è¦æä¾›ä¸“é—¨çš„é€šä¿¡ç«¯å£
 
-* ÐÂÔö±äÁ¿ `Blockchain`
-  * ±íÊ¾¸ÃLocalNodeËù¶ÔÓ¦µÄÁ´
-  * °ÑÄ¿Ç°LocalNode.csÀïµÄ`Blockchain.Default`Ìæ»»³ÉÐÂµÄ±äÁ¿`Blockchain`
+* æ–°å¢žå˜é‡ `Blockchain`
+  * è¡¨ç¤ºè¯¥LocalNodeæ‰€å¯¹åº”çš„é“¾
+  * æŠŠç›®å‰LocalNode.csé‡Œçš„`Blockchain.Default`æ›¿æ¢æˆæ–°çš„å˜é‡`Blockchain`
 
-* ÐÂÔö±äÁ¿ `LocalNode[] AppchainNodes;`
-  * ¼ÇÂ¼ËùÓÐÓ¦ÓÃÁ´µÄLocalNode£¬Ö»ÓÐ¸ùÁ´µÄLocalNode²Å»áÓÐÊý¾Ý
-* ÐÂÔöº¯Êý `CreateAppBlockchain()`
+* æ–°å¢žå˜é‡ `LocalNode[] AppchainNodes;`
+  * è®°å½•æ‰€æœ‰åº”ç”¨é“¾çš„LocalNodeï¼Œåªæœ‰æ ¹é“¾çš„LocalNodeæ‰ä¼šæœ‰æ•°æ®
+* æ–°å¢žå‡½æ•° `CreateAppBlockchain()`
   * 
 
 #### RemoteNode
-* ³õÊ¼»¯º¯Êý`StartProtocol()`µÄ¸Ä¶¯:
-  * °æ±¾ÐÅÏ¢ÀïÒª¼ÓÉÏ¹Ø×¢µÄÓ¦ÓÃÁ´µÄÊýÁ¿
-    * ÔÚVersionPayloadÀàÀï¼Ó
-  * ÔÚ»¥·¢°æ±¾ÐÅÏ¢ºó£¬ÒªÔÙ»¥·¢¸÷×Ô¹Ø×¢µÄÓ¦ÓÃÁ´ÁÐ±í£¬²¢¼ÇÂ¼ÔÚRemoteNodeÀï
-    * ÐèÒªÔö¼ÓÒ»¸öÓ¦ÓÃÁ´µÄ°æ±¾ÐÅÏ¢Àà
-    * ÆäÖÐ¼ÇÂ¼Ó¦ÓÃÁ´µÄHash£¬Çø¿é¸ß¶È
+* åˆå§‹åŒ–å‡½æ•°`StartProtocol()`çš„æ”¹åŠ¨:
+  * ç‰ˆæœ¬ä¿¡æ¯é‡Œè¦åŠ ä¸Šå…³æ³¨çš„åº”ç”¨é“¾çš„æ•°é‡
+    * åœ¨VersionPayloadç±»é‡ŒåŠ 
+  * åœ¨äº’å‘ç‰ˆæœ¬ä¿¡æ¯åŽï¼Œè¦å†äº’å‘å„è‡ªå…³æ³¨çš„åº”ç”¨é“¾åˆ—è¡¨ï¼Œå¹¶è®°å½•åœ¨RemoteNodeé‡Œ
+    * éœ€è¦å¢žåŠ ä¸€ä¸ªåº”ç”¨é“¾çš„ç‰ˆæœ¬ä¿¡æ¯ç±»
+    * å…¶ä¸­è®°å½•åº”ç”¨é“¾çš„Hashï¼ŒåŒºå—é«˜åº¦
     
 
 #### ConsensusService
-* ÐÂÔö±äÁ¿ `Blockchain`
-  * ±íÊ¾¸ÃLocalNodeËù¶ÔÓ¦µÄÁ´
-  * °ÑÄ¿Ç°ConsensusService.csÀïµÄ`Blockchain.Default`Ìæ»»³ÉÐÂµÄ±äÁ¿`Blockchain`
+* æ–°å¢žå˜é‡ `Blockchain`
+  * è¡¨ç¤ºè¯¥LocalNodeæ‰€å¯¹åº”çš„é“¾
+  * æŠŠç›®å‰ConsensusService.csé‡Œçš„`Blockchain.Default`æ›¿æ¢æˆæ–°çš„å˜é‡`Blockchain`
 
 
-#### ÎÊÌâ
-* ´´½¨Ó¦ÓÃÁ´µÄ½»Ò×£¬ÔõÃ´À´ÑéÖ¤Ö¸¶¨µÄ¼ÇÕËÈËÊÇ·ñÓÐÐ§£¿
-* NEOÖÐµÄÃ¿¸ö¿éµÄµÚÒ»¸ö½»Ò×¶¼ÊÇ¿ó¹¤½»Ò×£¬¼´Ê¹ÊÇ¿Õ¿éÒ²ÊÇÈç´Ë£¬ÎÒÃÇÒ²ÐèÒªÕâÑùÂð£¿
+#### é—®é¢˜
+* åˆ›å»ºåº”ç”¨é“¾çš„äº¤æ˜“ï¼Œæ€Žä¹ˆæ¥éªŒè¯æŒ‡å®šçš„è®°è´¦äººæ˜¯å¦æœ‰æ•ˆï¼Ÿ
+* NEOä¸­çš„æ¯ä¸ªå—çš„ç¬¬ä¸€ä¸ªäº¤æ˜“éƒ½æ˜¯çŸ¿å·¥äº¤æ˜“ï¼Œå³ä½¿æ˜¯ç©ºå—ä¹Ÿæ˜¯å¦‚æ­¤ï¼Œæˆ‘ä»¬ä¹Ÿéœ€è¦è¿™æ ·å—ï¼Ÿ
