@@ -46,7 +46,7 @@ LevelDB的接口封装类，Key-Value数据库，常用操作接口：
 ---
 ## 三、	Core模块
 ### 1.各种State的类
-对应LevelDB中保存的各类状态类数据，可通过BlockChain的GetStates函数获取对应的状态数据
+* 对应LevelDB中保存的各类状态类数据，可通过BlockChain的GetStates函数获取对应的状态数据
 ```
 DataCache<UInt160, AccountState> counts = Blockchain.Default.GetStates<UInt160, AccountState>();
 DataCache<ECPoint, ValidatorState> validators = Blockchain.Default.GetStates<ECPoint, ValidatorState>();
@@ -60,13 +60,12 @@ DataCache<ECPoint, ValidatorState> validators = Blockchain.Default.GetStates<ECP
   * `ToJson:` 转换成Json对象
 
 #### 1.2 AccountState
-* 继承自StateBase，定义账户通用的属性和方法
+* 定义账户通用的属性和方法
   * `ScriptHash:`*UInt160* 地址的散列值
   * `IsFrozen：`*bool* 标记账户是否冻结
   * `Votes:`*ECPoint[]* 
   * `Size：`重写StateBase的Size
   * `GetBalance:`获取账户资产余额
-  * `Deserialize`、`Serialize`、`ToJson:`重写StateBase的对应方法
 
 #### 1.3 AssetState
 * 继承StateBase，资产定义类
@@ -94,20 +93,28 @@ DataCache<ECPoint, ValidatorState> validators = Blockchain.Default.GetStates<ECP
 #### 1.5 UnspentCoinState
 * 继承StateBase，ICloneable，未花费货币定义类
   * `Items:`*CoinState[]* 
-  * `Size`、`Deserialize`、`Serialize`、`ToJson:`重写StateBase的对应方法
-  * `Clone`、`FromReplica:`实现ICloneable的对应方法
 #### 1.6 ValidatorState
-* 继承StateBase，ICloneable，验证器定义类
-  * `PublicKey:`*ECPoint* 公钥
-  * `Registered:`*bool* 标记验证器是否注册
-  * `Votes:`*Fixed8* 投票结果
-  * `Size`、`Deserialize`、`Serialize`、`ToJson:`重写StateBase的对应方法
-  * `Clone`、`FromReplica:`实现ICloneable的对应方法
+* 记账候选人状态
+  * `PublicKey:`*ECPoint* 候选人的公钥
+  * `Registered:`*bool* 标记该候选人是否已被注册
+  * `Votes:`*Fixed8* 该候选人的总票数，
+    * 即投票支持该候选人的所有账户的NEO货币总额
+    * 按照候选人的总票数高低来排序，决定最后选出的记账人
+    * 有关NEO中的记账人的选举与投票机制可参考<http://docs.neo.org/zh-cn/node/gui/vote.html>
 #### 1.7 ValidatorsCountState
-* 继承StateBase，ICloneable，验证器总数定义类
+* 被投票的候选人人数计数
   * `Votes:`*Fixed8[1024]* 投票结果
-  * `Size`、`Deserialize`、`Serialize`、`ToJson:`重写StateBase的对应方法
-  * `Clone`、`FromReplica:`实现ICloneable的对应方法
+  * 每个账号最多可以投票支持1024个候选人
+  * 这里的Votes是这样理解的：
+    * Votes[0]表示总共投了一个候选人的票数总和
+    * Votes[3]表示总共投了三个候选人的票数总和
+    * Votes[i]表示总共投了i个候选人的票数总和
+* `"NEO 网络将根据每个账户所投候选人数进行实时计算，选出共识节点。计算方法为：
+对每个账户所投候选人数按大小排序，得到数组 C1, C2, ..., Cn
+去掉数组中前 25% 和后 25% 的数值
+对剩余的 50% 数值进行加权平均，得出 NEO 共识节点数 N
+选出得票数最高的前 N 名候选人成为共识节点"`
+
   
 #### 1.8 ContractState
 * 继承StateBase，合约定义类
@@ -230,33 +237,55 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
   * `Type：`交易类型
   * `Version：`版本号，用来在代码升级后兼容老版本的数据
   * `Inputs：`输入项列表
+    * 由交易的Hash和Output索引号组成
+    * 通过Hash和索引号可以唯一定位到一个交易的某个Output数据
   * `Outputs：`输出项列表
+    * 由收款人地址、金额、货币类型组成
   * `Scripts:`*用于验证该交易的脚本列表?*
   * `Hash：`交易数据的散列值
   * `SystemFee：`根据交易类型，返回需要的系统费用（系统费用在protocal.json中配置）
 * 主要函数
-  * `Verify：`验证交易是否有效
-
+  * `Verify:`验证交易是否有效
+  * `References:`返回用Input作为key，该Input所属交易中的Output作为value的映射表
+    * 可以用来快速计算交易中所有Input项的金额总和
+    * 可以用来快速收集交易中所有Input项的货币来源账户的地址
+  * `GetTransactionResults:`返回交易后，各类资产的变化量
+    * 一般的转账交易，这里不会有返回的资产变化量，因为交易的Input和Output的金额总和应该相等
+    * 如果返回的资产变化量大于零，表示有资产被回收消耗了，例如因为系统费用消耗了gas
+    * 如果返回的资产变化量小于零，表示有新的资产产生了，例如矿工交易生成了新的gas，有账户认领了新的gas
 ##### 3.4.1 RegisterTransaction
+* (已弃用) 用于资产登记的交易
 * 注册区块链货币，目前只有两种
 * BlockChain.GoverningToken和BlockChain.UtilityToken，分别对应neo和gas
  
 ##### 3.4.2 MinerTransaction
+* 将每次出块所需要的系统费用转账给议长的交易
 * 每次对一批交易发起共识处理时，会由议长生成一个MinerTransaction
+* MinerTransaction没有Input项，只可能有Output项
+* Output项的收款人是生成该交易的议长，货币类型是gas，金额是块内所有交易的系统费用的总和
 
 ##### 3.4.3 IssueTransaction
+* 用于分发资产的交易
+* RegisterTransaction登记的资产初始时没有所有者
+* 可以用IssueTransaction来将资产分发到某个账户
+* 创始块中有将NEO股转给默认候选人的交易
 
 ##### 3.4.4 ClaimTransaction
+* 用于分配 NeoGas 的交易
 
 ##### 3.4.5 EnrollmentTransaction
+* (已弃用)用于报名成为记账候选人的特殊交易
 
-##### 3.4.6 ContractTransaction
+##### 3.4.6 PublishTransaction
+* (已弃用)智能合约发布的特殊交易
 
-##### 3.4.7 StateTransaction
+##### 3.4.7 ContractTransaction
+* 合约交易，这是最常用的一种交易
 
-##### 3.4.8 PublishTransaction
+##### 3.4.8 InvocationTransaction
+* 调用智能合约的特殊交易
 
-##### 3.4.9 InvocationTransaction
+##### 3.4.9 StateTransaction
 
 ---
 ## 四、Implementations模块
