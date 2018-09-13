@@ -294,6 +294,8 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
   LevelDB中保存的数据分为四类: 
   * 区块和交易数据: Block和Transaction
   * 状态类数据: Account, Coin, SpentCoin, Validator, Asset, Contract, Storage
+    * 这些状态数据为了提供更快捷的方式获取到一些数据而存在
+    * 这些状态数据是在处理Block和Transaction的过程中被保存到数据库中的
   * 索引类数据: 略
   * 系统数据: 略
  
@@ -339,6 +341,20 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
   * 由外部发起写入区块数据的调用(AddBlock)，将要写入的区块数据保存在header_cache里，并向后台线程发信号
   * 后台线程从block_cache里取出要写入的区块数据，并调用Persist函数进行写入数据库的操作
 
+* `Persist(Block block)`
+  * 将一个Block的数据保存到LevelDB里
+  * 在保存Block时，会把已产生的系统费用的总额插入到Block数据的前面一起保存
+    * 这个系统费用的总额是包括当前区块以及之前所有区块的系统费用的总量
+  * 在保存Transaction时的额外处理逻辑
+    * 根据交易里的Input和Output，更新一批状态类数据，包括账号，候选人，已花费和未花费
+    * 再根据具体的交易类型，执行对应的处理逻辑，例如
+      * 对于资产登记的交易，会更新资产状态
+      * 对于分配Gas的交易，会更新已花费状态
+      * 对于竞选记账人的交易，会更新候选人状态
+      * 对于发布智能合约的交易，会更新合约状态
+      * 对于执行智能合约的交易，会使用`StateMachine和ApplicationEngine`来执行交易里的合约脚本
+        * 合约执行的结果会通过回调函数写入到ApplicationLog里
+        * ApplicationLog里包含的notifications可以用来和外部系统做交互，例如判定合约执行的结果的依据
 ---
 ## 五、Network模块
 #### 1.Message
