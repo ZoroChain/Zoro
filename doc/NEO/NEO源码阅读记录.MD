@@ -187,7 +187,7 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
   * `Size`、`Deserialize`、`Serialize`、`ToJson:`实现ISerializable的对应方法
 
 #### 2.5 Block
-* 继承BlockBase，IInventory,IEquatable, 区块定义类
+* 继承BlockBase，IInventory,IEquatable, 区块定义类，交易对象的集合，链上的主体
   * `Transactions:`*Transaction[]* 交易列表
   * `Header:`*Header* 该区块的区块头
   * `IInventory.InventoryType:`*InventoryType* 资产清单的类型
@@ -222,7 +222,7 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
 ---
 ### 3. Transaction相关的类
 #### 3.1 TransactionAttribute
-
+* 用来记录本次交易的说明，给交易取名字
 #### 3.2 CoinReference
 * UTXO模型中的Input，用作一笔交易的某一个Input项
 * 通过Hash和索引可以定位到一笔交易中的某个Output项
@@ -284,9 +284,7 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
 
 ##### 3.4.8 InvocationTransaction
 * 调用智能合约的特殊交易
-
 ##### 3.4.9 StateTransaction
-
 ---
 ## 四、Implementations模块
 #### 1.LevelDBBlockChain
@@ -294,6 +292,8 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
   LevelDB中保存的数据分为四类: 
   * 区块和交易数据: Block和Transaction
   * 状态类数据: Account, Coin, SpentCoin, Validator, Asset, Contract, Storage
+    * 这些状态数据为了提供更快捷的方式获取到一些数据而存在
+    * 这些状态数据是在处理Block和Transaction的过程中被保存到数据库中的
   * 索引类数据: 略
   * 系统数据: 略
  
@@ -339,6 +339,20 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
   * 由外部发起写入区块数据的调用(AddBlock)，将要写入的区块数据保存在header_cache里，并向后台线程发信号
   * 后台线程从block_cache里取出要写入的区块数据，并调用Persist函数进行写入数据库的操作
 
+* `Persist(Block block)`
+  * 将一个Block的数据保存到LevelDB里
+  * 在保存Block时，会把已产生的系统费用的总额插入到Block数据的前面一起保存
+    * 这个系统费用的总额是包括当前区块以及之前所有区块的系统费用的总量
+  * 在保存Transaction时的额外处理逻辑
+    * 根据交易里的Input和Output，更新一批状态类数据，包括账号，候选人，已花费和未花费
+    * 再根据具体的交易类型，执行对应的处理逻辑，例如
+      * 对于资产登记的交易，会更新资产状态
+      * 对于分配Gas的交易，会更新已花费状态
+      * 对于竞选记账人的交易，会更新候选人状态
+      * 对于发布智能合约的交易，会更新合约状态
+      * 对于执行智能合约的交易，会使用`StateMachine和ApplicationEngine`来执行交易里的合约脚本
+        * 合约执行的结果会通过回调函数写入到ApplicationLog里
+        * ApplicationLog里包含的notifications可以用来和外部系统做交互，例如判定合约执行的结果的依据
 ---
 ## 五、Network模块
 #### 1.Message
@@ -498,7 +512,7 @@ NEO采用基于DBFT机制的共识算法，相关的技术文档可参考<http:/
   * `ViewChanging:`正在变更视图
 
 #### 2.ConsensusMessage
-* 共识处理流程中使用到的网络消息，有三种类型：
+* Type共识处理流程中使用到的网络消息，有三种类型：
   * ChangeView，变更视图
   * PrepareRequest，议长发送待共识的交易数据和区块头签名
   * PrepareResponse，议员发送区块头签名
@@ -528,7 +542,10 @@ NEO采用基于DBFT机制的共识算法，相关的技术文档可参考<http:/
 #### 4.ConsensusService
 * 开启服务后，会处理本地节点接收的共识请求
 * 开启共识处理服务的方法
-  * 在cli的config.json中可以配置本地节点是否要开启共识处理
+  * 在cli的config.json中可以配置本地节点是否要开启共识处理 
+    * `Paths里面Notifications参数代表共识节点，可以参与共识，共识节点配置在protocol.json中，非共识节点添加此参数将不能启动节点（搭建私链时测试发现，具体产生原因不明）`
+    * `Paths里面ApplicationLogs参数代表可以检测智能合约的notify，获取智能合约状态`
+    * `Paths里面Chain参数代表爬虫获取的块数据存储地址`
   * 在cli的shell中输入指令"start consensus"
 * 共识处理流程
   * RPCServer接收到"sendrawtransaction"消息后，通过本地节点的`Relay`函数把该交易请求广播给其他远程节点
