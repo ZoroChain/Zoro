@@ -1,11 +1,11 @@
 # What is ZoroChain  
 &ensp;&ensp;&ensp;&ensp;ZoroChain是基于NEO技术开发的高速应用链（High Speed Application Chain），一应用一链，200-300毫秒确认交易，采用NEO智能合约虚拟机，可与NEO公链进行交互。  
-&ensp;&ensp;&ensp;&ensp;ZoroChain is ‘High Speed Application Chain’ Based on NEO technology, one application one chain, transaction confirm by 200-300ms, use NEO smart contract virtual machine, and can interactive with NEO Chain.  
+&ensp;&ensp;&ensp;&ensp;ZoroChain is ‘High Speed Application Chain’ that runs as a side chain based on NEO blockchain, it focuses on providing each application with its own chain and transactions on ZoroChain are confirmed in less than 300ms. It leverages the NEO smart contract virtual machine and its highly interactive with NEO blockchain.  
 ## What is Application Chain  
 &ensp;&ensp;&ensp;&ensp;BitCoin开创了区块链的先河，Ethereum的智能合约给我们带来了DApp的可能，但是仅仅是可能，受制于公链性能，目前DApp的实际体验非常差；  
 &ensp;&ensp;&ensp;&ensp;我们认为应该有这么一种链，性能上能满足普遍应用需求，必要的时候可以适当的牺牲安全性，其介于应用与公链之间，承载主要应用逻辑，由公链提供高安全性交易服务，连接应用与公链，我们称之为应用链；  
 &ensp;&ensp;&ensp;&ensp;ZoroChain正是这样的一条链，在应用链上采用了特有的共识算法，简化了共识步骤，让共识能够快速完成，同时采用应用链与节点多对多的拓扑结构，任意节点可以随时加入网络，为任意应用链提供服务，是真正意义上的去中心化应用链，并提供与NEO公链交互接口。  
-&ensp;&ensp;&ensp;&ensp;BitCoin bring us block chain, Ethereum give us smart contract and possibility of DApp, but only possibility, restrict by bottle neck of public chain performance, DApp’s user experience is quite dreadful.  
+&ensp;&ensp;&ensp;&ensp;BitCoin first introduced the concept of a blockchain, Ethereum provided us with smart contracts and the possibility of DApps, but its just a possibility.Currently public blockchain performance is restricted by a scalabity bottleneck and the user experience on DApps is quite dreadful.  
 &ensp;&ensp;&ensp;&ensp;We suppose there is a chain like this, in performance it satisfies most app’s requirement, safety can be sacrificed properly in need, it’s between application and public chain, runs most chain logic of application，connect public chain and application and let public chain provide high safety transaction, we call it Application Chain.  
 &ensp;&ensp;&ensp;&ensp;ZoroChain is a chain just like this, it use special consensus algorithm, simplified the consensus step, make consensus in very high speed, and we have a ‘n to n’ topological structure between application chain and chain node, any node can connect to chain network any time, and server any application chain, it’s a fully decentralized chain, and it provides NEO Chain operate interface.  
 ## RS matters than TPS  
