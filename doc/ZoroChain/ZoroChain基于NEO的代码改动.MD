@@ -1,12 +1,15 @@
 # ZoroChain基于NEO的代码改造
 ## 多链结构的解释
+
 ### 根链和应用链
 * ZoroChain采用多链结构，分为根链和应用链
 * 根链作为管理链，记录应用链的创建和变更交易，全局资产交易，以及其他的跨链交易信息
 * 每一个应用会有对应的一条应用链，和该应用有关的交易信息都保存在各自的应用链上
+
 ### 链的识别方式
-* ZoroChain里每个链都有一个唯一的字符串名字，该名字不能和其他的链重名
-* 根据该字符串名字，会有一个对应的Hash值，用来快速索引该链
+* ZoroChain里每个链都有一个名字字符串，该名字可以和其他的链重名
+* 此外，每个链会有一个唯一的Hash值，用来快速索引该链
+
 ## 相关类的代码改动
 #### IInventory
 * 数据的清单（目录）
@@ -34,7 +37,9 @@
 * 新增静态变量 `Dictionary<UInt256, Blockchain> blockchains;`
   * 记录所有的链对象实例，包括根链和应用链
 * 新增静态函数 `GetBlockchain(hash)`
-* 新增静态函数 `CreateBlockchain(name)`
+* 新增静态函数 `CreateBlockchain(hash)`
+  * 抽象函数，在`LevelDBBlockchain`中实现
+  * 创建一个`LevelDBBlockchain`的实例并记录在`blockchains`里
 * 新增静态函数 `InitRootChain()`
   * 为根链准备的函数，遍历所有区块的交易，从中获知目前所有的应用链信息
   * 在根链初始化时调用，用来创建当前关注的应用链的对象实例
@@ -47,12 +52,16 @@
 * 把以下两个委托事件改为非静态变量：
   * `public static event EventHandler<Block> PersistCompleted;`
   * `public static event EventHandler<Block> PersistUnlocked;`
-* 还未确定的怎么修改的地方： 
-  * `StandbyValidators`
-  * `GoverningToken`
-  * `UtilityToken`
+* 修改变量`StandbyValidators`
+  * 改为非静态的属性，提供`set和get`方法
+  * 根链的`StandbyValidators`还是维持之前的赋值方法
+  * 应用链的`StandbyValidators`从应用链的State里获值
+* `GoverningToken和UtilityToken`
+  * 只保留一个，改名为`ZoroToken`
+* 还未确定的怎么修改的地方：   
   * `GenesisBlock`
-  * `ContainsUnspent`
+  * `CalculateBonus`
+  * `CalculateBonusInternal`
   * `GetMetaData`
   * `GetStates`
   * `GetAccountState`
@@ -65,18 +74,21 @@
   * `GetSysFeeAmount`
   * `GetUnclaimed`
   * `GetUnspent`
+  * `ContainsUnspent`
   * `IsDoubleSpend`
   * `ProcessAccountStateDescriptor`
   * `ProcessValidatorStateDescriptor`
+
 #### LevelDBBlockchain：
 * LevelDBBlockchain还是继承自Blockchain
 * 每一条链对应一个LevelDB数据存储
 * 每一个LevelDBBlockchain对象会创建一个独立线程用来做数据存储
-  
+* 新增静态函数 `CreateBlockchain(hash)`
+
 #### LocalNode
 * 负责建立和维护P2P网络连接，收发广播消息
 * 每一条链（包括根链和应用链）单独搭建一组P2P网络，彼此之间不造成干扰
-* 需要为每一个链创建一个LocalNode对象实例，每个应用链要提供专门的通信端口
+* 需要为每一个链创建一个LocalNode对象实例，不同应用链的通信端口可以重复
 
 * 新增变量 `blockchain`
   * 表示该LocalNode所对应的链
