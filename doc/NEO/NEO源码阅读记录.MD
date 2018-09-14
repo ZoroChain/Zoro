@@ -385,19 +385,26 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
     * 用来记录已通过校验的，所有还未保存到块的交易
     * 每次把块写入DB后，会从mem_pool里删除记录在块中的交易
     * 每次出块后，会重新校验所有记录在mem_pool里的交易（___对性能有影响，后期需要优化？___）
-  * `temp_pool : HashSet<Transaction>`  
+ 
+ * `temp_pool : HashSet<Transaction>`  
     * 用来还未通过校验的所有交易请求
     * 在线程函数中对这些交易进行校验，并把通过校验的交易保存到mem_pool里
-  * HashSet\<IPEndPoint> unconnectedPeers
+ 
+ * `unconnectedPeers ： HashSet<IPEndPoint>`
     * 还未连接的远程节点的地址列表
     * 数据来源于其他远程节点发来的已连接地址列表
     * 在本地节点启动时，会从本地文件中加载（在cli或gui中调用）
     * 在本地节点关闭时，会保存到本地文件（在cli或gui中调用）
     * 本地节点启动后，会优先尝试和这些节点建立连接
-  * List\<RemoteNode> connectedPeers
+ 
+ * `connectedPeers ： List<RemoteNode>`
     * 已经连接上的远程节点的列表，包括主动和被动两种连接方式
     * 最多连接10个节点，达到或超过后不再主动和其他节点建立连接，但仍可以接受其他节点的连接请求
  
+ * `KnownHashes ： Dictionary<UInt256, DateTime>`
+   * 记录上一次发送某个清单的时间，或是上一次收到某个数据的时间
+   * 避免重复发送或者重复接收相同的数据
+
 * 程序初始化流程:
   * 初始化时创建两个线程，
     * `connectThread:` 用来和其他的远程节点建立连接
@@ -467,12 +474,12 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
       * 共识超时，发出ChangeView，更换议长，等待新一轮共识
 
 * 主要变量
-  * `missions_global：`
+  * `missions_global：Dictionary<UInt256, DateTime> `
     * 静态变量
     * 避免在一分钟内反复请求同一个数据
-  * `mission_start:`
+  * `mission_start：DateTime`
     * 如果超过一分钟还没有收到请求的数据，则断开网络连接
-  * `missions:`
+  * `missions：HashSet<UInt256>`
     * 当前正在请求中的数据的数量
     * 用来判断当前网络是否空闲，空闲时会用来同步区块数据
 
