@@ -21,20 +21,20 @@
 &ensp;&ensp;&ensp;&ensp;For an application chain, on chain operations should not be limited by typical smart contracts, we prefer the term ‘Application Contract’ to ‘Smart Contract’. Application contracts are ran by an ‘Application Engine’, which operates the application chain. Application engine compare to smart contract vm, it needs more functions like mention above, provides more flexibility for extension, it support complex computing,as well as support for concurrent computing to acheive high transactions per second,furthermore an inherently fast consensus algorithm helps to achieve an excellent response speed.  
 &ensp;&ensp;&ensp;&ensp;ZoroChain will extend NEO VM based on .NETCore, to support on chain complex computing, Application engine of ZoroChain computation adopts a hierachical architecture .NETCore is in charge of complex computing and provides an on chain operation output.It then sends it to Neo VM as an input to realize on chain consensus between nodes. This structure enables a high TPS and RS. Also The  .NETCore's input is broadcasted between nodes, therefore these nodes can verify the output of .NETCore, check and punish nodes that cheat on the output.  
 ## ZoroChain Features  
-&ensp;&ensp;&ensp;&ensp;Abstract Consensus Layer with support for various consensus algorithms
-&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;dBFT Consensus
-&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;VRF-BFT Consensus
-&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;VRF-POWL Consensus
-&ensp;&ensp;&ensp;&ensp;High Speed P2P Network Support
-&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Heart beat with Time Sync
-&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;DHT  
-&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;UPnP  
-&ensp;&ensp;&ensp;&ensp;Extendable Application Engine  
-&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;NEO VM  
-&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Zoro VM (subset of .NETCore with sandbox)  
+### Abstract Consensus Layer with support for various consensus algorithms
+ * dBFT Consensus
+ * VRF-BFT Consensus
+ * VRF-POWL Consensus
+### High Speed P2P Network Support
+ * Heart beat with Time Sync
+ * DHT  
+ * UPnP  
+### Extendable Application Engine  
+ * NEO VM  
+ * Zoro VM (subset of .NETCore with sandbox)  
 &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;On chain timing  
 &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;On chain random  
 &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Data source API  
 &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Various algorithm API  
 &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Plugin support  
-&ensp;&ensp;&ensp;&ensp;Decentralized Database
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Decentralized Database
