@@ -69,6 +69,7 @@
     <Compile Remove="Zoro\Impl\Wallets\NEP6\NEP6Wallet.cs" />
     <Compile Remove="Zoro\Impl\Wallets\NEP6\ScryptParameters.cs" />
     <Compile Remove="Zoro\Impl\Wallets\NEP6\WalletLocker.cs" />
+    <Compile Remove="Zoro\Network\RemoteNode.cs" />
     <Compile Remove="Zoro\Network\RPC\RpcServer.cs" />
     <Compile Remove="Zoro\Network\TcpRemoteNode.cs" />
     <Compile Remove="Zoro\Network\UPnP.cs" />
