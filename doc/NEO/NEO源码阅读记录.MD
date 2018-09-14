@@ -196,7 +196,12 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
   * `Size`、`Deserialize`、`Serialize`、`ToJson:`重写BlockBase的对应方法
   * `Trim():`*byte[]* 把区块对象变为只包含区块头和交易Hash的字节数组，去除交易数据,返回只包含区块头和交易Hash的字节数组
   * `RebuildMerkleRoot():` 根据区块中所有交易的Hash生成MerkleRoot
-  * `CalculateNetFee(IEnumerable<Transaction>):` 计算网络费用
+  * `CalculateNetFee(IEnumerable<Transaction>):` 计算一组交易的矿工小费
+    * `netFee = amount_in - amount_out - amount_sysfee`
+    * `amount_in`表示所有Input项的总额
+    * `amount_in`表示所有Output项的总额
+    * `amount_sysfee`表示所有系统费用的总额
+    * 默认情况下`netfee`应该是零，当`netfee`大于零时，表示支付给矿工的小费
   * `FromTrimmedData(byte[],int,Func<UInt256, Transaction>):`*Block* 将数据库中保存的字节数组解析还原成Block的内部数据
 
 #### 2.6 Header
@@ -473,13 +478,14 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
 
 * 主要变量
   * `missions_global：Dictionary<UInt256, DateTime> `
-    * 静态变量
-    * 避免在一分钟内反复请求同一个数据
+    * 静态变量，所有远程节点共享一个映射表
+    * 在请求某一个数据时，会记录请求的发起时间
+    * 避免在一分钟内重复请求同一个数据
   * `mission_start：DateTime`
     * 如果超过一分钟还没有收到请求的数据，则断开网络连接
   * `missions：HashSet<UInt256>`
     * 当前正在请求中的数据的数量
-    * 用来判断当前网络是否空闲，空闲时会用来同步区块数据
+    * 用来判断和某个远程节点的网络通信是否空闲，空闲时会用来同步区块数据
 
 #### 6.TcpRemoteNode
 * 继承自RemoteNode

@@ -10,7 +10,7 @@
 * ZoroChain里每个链都有一个名字字符串，该名字可以和其他的链重名
 * 此外，每个链会有一个唯一的Hash值，用来快速索引该链
 
-## 相关类的代码改动
+## zoro库的代码改动
 #### IInventory
 * 数据的清单（目录）
   * `Block, Transaction, ConsensusPayload`继承自`IInventory`
@@ -40,9 +40,6 @@
 * 新增静态函数 `CreateBlockchain(hash)`
   * 抽象函数，在`LevelDBBlockchain`中实现
   * 创建一个`LevelDBBlockchain`的实例并记录在`blockchains`里
-* 新增静态函数 `InitRootChain()`
-  * 为根链准备的函数，遍历所有区块的交易，从中获知目前所有的应用链信息
-  * 在根链初始化时调用，用来创建当前关注的应用链的对象实例
 * 修改静态函数 `RegisterBlockchain(blockchain)`
   * 把`blockchain`加入到`blockchains`字典里
 * 修改静态变量 `Default`:
@@ -97,28 +94,11 @@
 * 新增变量 `consensusService`
   * 表示该LocalNode所对应链的共识服务对象
 
-* 新增变量 `LocalNode[] ChildLocalNodes`
-  * 记录所有应用链的LocalNode，只有根链的LocalNode才会有数据
-
 * 新增变量 `string[] SeedList`  
   * 记录种子节点的地址列表
 
 * 修改函数 `GetIPEndPointsFromSeedList`
   * 用`SeedList`变量替代`Settings.Default.SeedList`
-
-* 修改函数 `Relay(IInventory inventory)`
-  * 当收到的`block`的时候，如果自身是根链的LocalNode，则调用`CheckAppBuildTransaction`
-
-* 新增函数 `CheckAppBuildTransaction(block)`
-  * 检查block里的所有Tx，如果有创建应用链的交易，则调用`CreateAppBlockchain`
-
-* 新增函数 `CreateAppBlockchain(tx)`
-  * 创建应用链的`Blockchain和LocalNode`对象
-  * 将新创建的`LocalNode`对象记录在`ChildLocalNodes`里
-  * 启动应用链的`LocalNode`
-  * 判断是否要成为应用链的共识节点
-    * 如果是的话，创建`ConsensusService`对象
-    * 启动共识服务
 
 * 把静态变量改为非静态
   * `InventoryReceiving和InventoryReceived`
@@ -140,9 +120,33 @@
   * `void LoadState(Stream stream)`
   * `void SaveState(Stream stream)`
 
-#### RemoteNode
+#### RootNode
+* 继承自LocalNode，代表根链的本地节点，只有唯一的对象实例
+* 把
 
-    
+* 成员变量 `LocalNode[] ChildNodes`
+  * 记录所有应用链的LocalNode
+
+* 成员函数 `FollowAppchain(hash)`
+  * 关注某一条应用链
+  * 先判断要关注的应用链是否存在，通过应用链的`hash`查询数据库中的`AppState`
+  * 创建应用链的`Blockchain和LocalNode`对象
+  * 将新创建的`LocalNode`对象记录在`ChildNodes`里
+  * 使用`AppState`里记录的端口，启动应用链的`LocalNode`
+
+* 成员函数 `StartAppConsensus(hash)`
+  * 启动某一条应用链的共识服务
+  * 先判断该应用链对象是否存在  
+  * 创建`ConsensusService`对象，调用该对象的`Start`函数
+
+* 成员函数 `Start(port, ws_port)`
+  * 先调用基类的`Start`函数
+  * 在根据配置文件里设定的关注列表，依次调用`FollowAppchain`
+  * 如果配置了要运行共识服务，再调用`StartAppConsensus`
+
+#### RemoteNode
+* 修改对`LocalNode`静态对象的访问
+  * 把目前RemoteNode.cs里的`LocalNode.`替换成`localNode.`    
 
 #### ConsensusService
 * 新增变量 `blockchain`
@@ -154,10 +158,14 @@
   * 把目前ConsensusService.cs里的`LocalNode.`替代成新的变量`localNode.`
   
 #### RpcServer
-
+* 指令参数的修改
+  * 所有的指令需要增加对应链的`hash`
 
 #### Wallet
 
-#### 问题
-* 创建应用链的交易，怎么来验证指定的记账人是否有效？
-* NEO中的每个块的第一个交易都是矿工交易，即使是空块也是如此，我们也需要这样吗？
+## cli项目的代码改动
+### MainServices
+* 修改`OnStart`函数
+  * 把`new LocalNode()`改为`new RootNode()`
+* ...
+* ...
