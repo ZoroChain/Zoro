@@ -264,10 +264,10 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
 * BlockChain.GoverningToken和BlockChain.UtilityToken，分别对应neo和gas
  
 ##### 3.4.2 MinerTransaction
-* 将每次出块所需要的系统费用转账给议长的交易
+* 向矿工（NEO中指共识节点）支付小费的交易，每次出块所有交易里的剩余未分配金额分配给议长
 * 每次对一批交易发起共识处理时，会由议长生成一个MinerTransaction
 * MinerTransaction没有Input项，只可能有Output项
-* Output项的收款人是生成该交易的议长，货币类型是gas，金额是块内所有交易的系统费用的总和
+* Output项的收款人是生成该交易的议长，货币类型是gas，金额是块内所有交易的剩余未分配金额的总和
 
 ##### 3.4.3 IssueTransaction
 * 用于分发资产的交易

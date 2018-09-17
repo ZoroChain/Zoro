@@ -27,7 +27,47 @@
 * 增加新的Transaction派生类
   * `AppBuildTransaction`
   * `AppChangeValidatorTransaction`
+  * `AppChangeSeedTransaction`
   * `AppChangePortTransaction`
+
+#### 现有的各类Transaction
+* RegisterTransaction
+  * 用于资产登记的交易
+  * 该功可用智能合约来实现，不再保留
+* IssueTransaction
+  * 用于分发资产的交易
+  * 该功可用智能合约来实现，不再保留
+* MinerTransaction
+  * 向共识节点支付小费的交易
+  * 需要修改？
+* ClaimTransaction
+  * 用于分配 NeoGas 的交易
+  * 需要修改？
+* EnrollmentTransaction
+  * 用于报名成为记账候选人的特殊交易
+  * 已经被NEO弃用，不再保留
+* PublishTransaction
+  * 发布智能合约的特殊交易
+  * 已经被NEO弃用，该功可用智能合约来实现，不再保留
+* ContractTransaction
+  * 合约交易，这是最常用的一种交易
+  * 保留
+* InvocationTransaction
+  * 调用智能合约的特殊交易
+  * 保留
+* StateTransaction
+  * 修改各类状态数据的交易
+  * 不再保留，该功可用智能合约来实现
+
+#### 新增的交易类
+* AppBuildTransaction
+  * 用于创建应用链
+* AppChangeValidatorTransaction
+  * 用于修改应用链的共识节点账户地址
+* AppChangeSeedTransaction
+  * 用于修改应用链的种子节点域名
+* AppChangePortTransaction
+  * 用于修改应用链的端口号
 
 #### Block
 * 新增变量 `UINT _chainHash`
@@ -76,11 +116,20 @@
   * `ProcessAccountStateDescriptor`
   * `ProcessValidatorStateDescriptor`
 
-#### LevelDBBlockchain：
+#### LevelDBBlockchain
 * LevelDBBlockchain还是继承自Blockchain
 * 每一条链对应一个LevelDB数据存储
 * 每一个LevelDBBlockchain对象会创建一个独立线程用来做数据存储
 * 新增静态函数 `CreateBlockchain(hash)`
+
+#### 新增AppState
+* 记录App链的各种信息，包括：
+  * 名称、Hash
+  * 创建时间
+  * 网络端口号
+  * 种子节点列表
+  * 共识节点列表  
+* 由LevelDBBlockchain在保存创建App链的交易时，同步更新和保存这个状态数据
 
 #### LocalNode
 * 负责建立和维护P2P网络连接，收发广播消息
@@ -122,7 +171,7 @@
 
 #### RootNode
 * 继承自LocalNode，代表根链的本地节点，只有唯一的对象实例
-* 把
+* 把cli里创建LocalNode的代码，换成创建RootNode
 
 * 成员变量 `LocalNode[] ChildNodes`
   * 记录所有应用链的LocalNode
@@ -139,10 +188,14 @@
   * 先判断该应用链对象是否存在  
   * 创建`ConsensusService`对象，调用该对象的`Start`函数
 
-* 成员函数 `Start(port, ws_port)`
-  * 先调用基类的`Start`函数
-  * 在根据配置文件里设定的关注列表，依次调用`FollowAppchain`
+* 成员函数 `StartAppNodes`
+  * 创建关注的所有App链的本地节点
+  * 根据配置文件里设定的关注列表，依次调用`FollowAppchain`
   * 如果配置了要运行共识服务，再调用`StartAppConsensus`
+
+* 成员函数 `Start(port, ws_port)`
+  * 先调用基类的`Start`函数，连接根链的P2P网络
+  * 再调用`StartAppNodes`函数，根据配置文件里设定的关注列表，连接App链的P2P网络
 
 #### RemoteNode
 * 修改对`LocalNode`静态对象的访问
