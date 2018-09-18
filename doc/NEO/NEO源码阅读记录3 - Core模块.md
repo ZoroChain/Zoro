@@ -137,10 +137,12 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
 
 #### 2.4 Witness
 * 继承ISerializable，见证人定义类,每次交易需要添加见证人
-  * `InvocationScript:`*byte[]* 需要验证的脚本数据
-  * `VerificationScript:`*byte[]* 指定验证哪些脚本的数据
+  * `InvocationScript:`*byte[]* 需要验证的脚本数据，通常是用私钥加密后的数据内容
+  * `VerificationScript:`*byte[]* 指定验证哪些脚本的数据，通常是一段VM字节码，由公钥长度+公钥+CheckSig指令组成，表示要执行一段检查签名的VM程序
   * `ScriptHash:`*UInt160* VerificationScript的hash
-  * `Size`、`Deserialize`、`Serialize`、`ToJson:`实现ISerializable的对应方法
+* Witness的作用是检验所见证的数据是否被篡改过
+  * 在Help.cs的`VerifyScripts`函数里，我们可以找到使用Witness的代码
+  * 用公钥解密被私钥加密过的数据，并和所见证的原始数据做比较，以此判断是否被篡改过
 
 #### 2.5 Block
 * 继承BlockBase，IInventory,IEquatable, 区块定义类，交易对象的集合，链上的主体
