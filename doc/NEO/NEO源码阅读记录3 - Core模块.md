@@ -74,7 +74,7 @@ DataCache<ECPoint, ValidatorState> validators = Blockchain.Default.GetStates<ECP
   ```
 #### 1.8 ContractState
 * 继承StateBase，合约定义类
-  * `Script:`*byte[]* 合约脚本
+  * `Script:`*byte[]* 合约脚本的二进制字节码，可以被虚拟机加载运行
   * `ParameterList:`*ContractParameterType[]* 合约参数列表
   * `ReturnType:`*ContractParameterType枚举* 返回类型
   * `ContractProperties:`*ContractParameterType枚举* 合约属性
@@ -83,7 +83,7 @@ DataCache<ECPoint, ValidatorState> validators = Blockchain.Default.GetStates<ECP
   * `Author:`*string* 作者
   * `Email:`*string* 邮箱
   * `Description:`*string* 描述
-  * `HasStorage:`*bool* 是否支持存储
+  * `HasStorage:`*bool* 是否需要使用存储
   * `HasDynamicInvoke:`*bool* 是否同步调用
   * `Payable:`*bool* 是否支持转账
   * `ScriptHash:`*UInt160* 合约脚本哈希
@@ -137,7 +137,7 @@ Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash�
 
 #### 2.4 Witness
 * 继承ISerializable，见证人定义类,每次交易需要添加见证人
-  * `InvocationScript:`*byte[]* 需要验证的脚本数据，通常是用私钥加密后的数据内容
+  * `InvocationScript:`*byte[]* 需要验证的脚本数据，通常是用私钥加密后的数据内容，也就是NEO中所说的签名数据
   * `VerificationScript:`*byte[]* 指定验证哪些脚本的数据，通常是一段VM字节码，由公钥长度+公钥+CheckSig指令组成，表示要执行一段检查签名的VM程序
   * `ScriptHash:`*UInt160* VerificationScript的hash
 * Witness的作用是检验所见证的数据是否被篡改过
