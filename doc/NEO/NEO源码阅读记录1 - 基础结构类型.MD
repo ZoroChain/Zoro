@@ -7,3 +7,6 @@
   * 32个字节
 * `ECPoint:`
   * 用来标记一个公钥
+* `Fixed8`
+
+* `BigDecimal`
