@@ -85,3 +85,61 @@ NEO 中智能合约分为应用合约和鉴权合约
   * Fulllogs：智能合约调试需要的文件地址
   * fullLogOnlyLocal：默认false，只存储在本地操作的智能合约交易的调试文件
 * 调试工具使用neondebuggui打开存储的调试文件
+
+## 鉴权合约的描述
+### 鉴权合约是一个验证合约，在交易的时候会进行调用，简单的鉴权合约不用发布，不过要是需要使用storage，还是要把合约发布出去
+# 合约问题
+## 合约更新问题
+* 合约更新更新的只是发布人的基本信息，对合约内部没有任何修改，所以合约更新不会对合约的hash有影响，合约发布基础费用100gas
+## 智能合约部署问题
+* 当合约需要被appcall调用时，当智能合约要作为一个类库使用时，才需要被部署。
+  * 当一个智能合约有可变的传入参数，此时它必须作为一个类库，由调用者（Invocation 交易）或者其它的智能合约提供参数。
+  * 当一个智能合约使用存储区（Storage）与动态调用（NEP4）时，必须作为一个类库。
+  * 当一个智能合约实现了 NEP-5（合约资产）时，需要将该合约部署到区块链上。
+* 仅由合约账户鉴权触发的合约，如锁仓合约、多方签名合约，不会被其它合约调用，所以无需部署。 “Return 1+1” 这样的合约，因为没有任何需要输入的参数，也无需部署。
+## 合约发布时的参数
+* parameter__list 合约入参byteArray（对合约发布没有任何影响的参数）
+```
+ThinNeo.Helper.HexString2Bytes("0710")
+```
+* return_type 合约出参byteArray（对合约发布没有任何影响的参数）
+```
+ThinNeo.Helper.HexString2Bytes("05")
+```
+* need int类型数据，参数赋值方式need_storage|need_nep4|need_canCharge
+  * need_storage 是否需要storage存储，0不需要，1需要，发布时多支付400gas
+  * need_nep4 是否需要nep4动态调用, 0不需要，2需要，发布时多支付500gas
+  * need_canCharge 是否收钱，0不需要，4需要
+* name 合约发布人的姓名
+* version 发布合约的版本号
+* auther 被发布合约的作者
+* email 发布合约的邮箱
+* description 发布合约的描述
+## 智能合约的调用
+* 调用合约的方式
+```
+[Appcall("0x1a328cdd53c7f1710b4006304e8c75236a9b18523f037cdf069a96f0d7f01379")]//合约hash
+public static extern int AnotherContract(string arg);
+
+public static void Main()
+{
+    AnotherContract("Hello");    
+}
+
+```
+# 合约发布失败条件
+* 发布失败的条件通常是gas费用不足
+* 使用代码发布的时候没有按照invokescript计算出来的gas发布合约
+## 合约调用失败条件
+* 这个看自己写的合约代码，可能是bug，更多的可能是调用条件问题
+# invokescript做了什么
+## 表面功能
+* invokescript为即将部署的合约计算花费
+* invokescript为已经发布的合约进行查询调用，Storage.Get
+* invokescript不会执行Storage.Put方法
+## 代码展示
+* 暂时未找到
+# Neo.Contract.Create怎么执行的
+* 智能合约录入方法，通过虚拟机的SysCall方法调用
+# 创建合约账户
+* 合约账户也就是我们常说的鉴权合约
