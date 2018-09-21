@@ -16,7 +16,8 @@
   * `Put(key, value):` 写入数据
   * `TryGet(key, out value):` 尝试获取数据
   * `Write(write_batch):` 批量写入数据
- 
+  * `Find(prefix):` 模糊查找，返回值是数组类型
+
 #### 3.DataCache
 * 用Dictionary记录key-value数据，常用接口:
   * `GetAndChange(key, factory) :`  

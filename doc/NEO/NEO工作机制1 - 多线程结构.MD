@@ -30,16 +30,20 @@
 * 异步函数4：`RemoteNode`的`ReceiveMessageAsync`
   * 等待并接收远程节点发送的消息包
 
-## 三、数据存储线程
+## 三、区块链的数据存储线程
 * `LevelDBBlockchain`类负责NEO区块链的数据存储
-* 线程：`PersistBlocks`
+* 线程函数：`PersistBlocks`
   * 负责向LevelDB中保存Block数据，有两种可能的情况：
     * 1.收到远程节点发来的Block，可能是自己主动请求同步区块时收到的，也可能是有新的块生成了
     * 2.cli或gui为了加速区块同步过程，加载了本地的区块缓存文件
   * 本地节点在广播一个Block的同时，会把该Block加入到`LevelDBBlockChain`的临时缓存区`block_cache`里
   * 在线程函数里会根据记录的当前同步高度，从临时缓存区里依次取出Block，并写入LevelDB
 
-## 四、RpcServer的指令处理
+## 四、钱包账户的数据存储线程
+* `WalletIndexer`类负责存储钱包关联的账户和交易
+* 线程函数：`ProcessBlocks`
+
+## 五、RpcServer的指令处理
 * `RpcServer`类负责提供基于HTTP接口的指令处理功能
 * 异步函数：`ProcessAsync`
   * 处理各种json格式的指令
