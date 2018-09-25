@@ -1,81 +1,59 @@
-# NEO 2.9源码阅读记录 - Transaction相关的类
-#### TransactionAttribute
-* 用来记录本次交易的说明，给交易取名字
-#### CoinReference
-* UTXO模型中的Input，用作一笔交易的某一个Input项
-* 通过Hash和索引可以定位到一笔交易中的某个Output项
- 
-#### TransactionOutput
-* UTXO模型中的Output
-* 包含资产类型，金额，收账人地址
+# NEO 2.9源码阅读记录 - Ledger模块 - Block相关的类
+### BlockBase
+* 继承自`IVerifiable`，可通过`GetScriptHashesForVerifying`获取用于验证签名的脚本Hash
+* 主要成员:
+  * MerkleRoot : 该区块中所有交易的Merkle树的根	
+    ```
+	该变量的生成代码:
+	MerkeRoot = MerkleTree.ComputeRoot(Transactions.Select(p => p.Hash).ToArray());
+    ```
+	将Block中所有Transaction作为最底层的叶子节点，按照Merkle树（类似二叉树）的生成算法，从叶子节点开始，每两个节点生成一个父节点，并将这两个节点的Hash合并后生成这个父节点的Hash。如此逐层向上，直至构建完整个Merkle树。
+    * Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash值，这里的MerkleRoot就是根节点的Hash。
+  * Timestamp : 生成该区块时的时间戳
+  * ConsensusData : Nonce
+	```
+	Nonce是Number once的缩写，在密码学中Nonce是一个只被使用一次的任意或非重复的随机数值。
+	创世块的ConsensusData使用比特币创世块的Nonce值2083236893。
+	```
+  * `NextConsensus:`*UInt160* 下一个区块的记账合约的散列值
+	```
+	该变量的生成代码：
+	NextConsensus = GetConsensusAddress (GetValidators(transactions).ToArray());
+	```
+  * `Script:` *Witness* 用于验证该区块签名的见证人  
 
-### Transaction
-* 继承自`IInventory`
-* 使用UTXO模型的交易记账数据，是所有交易类型的基类
-* 主要成员
-  * `Type：`交易类型
-  * `Version：`版本号，用来在代码升级后兼容老版本的数据
-  * `Inputs：`输入项列表
-    * 由交易的Hash和Output索引号组成
-    * 通过Hash和索引号可以唯一定位到一个交易的某个Output数据
-  * `Outputs：`输出项列表
-    * 由收款人地址、金额、货币类型组成
-  * `Witnesses:`见证人，用来验证交易发起人的签名
-  * `Hash：`交易数据的Hash值
-  * `SystemFee：`根据交易类型，返回需要的系统费用（系统费用在protocal.json中配置）
-* 主要函数
-  * `Verify:`验证交易是否有效
-  * `VerifyWitnesses:`验证见证人的签名
-  * `References:`返回用Input作为key，该Input所属交易中的Output作为value的映射表
-    * 可以用来快速计算交易中所有Input项的金额总和
-    * 可以用来快速收集交易中所有Input项的货币来源账户的地址
-  * `GetTransactionResults:`返回交易后，各类资产的变化量
-    * 一般的转账交易，这里不会有返回的资产变化量，因为交易的Input和Output的金额总和应该相等
-    * 如果返回的资产变化量大于零，表示有资产被回收消耗了，例如因为系统费用消耗了gas
-    * 如果返回的资产变化量小于零，表示有新的资产产生了，例如有账户认领了新的gas
+### Witness
+* 继承ISerializable，见证人定义类,每次交易需要添加见证人
+  * `InvocationScript:`*byte[]* 需要验证的脚本数据，通常是用私钥加密后的数据内容，也就是NEO中所说的签名数据
+  * `VerificationScript:`*byte[]* 指定验证哪些脚本的数据，通常是一段VM字节码，由公钥长度+公钥+CheckSig指令组成，表示要执行一段检查签名的VM程序
+  * `ScriptHash:`*UInt160* VerificationScript的hash
+* Witness的作用是检验所见证的数据是否被篡改过
+  * 在Help.cs的`VerifyScripts`函数里，我们可以找到使用Witness的代码
+  * 用公钥解密被私钥加密过的数据，并和所见证的原始数据做比较，以此判断是否被篡改过
 
-### TransactionState
+### Block
+* 继承自`BlockBase`和`IInventory`，区块定义类，交易对象的集合，链上的主体
+  * `Transactions:`*Transaction[]* 交易列表
+  * `Header:`*Header* 该区块的区块头
+  * `IInventory.InventoryType:`*InventoryType* 资产清单的类型
+  * `Equals(Block):`*bool* 比较当前区块与指定区块是否相等
+  * `Verify(bool):`*bool* 验证该区块是否合法，传参是否同时验证区块每一笔交易，返回区块的合法性
+  * `Size`、`Deserialize`、`Serialize`、`ToJson:`重写BlockBase的对应方法
+  * `Trim():`*byte[]* 把区块对象变为只包含区块头和交易Hash的字节数组，去除交易数据,返回只包含区块头和交易Hash的字节数组
+  * `RebuildMerkleRoot():` 根据区块中所有交易的Hash生成MerkleRoot
+  * `CalculateNetFee(IEnumerable<Transaction>):` 计算一组交易的矿工小费
+    * `netFee = amount_in - amount_out - amount_sysfee`
+    * `amount_in`表示所有Input项的总额
+    * `amount_in`表示所有Output项的总额
+    * `amount_sysfee`表示所有系统费用的总额
+    * 默认情况下`netfee`应该是零，当`netfee`大于零时，表示支付给矿工的小费
+  * `Trim():`*byte[]* 把区块对象变为只包含区块头和交易Hash的字节数组，去除交易数据
+
+### BlockState
 * 继承自`StateBase`，2.9版本中增加的类
-* 表示LevelDB中保存的交易数据
-* `BlockIndex` 交易所属区块的高度
-* `Transaction` 交易数据
-
-### Transaction的派生类
-#### RegisterTransaction
-* (已弃用) 用于资产登记的交易
-* 注册区块链货币，目前只有两种
-* BlockChain.GoverningToken和BlockChain.UtilityToken，分别对应neo和gas
- 
-#### MinerTransaction
-* 向矿工（NEO中指共识节点）支付小费的交易，每次出块所有交易里的剩余未分配金额分配给议长
-* 每次对一批交易发起共识处理时，会由议长生成一个MinerTransaction
-* MinerTransaction没有Input项，只可能有Output项
-* Output项的收款人是生成该交易的议长，货币类型是gas，金额是块内所有交易的剩余未分配金额的总和
-
-#### IssueTransaction
-* 用于分发资产的交易
-* RegisterTransaction登记的资产初始时没有所有者
-* 可以用IssueTransaction来将资产分发到某个账户
-* 创始块中有将NEO股转给默认候选人的交易
-
-#### ClaimTransaction
-* 用于分配 NeoGas 的交易
-* 先通过GetUnclaimedCoins获得还未行权的Gas总额，再发起ClaimTransaction来完成行权
-
-#### EnrollmentTransaction
-* (已弃用)用于报名成为记账候选人的特殊交易
-
-#### PublishTransaction
-* (已弃用)智能合约发布的特殊交易
-
-#### ContractTransaction
-* 合约交易，这是最常用的一种交易
-
-#### InvocationTransaction
-* 调用智能合约的特殊交易
-
-#### StateTransaction
-* 用来变更备选记账人的投票数和某个账户支持的记账人数量
+* 表示LevelDB中保存的区块数据
+* `SystemFeeAmount` 从起始高度到当前高度累积的GAS系统开销，在GAS的再分配时用到，计算某个高度区间内的累积回收的GAS
+* `TrimmedBlock` 区块头加上交易的Hash，不包括交易数据
 
 ### Blockchain
 * 继承自`Akka.Actor.UntypedActor`，作为一个Actor实体，可以收发和处理消息
@@ -135,11 +113,8 @@
   * `OnReceive(message)` 基于Actor模型的Akka框架中的消息接收函数
   * `OnRegister()` 收到注册观察者的消息，将该详细的发送者注册为观察者
   * `Persist(block)` 保存一个区块数据，根据区块内的交易以及合约，更改所有相关的状态数据
-  * `ProcessAccountStateDescriptor(descriptor, snapshot)`
-  * `ProcessValidatorStateDescriptor(descriptor, snapshot)`
+  * `ProcessAccountStateDescriptor(descriptor, snapshot)` 变更备选记账人的投票数
+  * `ProcessValidatorStateDescriptor(descriptor, snapshot)` 变更备选记账人的登记状态
   * `Props(system, store)` 创建一个`Blockchain`的Actor代理对象
   * `SaveHeaderHashList(snapshot)` 将区块的Hash保存到LevelDB，累积收到超过2000个新区块Hash时才会进行保存
   * `UpdateCurrentSnapshot()` 更新当前的数据库快照
-
-* 注意点
-  * `OnNewBlock(block)` 和NEO2.8版本相比，2.9版本里考虑了
