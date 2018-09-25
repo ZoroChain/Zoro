@@ -79,3 +79,22 @@ foreach (var i in SelectHigh)
 # GroupBy用法
 ## GroupBy描述
 * GroupBy是C#里Sysytem.Linq中的类，方法的使用类似sql语句中的groupby
+* GroupBy是按条件分组，返回一个字典的数组
+## GroupBy使用案例
+### GroupBy的使用见下面案例，从类A中选出类A，并用Where筛选出A中属性i大于8的对象，再用OrderBy依靠对象i的值进行排序，再依靠GroupBy根据条件分组
+```
+List<A> Scores = new List<A>();
+for (var i = 50; i > 0; i--)
+{
+    Scores.Add(new A(i % 10, "i" + i));
+}
+IEnumerable<IGrouping<int, A>> SelectHigh = Scores.Select(q => q).Where(p => p.i > 8).OrderBy(p => p.i).GroupBy(p => p.i);
+Console.WriteLine(SelectHigh.Count());
+foreach (var select in SelectHigh)
+{
+    Console.WriteLine(select.Key);
+    foreach (var i in select) {
+        Console.WriteLine(i.a);
+    }               
+}
+```
