@@ -46,34 +46,26 @@ NEO采用基于DBFT机制的共识算法，相关的技术文档可参考<http:/
 * 开启服务后，会处理本地节点接收的共识请求
 * 开启共识处理服务的方法
   * 在cli的config.json中可以配置本地节点是否要开启共识处理 
-    * `Paths里面Notifications参数代表共识节点，可以参与共识，共识节点配置在protocol.json中，非共识节点添加此参数将不能启动节点（搭建私链时测试发现，具体产生原因不明）`
-    * `Paths里面ApplicationLogs参数代表可以检测智能合约的notify，获取智能合约状态`
-    * `Paths里面Chain参数代表爬虫获取的块数据存储地址`
+    * 要开启共识的节点必须先开启钱包，可以在"UnlockWallet"里用"Path"字段指定钱包文件的位置，"Password"字段指定钱包的密码
+    * 把"UnlockWallet"里"StartConsensus"字段配置为true，表示开启共识服务
   * 在cli的shell中输入指令"start consensus"
 * 共识处理流程
-  * RPCServer接收到"sendrawtransaction"消息后，通过本地节点的`Relay`函数把该交易请求广播给其他远程节点
-  * 收到广播消息的节点，会将交易数据验证后记录在本地节点的mem_pool里
+  * RPCServer接收到"sendrawtransaction"消息后，通过`Blockchain.Ask`将该交易数据发给`Blockchain`处理
+  * `Blockchain`收到后，会验证该交易，并保存到`mem_pool`里，同时广播给其他远程节点
   * 每一轮共识会有一个最长处理时间（初始为15秒），当超过这个时长后，会更换视图并开始新一轮共识
   * 每次开始新一轮共识时，先选出一个共识节点作为本轮的议长
-  * 议长把本地节点记录的待出块交易记录在ConsensusContext里,并等待下一次的出块时间
+  * 议长把本地节点记录的待出块交易记录在`ConsensusContext`里,并等待下一次的出块时间
   * 到达出块时间后，议长先将新区块头签名，
-    * 记录待出块的交易数据时，会最前面插入一个新生成的MinerTransaction
+    * 记录待出块的交易数据时，会最前面插入一个新生成的`MinerTransaction`
   * 议长将这些交易的Hash和区块头的签名广播出去，并标记状态`RequestSent`
-  * 议员收到广播后，根据消息体里的Hash，从本地mem_pool里查找交易数据，并把这些交易数据记录到ConsensusContext里
+  * 议员收到广播后，根据消息体里的Hash，从本地mem_pool里查找交易数据，并把这些交易数据记录到`ConsensusContext`里
   * 议员在完成上一步操作后，也生成一个新区块头的签名，广播出去，并标记状态`SignatureSent`
   * 每个共识节点收到区块头的签名后，会判断是否达到了通过决议的最小节点数，如果通过了，会生成并广播新的区块，并标记状态为`BlockSent`
   * 本轮共识结束，在本地节点将区块保存到LevelDB后，开始新一轮的倒计时
 * 主要函数
   * `InitializeConsensus：`开始新一轮共识
   * `FillContext:`把本轮共识的要处理的交易保存到Context里
-  * `OnTimeout:`本轮共识过程的最长时间的倒计时函数
+  * `OnTimer:`本轮共识过程的计时函数，触发时表示倒计时结束
   * `SignAndRelay:`将共识消息包签名后广播出去
   * `OnPrepareRequestReceived:`收到并处理议长广播的需要共识的交易数据，只有议员会执行
   * `OnPrepareResponseReceived:`收到并处理议员广播的区块头签名数据
-* 疑问
-  * `BlockChain`的`GetConsensusAddress`函数没看懂
-    * Contract.CreateMultiSigRedeemScript(validators.Length - (validators.Length - 1) / 3, validators).ToScriptHash();
-  * `SignAndRelay`函数没看懂
-  * `CheckSignatures`函数没看懂
-  * 每次更换视图时，共识过程的最长处理时间增加一倍？
-    * `timer.Change(TimeSpan.FromSeconds(Blockchain.SecondsPerBlock << (view_number + 1)), Timeout.InfiniteTimeSpan);`
