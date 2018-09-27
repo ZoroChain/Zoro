@@ -57,13 +57,24 @@
 
 ### Blockchain
 * 继承自`Akka.Actor.UntypedActor`，作为一个Actor实体，可以收发和处理消息
-* 主要成员变量:
-  * `Register` Akka消息对象类，收到该消息后，会把发送者加入到观察者队列，通过`Distribute()`可以给观察者们发送消息通知
-  * `ApplicationExecuted` Akka消息对象类，在交易上链时，将合约脚本的执行结果（包括Notifications）发送给插件`ApplicationLogs`，后者会将结果保存到本地的AppliationLog里
-  * `PersistCompleted` Akka消息对象，在每次成功出块后，通知共识模块开始下一次共识流程
-  * `Import` Akka消息对象，在导入本地的离线包数据时，由插件`ImportBlocks`发送给`Blockchain`，收到该消息后`Blockchain`会将消息里的区块数据保存到LevelDB里
-  * `ImportCompleted` Akka消息对象，在`Blockchain`保存完`Import`消息里所有的区块后，会发该消息通知`ImportBlocks`插件
+* 区块链对象，负责区块的上链保存，接收并缓存新发起的交易
 
+* 消息对象
+  * `Register` 
+    * 收到该消息后，会把发送者加入到观察者队列，通过`Distribute()`可以给观察者们发送消息通知
+  * `ApplicationExecuted` 
+    * 在交易上链时，将合约脚本的执行结果（包括Notifications）发送给插件`ApplicationLogs`
+    * 后者会将结果保存到本地的AppliationLog里
+  * `PersistCompleted` 
+    * 在每次成功出块后，通知共识模块开始下一次共识流程
+  * `Import` 
+    * 在导入本地的离线包数据时，由插件`ImportBlocks`发送给`Blockchain`
+    * 收到该消息后`Blockchain`会将消息里的区块数据保存到LevelDB里
+  * `ImportCompleted` 
+    * 在`Blockchain`保存完`Import`消息里所有的区块后，会发该消息通知`ImportBlocks`插件
+
+
+* 主要成员变量:
   * `SecondsPerBlock` 间隔多少秒出一次块
   * `TimePerBlock` 每次出块的间隔时间
 
@@ -81,16 +92,18 @@
     * 按区块高度顺序，记录所有区块头的Hash数据
     * 初始化时会加载LevelDB中保存的所有区块头的Hash数据
     * 通过这个列表可以快速获得本地的区块高度，以及按高度查询某个区块的Hash
+
   * `stored_header_count` 记录`header_index`中已经存储的Hash数量
 
   * `block_cache:Dictionary<UInt256, Block>` 记录未出块的区块数据，在区块上链后会从`block_cache`里删除该区块的数据
   * `block_cache_unverified:Dictionary<uint, Block>` 记录还未验证的区块数据
+
   * `mem_pool:ConcurrentDictionary<UInt256, Transaction>`
     * 记录已通过校验的，所有还未保存到块的交易
     * 每次把块写入DB后，会从mem_pool里删除记录在块中的交易
     * 每次出块后，会重新校验mem_pool里剩余的交易
 
-  * `RelayCache` 广播数据缓存，用来避免重复请求本地已有的数据，目前只用来优化共识消息
+  * `RelayCache` 广播数据的缓存，降低从LevelDB中获取数据的次数，目前只有共识数据使用了这个缓存
   * `subscribers` 观察者，通过向`Blockchain`发送`Register`来注册观察者
   * `currentSnapshot` 当前数据库快照，每次DB数据发生变更时，需要调用`UpdateCurrentSnapshot`重新获取快照
 

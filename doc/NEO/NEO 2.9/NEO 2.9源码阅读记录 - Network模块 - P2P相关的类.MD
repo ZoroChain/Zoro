@@ -20,7 +20,7 @@
     AddrPayload payload = message.Payload.AsSerializable<AddrPayload>();
     ``` 
 ### Peer
-* 继承自`Akka.Actor.UntypedActor`，作为一个Actor实体，可以收发和处理消息
+* 抽象类，继承自`Akka.Actor.UntypedActor`，作为一个Actor实体，可以收发和处理消息
 * `Peer`表示一个P2P网络的通信节点，负责建立P2P网络的连接
 
 * 消息对象
@@ -40,7 +40,7 @@
   * `ConnectToPeer(endPoint)`
     * 用TCP协议连接一个远程节点
   * `OnReceive(message)`
-    * 消息处理函数，根据收到的消息类型，调用对应的处理函数
+    * Actor的消息处理函数，根据收到的消息类型，调用对应的处理函数
   * `OnStart(port, ws_port)`
     * 启动本地节点，开始接收远程节点的连接请求，并定时主动连接远程节点
   * `OnTcpConnected(remote, local)`
@@ -67,7 +67,7 @@
   * 已连接节点数达到或超过10个以后，不再主动连接其他节点
 
 ### LocalNode
-* 本地通信节点，继承自`Peer`，只有一个实例存在，负责处理NEO节点的各种网络消息
+* 本地通信节点，继承自`Peer`，只有一个实例存在，负责向已连接的远程节点发送广播消息
 
 * 消息对象
   * `Relay` 先在本地处理，然后再广播到远程节点
@@ -85,7 +85,7 @@
   * `NeedMorePeers` 
     * 请求远程节点地址或者加载种子节点地址
   * `OnReceive` 
-    * 消息处理函数
+    * Actor的消息处理函数
   
   * `OnRelay(inventory)` 
     * 收到了LocalNode.Relay消息时触发
@@ -98,19 +98,201 @@
 
   * `OnRelayDirectly(inventory)` 
     * 收到了LocalNode.RelayDirectly消息时触发
-    * 调用`Connections.Tell(new RemoteNode.Relay { Inventory = inventory });`把消息投递给所有的RemoteNode
+    * 调用以下代码把消息投递给所有的RemoteNode
+    ```
+    Connections.Tell(new RemoteNode.Relay { Inventory = inventory });
+    ```
     * `RemoteNode`收到后会调用`OnRelay(inventory)`，把该数据的清单发送到远程节点
   
   * `OnSendDirectly(inventory)` 
     * 收到了LocalNode.SendDirectly消息时触发
     * 调用`Connections.Tell(inventory);`把消息投递给所有的RemoteNode
     * `RemoteNode`收到后会调用`OnSend(inventory)`，把数据发送到远程节点
-    
+
+* 消息投递的范例代码
+  ```
+  system.LocalNode.Tell(new LocalNode.Relay { Inventory = block });
+  ```
+  * 用Relay消息向LocalNode投递一个block
+  * LocalNode收到消息后会执行`OnRelay(block);`
+
 ### Connection
+* 抽象类，继承自`Akka.Actor.UntypedActor`，作为一个Actor实体，可以收发和处理消息
+* `Connection`表示一个远程节点的网络连接，负责和该节点之间的网络通信
+
+* 消息对象
+  * `Timer` 定时器消息
+  * `Ack` TCP确认消息，用于流量控制，避免不断的发消息造成远程节点的端口拥堵
+
+* 主要成员变量
+  * `timer` 
+    * 计时器，超过时间没有收到消息，会主动断开连接，
+    * 刚建立连接时设为10秒，收到第一个消息之后设为1分钟
+  * `tcp`
+    * TCP连接的Actor对象
+    * 可调用`tcp.Tell`来向远程节点发消息
+  * `ws`
+    * WebSocket对象
+    * 可调用ws对象提供的函数和远程节点进行消息收发
+
+* 主要函数
+  * `OnReceive(message)`
+    * Actor的消息处理函数
+  * `OnAck`
+    * 远程节点每次收完一个消息后会发回Ack消息，表示接收成功
+    * 收到了Ack消息，表示可以接着发送下一个消息了
+  * `OnReceived(data)`
+    * 收到了消息主体，调用RemoteNode.OnData做进一步处理
+  * `OnData`
+    * 虚函数，在RemoteNode里实现
+  * `Disconnect`
+    * 主动和远程节点中断连接
+    * 超过时间没有收到消息时会触发
+    * RemoteNode在处理消息的过程中发生异常时会触发
+  * `SendData`
+    * 向远程节点发送消息
+  * `WsReceive`
+    * 接收WebSocket的消息
+
+* Ack方式的流量控制
+  * 发送消息的一方，每次发送完一个消息后，会等待接收方发回Ack确认消息
+  * 接收方在完整接收完一个消息后，会向发送方发送Ack消息
+  * 发送方在收到Ack消息后，才会继续向接收方发送后续的消息
 
 ### RemoteNode
+* 远程通信节点，继承自`Connection`，每连接上一个远程节点，会为该节点创建一个RemoteNode
+* `RemoteNode`负责和远程节点之间的消息收发
+
+* 消息对象
+  * Relay 向远程节点发送数据的清单
+
+* 主要成员变量
+  * `protocol` 处理NEO消息的Actor对象
+  * `message_queue_high` 高优先级的消息队列
+  * `message_queue_low` 低优先级的消息队列
+  * `msg_buffer` 消息接收缓存区
+  * `ack` 标记是否收到了Ack确认消息，只有为true时，才会继续发送消息队列里的消息
+  * `verack` 标记是否收到了版本确认消息，为true时，已完成网络连接的初始化流程
+
+* 主要函数
+  * `RemoteNode`构造函数
+    * 每次建立一个网络连接时会创建RemoteNode对象，执行构造函数
+    * 构造函数内部会创建`ProtocolHandler`的Actor对象，用来处理NEO消息
+    * 把自己记录到LocalNode的远程节点列表里，以便于响应其他节点发来的请求可连接的节点地址的消息
+    * 向远程节点发送version消息
+  * `CheckMessageQueue`
+    * 按照优先级高低，发送消息队列中的消息
+    * 每次发送一个消息，必须先收到Ack确认后才会发送
+  * `EnqueueMessage`
+    * 把要发送的消息加入到消息队列
+  * `OnReceive`
+    * Actor的消息处理函数
+  * `OnAck`
+    * 收到Ack确认消息，检查消息队列，发送下一个消息
+  * `OnData(data)`
+    * 收到了消息主体，先加入到接收缓存区，再依次解析处理缓存区里的消息
+  * `OnRelay(inventory)`
+    * 收到了RemoteNode.Relay消息时触发
+    * 向远程节点发送数据的清单
+  * `OnSend(inventory)`
+    * 收到了一个inventory对象时触发
+    * 向远程节点发送数据的实体
+  * `OnSetVerack`
+    * 收到了verack消息时触发
+    * 表示和该远程节点的网络连接初始化已经完成，可以正常发送消息了
+  * `OnSetVersion`
+    * 收到了version消息是触发
+    * 会检查是否是重复的连接
+    * 通过检查后向对方发送verack消息作为确认
+  * `SendMessage`
+    * 调用`Connnect.SendData`向远程节点发送消息
+    * 把`ack`标记为`false`，等待接收对方的Ack消息
+  * `TryParseMessage`
+    * 尝试从接收缓存区里提取一个消息对象
+    * 只有在接收了一个消息包的完整数据后，才能从缓存区里提取出消息对象
+  * `Props`
+    * 创建Actor的配置对象，返回值作为参数调用`ActorSystem.ActorOf`得到Actor对象
 
 ### ProtocolHandler
+* 继承自`Akka.Actor.UntypedActor`，作为一个Actor实体，可以收发和处理消息
+* `ProtocolHandler` 负责解析和处理NEO的各种网络消息
+
+* 消息对象
+  * `SetVersion` 通知`RemoteNode`收到了version消息
+  * `SetVerack` 通知`RemoteNode`收到了verack消息
+  * `SetFilter`
+
+* 主要成员变量
+  * `knownHashes:`*HashSet<UInt256>* 
+    * 在收到`inv`消息时，记录清单的Hash
+    * 下次再收到`inv`消息时，过滤掉已记录过的Hash
+    * 避免重复请求相同的数据
+  * `sentHashes:`*HashSet<UInt256>* 
+    * 在收到`getdata`消息时，记录清单的Hash
+    * 下次再收到`getdata`消息时，过滤掉已记录过的Hash
+    * 避免重复发送相同的数据
+  * `version:`*VersionPayload* 远程节点发来的版本消息主体
+  * `verack` 标记是否收到了`verack`消息，为true时，已完成网络连接的初始化流程
+  * `bloom_filter`
+
+* 主要成员函数
+  * `OnReceive`
+    * Actor的消息处理函数
+ 
+  * `OnVersionMessageReceived`    
+    * 收到了`version`消息时触发
+    * 必须是建立连接后收到的第一个消息
+    * 记录收到的版本消息主体，并通知RemoteNode
+  
+  * `OnVerackMessageReceived`
+    * 收到了`verack`消息时触发
+    * 把`verack`标记为true，表示已完成网络连接的初始化流程
+  
+  * `OnGetAddrMessageReceived`
+    * 收到了`getaddr`消息时触发
+    * 用`addr`消息向对方发送已连接的远程节点地址
+  
+  * `OnAddrMessageReceived`
+    * 收到了`addr`消息时触发
+    * 通知`LocalNode`记录远程节点的地址
+    
+  * `OnGetHeadersMessageReceived`
+    * 收到了`getheaders`消息时触发
+    * 用`headers`消息向对方发送区块头数据
+    * 每次最多发送2000个区块头
+  
+  * `OnHeadersMessageReceived`
+    * 收到了`headers`消息时触发
+    * 通知`Blockchain`记录收到的区块头数据
+    
+  * `OnGetBlocksMessageReceived`
+    * 收到了`getblocks`消息时触发
+    * 用`inv`消息向远程节点发送本地的区块清单列表，一次最多500个
+
+  * `OnInvMessageReceived`
+    * 收到了`inv`消息时触发
+    * 先过滤掉已发送过获取数据请求的或者是数据在本地已经存在的清单
+    * 再向`TaskManager`投递`NewTasks`消息，让后者做进一步处理
+    * `TaskManager`会向远程节点发送`getdata`消息
+  
+  * `OnGetDataMessageReceived`
+    * 收到了`getdata`消息时触发
+    * 按照所请求的数据类型，向远程节点发送`tx`，`block`或者`consensus`数据实体
+  
+  * `OnInventoryReceived`
+    * 收到了`tx`，`block`或者`consensus`的数据实体时触发
+    * 向`LocalNode`发送`Relay`消息，让`Blockchain`来处理收到的数据
+  
+  * `OnMemPoolMessageReceived`
+    * 收到了`mempool`消息时触发
+    * 向远程节点发送本地`mem_pool`里的交易清单
+
+  * `OnFilterAddMessageReceived`    
+  * `OnFilterClearMessageReceived`
+  * `OnFilterLoadMessageReceived`
+
+  * `Props`
+    * 创建Actor的配置对象，返回值作为参数调用`ActorSystem.ActorOf`得到Actor对象
 
 ### TaskSession
 
