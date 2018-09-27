@@ -18,7 +18,10 @@
   * 先用`Akka.Actor.Props.Create`创建一个Actor的Props
   * 再使用`ActorSystem.ActorOf(Props)`来创建一个Actor
   * 或者使用`Context.ActorOf(Props)`来创建一个Actor，这里的`Context`是Akka.Actor.UntypedActor类的静态方法
+* ActorSystem
+  * Actor的管理类
 
+### NEO 2.9中的Actor模型使用方式
 * NEO 2.9中把以下几个对象作为Actor来使用
   * `Connection`
   * `Peer`
@@ -26,3 +29,10 @@
   * `TaskManager`
   * `Blockchain`
   * `ConsensusService`
+
+* NEO 2.9中的ActorSystem
+  * `NeoSystem` 类里创建了ActorSystem
+  * `NeoSystem` 构造函数里会创建Blockchain，LocalNode，TaskManager
+  * `StartConsensus` 创建ConsensusService对象，发Start消息，启动共识服务
+  * `StartNode` 发Start消息，启动LocalNode
+  * `StartRpc` 创建RpcServer对象，启动RPC服务
