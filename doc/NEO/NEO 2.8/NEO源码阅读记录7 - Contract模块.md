@@ -40,7 +40,7 @@
 #### Contract
 * 智能合约对象
 * 主要成员变量
-  * `Script:byte[]`：合约地址的字节码
+  * `Script:byte[]`：合约的字节码
   * `ParameterList:ContractParameterType[]`：参数列表
 * 主要函数
   * `CreateSignatureContract(ECPoint publicKey)`
