@@ -44,7 +44,7 @@ AccountState account = snapshot.Accounts.TryGet(hash);
 
 ### SpentCoinState
   * NEO货币的花费记录，使用获得NEO货币的交易Hash作为索引，只记录`GoverningToken`的消耗记录
-  * `SpentCoinState`可以用来追溯还未行权的GAS总额，并为ClaimTransaction提供来源依据
+  * 用来追溯还未行权的GAS总额，并为ClaimTransaction提供来源依据
   * `TransactionHash:`*UInt256* 本次花费的余额来源，即UTOX模型中前一次交易输入项的Hash
   * `TransactionHeight:`*uint* 前一次交易的区块高度
   * `Items:`*Dictionary<ushort, uint>* 前一次交易输出项的索引编号，当前区块高度
