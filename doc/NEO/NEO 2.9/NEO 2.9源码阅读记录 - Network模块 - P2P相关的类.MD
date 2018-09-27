@@ -295,6 +295,72 @@
     * 创建Actor的配置对象，返回值作为参数调用`ActorSystem.ActorOf`得到Actor对象
 
 ### TaskSession
+* 任务会话，记录该会话里正在运行的数据同步任务
+* 每个远程节点会有一个对应的任务会话
+* 主要成员变量
+  * `Tasks:`*Dictionary<UInt256, DateTime>* 当前正在运行的任务，记录该任务同步的数据Hash，以及任务的开始时间
+  * `AvailableTasks:`*HashSet<UInt256>* 记录被重复请求的数据Hash
 
 ### TaskManager
+* 继承自`Akka.Actor.UntypedActor`，作为一个Actor实体，可以收发和处理消息
+* 只有一个实例存在，负责管理NEO节点之间的数据同步流程
+* 这里的数据同步是指向远程节点请求`tx`，`block`，`consensus`数据
 
+* 消息对象
+  * `Register` 注册一个`TaskSession`
+  * `NewTasks` 开始一个数据同步任务，按照清单列表，分批次发送数据同步请求，每批次最多500个
+  * `TaskCompleted` 一个数据同步任务完成了，该消息在收到数据实体时会被投递
+  * `HeaderTaskCompleted` 同步区块头的任务完成了，该消息在收到区块头的数据时会被投递
+  * `RestartTasks` 
+  * `Timer` 内部使用的定时器消息，每30秒触发一次
+
+* 主要成员变量
+  * `knownHashes` 记录已完成同步的数据Hash，在`OnNewTasks`里用来过滤请求同步的Hash，避免同步相同的数据
+  * `globalTasks` 记录已开始同步的数据Hash，在`RequestTasks`里被用来过滤本地已有的区块数据，避免重复请求已有的区块数据
+  * `sessions` 会话列表，每个远程节点会有一个会话
+  * `timer` 定时器
+
+* 主要函数
+  * `OnReceive` 
+    * Actor的消息处理函数
+  
+  * `OnRegister`
+    * 收到了`Register`消息时触发
+    * 为消息发送者创建一个`TaskSession`，记录到会话列表
+    * 开始运行该会话的数据同步任务
+  
+  * `OnNewTasks`  
+    * 当`ProtocolHandler`收到`inv`消息时，会向`TaskManager`投递`NewTasks`消息
+    * 按批次向`RemoteNode`投递`getdata`消息，后者会向远程节点请求同步数据
+  
+  * `OnRestartTasks`
+    * 收到了`RestartTasks`消息时触发
+  
+  * `OnTaskCompleted`
+    * 收到了`TaskCompleted`消息时触发，在收到数据实体时会被投递
+    * 在`knownHashes`里记录已完成同步的数据Hash
+    * 在`globalTasks`里清除掉已完成同步的数据Hash
+    * 尝试开始一个新的任务
+  
+  * `OnHeaderTaskCompleted`  
+    * 收到了`HeaderTaskCompleted`消息时触发，在收到区块头的数据时会被投递
+    * 清除对应的任务标记
+    * 尝试开始一个新的任务
+
+  * `OnTerminated(actor)`
+    * 当`TaskSession`的创建者（远程节点）被销毁时触发
+    * 从会话列表里清理会话
+
+  * `OnTimer`
+    * 每30秒触发一次
+    * 检查所有已开始的数据同步任务，超过1分钟的视为超时，会重新同步该数据
+    * 尝试开始一个新的任务
+
+  * `RequestTasks(session)`
+    * 开始某个会话的一次数据同步任务
+    * 只有在所有的任务都已完成的情况下才会开始下一个任务
+    * 分三种优先级运行
+      * 先取出会话里记录的，因重复而没有开始的任务，运行这些任务
+        * 这些记录应该在上一次任务完成时被清除掉，没有清除掉的说明同步过程没有完成，需要重复执行
+      * 如果没有需要重复执行的任务，则判断是否需要同步区块头
+      * 最后判断是否要同步区块数据
