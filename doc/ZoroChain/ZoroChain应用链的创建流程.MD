@@ -8,13 +8,13 @@
 * 其他节点在同步根链区块时会得到这个创建交易，并同样保存应用链的State数据
 
 ### 用于创建应用链的系统调用
-* 类似于发布合约时调用的"Neo.Contract.Create"，创建应用链时需要调用"Zoro.App.Create"
-* 使用"sendrawtransaction"发起创建应用链的交易，在该交易里附带上调用"Neo.Contract.Create"的脚本
-* "Zoro.App.Create"作为一个系统调用，其内部会创建一个State，用于记录应用链的相关信息
+* 类似于发布合约时调用的"Neo.Contract.Create"，创建应用链时需要调用"Zoro.AppChain.Create"
+* 使用"sendrawtransaction"发起创建应用链的交易，在该交易里带上调用"Zoro.AppChain.Create"的脚本
+* "Zoro.AppChain.Create"作为一个系统调用，其内部会创建一个State，用于记录应用链的相关信息
 
 ### 应用链的State
-* LevelDB里用AppState记录应用链的状态数据
-* AppState里记录了应用链的相关信息，包括名称、Hash、创建者、创建日期、网络端口号、种子节点地址、备选记账人地址
+* LevelDB里用AppChainState记录应用链的状态数据
+* AppChainState里记录了应用链的相关信息，包括名称、Hash、创建者、创建日期、网络端口号、种子节点地址、备选记账人地址
 
 ### 启动种子节点
 * 在种子节点的配置文件里，把想要创建的应用链加入到关注列表里
