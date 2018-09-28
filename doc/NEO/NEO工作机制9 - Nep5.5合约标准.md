@@ -96,7 +96,7 @@ private static bool Transfer(byte[] from, byte[] to, BigInteger amount, byte[] c
 }
 ```
 #### Nep5.5
-* 在Nep5基础上的扩展，增加了一些新的方法
+* 在Nep5基础上的扩展，增加了一些新的方法，为实现NEP5合约资产和UTXO模型的全局资产之间的兑换定义了标准方法
 
 * transferAPP
 * getTxInfo 获取交易信息
