@@ -133,3 +133,109 @@
         SetTxInfo(null, sender, value);
         Transferred(null, sender, value); 
     ```
+  * 获取名字
+  ```
+    public static string Name() => "NEP5 GAS";
+  ```
+  * 获取单位
+  ```
+    public static string Symbol() => "CGAS";
+  ```
+  * 获取合约支持
+  ```
+    public static string SupportedStandards() => "{\"NEP-5\", \"NEP-7\", \"NEP-10\"}";
+  ```
+  * 获取nep5总量
+  ```
+    public static BigInteger TotalSupply()
+    {
+        StorageMap contract = Storage.CurrentContext.CreateMap(nameof(contract));
+        return contract.Get("totalSupply").AsBigInteger(); //0.1
+    }
+  ```
+  * nep5交易
+    * 转账后要上链做notification，先判断地址合法性，交易数量合法性，判断to是不是可交易的地址，检查这笔合约交易是否from发起，并且from与callscript相同（callscript是指调用此合约的合约地址），后面就是基本的转账记录
+    ```
+        private static bool Transfer(byte[] from, byte[] to, BigInteger amount, byte[] callscript)
+        {
+            //Check parameters
+            if (from.Length != 20 || to.Length != 20)
+                throw new InvalidOperationException("The parameters from and to SHOULD be 20-byte addresses.");
+            if (amount <= 0)
+                throw new InvalidOperationException("The parameter amount MUST be greater than 0.");
+            if (!IsPayable(to))
+                return false;
+            if (!Runtime.CheckWitness(from) && from.AsBigInteger() != callscript.AsBigInteger()) /*0.2*/
+                return false;
+            StorageMap asset = Storage.CurrentContext.CreateMap(nameof(asset));
+            var fromAmount = asset.Get(from).AsBigInteger(); //0.1
+            if (fromAmount < amount)
+                return false;
+            if (from == to)
+                return true;
+
+            //Reduce payer balances
+            if (fromAmount == amount)
+                asset.Delete(from); //0.1
+            else
+                asset.Put(from, fromAmount - amount); //1
+
+            //Increase the payee balance
+            var toAmount = asset.Get(to).AsBigInteger(); //0.1
+            asset.Put(to, toAmount + amount); //1
+            
+            SetTxInfo(from, to, amount);
+            Transferred(from, to, amount);
+            return true;
+        }
+    ```
+  * 标记转出Refund，参数from是要取款的地址和发交易的地址
+    * 判断转出地址是否合法
+    ```
+        if (from.Length != 20)
+                throw new InvalidOperationException("The parameter from SHOULD be 20-byte addresses.");
+    ```
+    * 获取本次交易信息，获取本次交易第一个输出，此输出资产是gas，此输出地址是合约地址，from是此次交易的执行人，此交易ID还没有存到Storage上
+    ```
+        var tx = ExecutionEngine.ScriptContainer as Transaction;
+        //output[0] Is the asset that the user want to refund
+        var preRefund = tx.GetOutputs()[0];
+        //refund assets wrong, failed
+        if (preRefund.AssetId.AsBigInteger() != AssetId.AsBigInteger()) return false;
+
+        //Not to itself, failed
+        if (preRefund.ScriptHash.AsBigInteger() != ExecutionEngine.ExecutingScriptHash.AsBigInteger()) return false;
+
+        //double refund
+        StorageMap refund = Storage.CurrentContext.CreateMap(nameof(refund));
+        if (refund.Get(tx.Hash).Length > 0) return false; //0.1
+
+        if (!Runtime.CheckWitness(from)) return false; //0.2
+    ```
+    * 获取from有多少资产，与此次交易的输出资产比较，判断是否成立,删除相应资产，refund记录相应资产
+    ```
+        StorageMap asset = Storage.CurrentContext.CreateMap(nameof(asset));
+        var fromAmount = asset.Get(from).AsBigInteger(); //0.1
+        var preRefundValue = preRefund.Value;
+        if (fromAmount < preRefundValue)
+            return false;
+        else if (fromAmount == preRefundValue)
+            asset.Delete(from); //0.1
+        else
+            asset.Put(from, fromAmount - preRefundValue); //1
+        refund.Put(tx.Hash, from); //1
+    ```
+    * 减少合约货币总量，记录交易信息，记录转账信息，记录提款信息
+    ```
+        StorageMap contract = Storage.CurrentContext.CreateMap(nameof(contract));
+        var totalSupply = contract.Get("totalSupply").AsBigInteger(); //0.1
+        totalSupply -= preRefundValue;
+        contract.Put("totalSupply", totalSupply); //1
+
+        SetTxInfo(from, null, preRefundValue);
+        Transferred(from, null, preRefundValue);
+        Refunded(tx.Hash, from);
+    ```
+## CGAS使用
+* 对CGAS合约转账需要拼接ScriptBuilder调用MintTokens方法，并往合约地址转账，转多少gas就生成多少CGAS
+* 从CGAS提款，需要先用提款地址发交易拼接ScriptBuilder调用Refund方法，并用合约地址转账给合约地址，创建一个utxo做标记，然后再发起一次从合约地址到提款地址的交易，两次交易的输出数额相同
