@@ -115,7 +115,11 @@ public static TransferInfo GetTxInfo(byte[] txId)
     return Helper.Deserialize(result) as TransferInfo;
 }
 ```
-* mintTokens 根据合约地址收到的gas转成cgas货币
+* mintTokens 
+  * 将全局资产兑换成NEP5合约资产，例如（GAS兑换成cgas）
+  * 在UTXO模型里指定要兑换的货币来源，用NEP5合约地址作为收款人地址，并指定兑换金额
+  * 兑换成功后，合约脚本会增加合约货币的总量，并把本次兑换的NEP5资产金额转到提供货币来源的账户
+  * 同时，该NEP5合约在UTXO模型里的账户地址上也会增加本次兑换的金额，作为以后refund时的货币来源
 ```
 if (method == "mintTokens") return MintTokens();
 ```
@@ -167,8 +171,15 @@ public static bool MintTokens()
     return true;
 }
 ```
-* refund 把合约资产兑换成公共资产cgas兑换成gas
+* refund 把NEP5合约资产兑换成全局资产（例如：cgas兑换成GAS）
   * from 从合约中哪个地址兑换
+  * 整个兑换过程分为两次交易
+    * 第一笔交易，用NEP5合约地址向该合约自身转账，转账金额是要兑换的金额（转账前后UTXO模型的全局资产不发生变化）
+    * 同时在该交易里调用合约的refund方法，传入要兑换资产的账户地址
+    * refund执行时会从指定账户扣除NEP5资产余额，并记录本次交易的信息，以便以后查询
+    * 要注意这个交易的前提条件是NEP5合约在UTXO模型的账户地址上必须要有对应金额的全局资产（之前通过mintTokens转账过来的）    
+    * 在第一笔交易被确认以后，紧接着发起第二笔的一个UTXO模型的普通转账交易
+    * 在第二笔交易里，用第一笔交易的输出作为货币来源和转账金额，from作为收款人地址，成功后即完成了兑换
 ```
 if (method == "refund") return Refund((byte[])args[0]);
 ```
@@ -217,7 +228,7 @@ public static bool Refund(byte[] from)
     return true;
 }
 ```
-* getRefundTarget 获取兑换cgas兑换成gas的交易信息
+* getRefundTarget 获取refund时记录的，把NEP5资产兑换成全局资产的交易信息
 ```
 if (method == "getRefundTarget") return GetRefundTarget((byte[])args[0]);
 ```
