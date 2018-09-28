@@ -28,6 +28,8 @@
 * 主要函数
   * `Verify:`验证交易是否有效
   * `VerifyWitnesses:`验证见证人的签名
+  * `GetScriptHashesForVerifying:`获取验证签名脚本的Hash，用来验证验签脚本的合法性
+    * 在UTXO模型里，收款人地址就是验签脚本的Hash
   * `References:`返回用Input作为key，该Input所属交易中的Output作为value的映射表
     * 可以用来快速计算交易中所有Input项的金额总和
     * 可以用来快速收集交易中所有Input项的货币来源账户的地址
