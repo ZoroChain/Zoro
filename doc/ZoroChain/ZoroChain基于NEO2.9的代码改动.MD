@@ -1,6 +1,5 @@
 # ZoroChain基于NEO的代码改造
 ## 多链结构的解释
-
 ### 根链和应用链
 * ZoroChain采用多链结构，分为根链和应用链
 * 根链作为管理链，记录应用链的创建和变更交易，全局资产交易，以及其他的跨链交易信息
@@ -9,6 +8,7 @@
 ### 链的识别方式
 * ZoroChain里每个链都有一个名字字符串，该名字可以和其他的链重名
 * 此外，每个链会有一个唯一的Hash值表示该链的地址，用来快速索引该链
+* 根链的Hash暂定为空
 
 ## zoro库的代码改动
 ### Ledger模块的修改
@@ -224,6 +224,10 @@
   * 把目前ConsensusService.cs里的`LocalNode.Singleton`替代成新的变量`localNode`
   * 把目前ConsensusService.cs里的`Blockchain.Default`替换成新的变量`localNode.Blockchain`
 
+#### ConsensusContext
+* 修改函数`Reset`
+  * 增加参数`blockchain`，把`Blockchain.Singleton`
+
 ### NeoSystem模块的修改
 #### Settings
 * 增加关注的应用链列表
@@ -241,25 +245,23 @@
 * 新增成员变量 `ZoroSystem[] AppChainSystems`
   * 记录所有应用链的`ZoroSystem`
 
+* 新增函数`GetAppChainSystem(hash)`
+  * 根据应用链的Hash，获取应用链的`ZoroSystem`
+  * 在处理RPC指令时，需要先根据目标链的Hash，获得到对应的`ZoroSystem`对象，才能向该对象里的`LocalNode`发消息
+
 * 修改函数 `StartNode(port, ws_port)`
-  * 在函数尾部调用`StartAppNodes`函数，根据配置文件里设定的关注列表，连接应用链的P2P网络
+  * 在函数尾部调用`StartAppChains`函数，根据配置文件里设定的关注列表，连接应用链的P2P网络
 
-* 成员函数 `StartAppNodes`
+* 成员函数 `StartAppChains()`
   * 根据配置文件里设定的关注列表，依次调用`FollowAppChain`
-  * 如果配置了要运行共识服务，再调用`StartAppChainConsensus`
 
-* 成员函数 `FollowAppChain(hash)`
+* 成员函数 `FollowAppChain(hash, startConsensusu)`
   * 关注某一条应用链
   * 先判断要关注的应用链是否存在，通过应用链的`hash`查询数据库中的`AppChainState`
   * 创建应用链的`ZoroSytem`，共享根链的`ActorSystem`
-  * 创建应用链的`Blockchain和LocalNode`对象
-  * 将新创建的`LocalNode`对象记录在`ChildNodes`里
-  * 使用`AppChainState`里记录的端口，启动应用链的`LocalNode`
-
-* 成员函数 `StartAppChainConsensus(hash)`
-  * 启动某一条应用链的共识服务
-  * 先判断该应用链对象是否存在  
-  * 创建`ConsensusService`对象，调用该对象的`Start`函数
+  * 在ZoroSytem的构造函数里创建`Blockchain, LocalNode, TaskManager`对象和对应的Actor对象
+  * 使用`AppChainState`里记录的端口，调用`StartNode`，启动应用链的`LocalNode`
+  * 如果`startConsensusu`为`true`，调用`StartConsensus`，启动该应用链的共识服务
 
 ### SmartContract模块
 #### NeoService
@@ -270,15 +272,16 @@
 #### Zoro官方的应用链管理合约
 * 编写并发布一个官方的应用链管理合约
 * 该合约提供方法来修改应用链的各项数据，包括：
-  * 端口号
   * 种子节点地址
   * 备选记账人地址
 * 该合约内部，通过AppChainState来保存修改后的数据
 
 ### RPC模块
 #### RpcServer
+* RpcServer还是保持一个实例，收到指令后分发到对应的`LocalNode`去处理
 * 指令参数的修改
-  * 所有的指令需要增加对应链的`hash`
+  * 所有的指令需要增加目标链的`hash`，根链的Hash暂定为空
+  * 通过`ZoroSystem`的`GetAppChainSystem(hash)`来获取目标链的`ActorSystem`
 
 ### Wallets模块
 

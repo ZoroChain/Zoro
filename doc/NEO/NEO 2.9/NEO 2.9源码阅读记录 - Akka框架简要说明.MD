@@ -20,6 +20,7 @@
   * 或者使用`Context.ActorOf(Props)`来创建一个Actor，这里的`Context`是Akka.Actor.UntypedActor类的静态方法
 * ActorSystem
   * Actor的管理类
+  * 内部会创建线程池，一般每个程序只用一个ActorSystem实例
 
 ### NEO 2.9中的Actor模型使用方式
 * NEO 2.9中把以下几个对象作为Actor来使用

@@ -41,6 +41,14 @@ AccountState account = snapshot.Accounts.TryGet(hash);
   * 当账户里所有的全局资产余额都为零时，会销毁对应的AccountState
 
 ### UnspentCoinState
+  * 用交易Hash为索引，记录该交易里的输出项里的资产状态
+  * `Items:`*CoinState[]* 一笔交易可能有多个输出，这里对应每一个输出项的资产状态
+  * `ConState`定义了以下几种可以并在的状态：
+    * `Unconfirmed` 已发起交易，还未被确认
+    * `Confirmed` 该交易是否已经上链
+    * `Spent` 已被花费
+    * `Claimed` 已经行权（认领GAS）
+    * `Frozen` 被冻结 
 
 ### SpentCoinState
   * NEO货币的花费记录，使用获得NEO货币的交易Hash作为索引，只记录`GoverningToken`的消耗记录
