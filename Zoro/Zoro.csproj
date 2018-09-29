@@ -1,20 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Copyright>2015-2018 The Neo Project</Copyright>
+    <Copyright>2018-2019 The Zoro Project</Copyright>
     <AssemblyTitle>Neo</AssemblyTitle>
-    <Version>2.9.0</Version>
-    <Authors>The Neo Project</Authors>
+    <Version>0.1.0</Version>
+    <Authors>The Zoro Project</Authors>
     <TargetFrameworks>netstandard2.0;net47</TargetFrameworks>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <AssemblyName>Neo</AssemblyName>
-    <PackageId>Neo</PackageId>
-    <PackageTags>NEO;AntShares;Blockchain;Smart Contract</PackageTags>
-    <PackageProjectUrl>https://github.com/neo-project/neo</PackageProjectUrl>
+    <AssemblyName>Zoro</AssemblyName>
+    <PackageId>Zoro</PackageId>
+    <PackageTags>Zoro;AppChain;Blockchain;Smart Contract</PackageTags>
+    <PackageProjectUrl>https://github.com/ZoroChain/Zoro</PackageProjectUrl>
     <RepositoryType>git</RepositoryType>
-    <RepositoryUrl>https://github.com/neo-project/neo.git</RepositoryUrl>
-    <RootNamespace>Neo</RootNamespace>
-    <Company>The Neo Project</Company>
+    <RepositoryUrl>https://github.com/ZoroChain/Zoro.git</RepositoryUrl>
+    <RootNamespace>Zoro</RootNamespace>
+    <Company>The Zoro Project</Company>
     <Description>Neo</Description>
   </PropertyGroup>
 
@@ -22,7 +22,6 @@
     <DebugType>none</DebugType>
     <DebugSymbols>False</DebugSymbols>
   </PropertyGroup>
-
   <ItemGroup>
     <None Update="protocol.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
