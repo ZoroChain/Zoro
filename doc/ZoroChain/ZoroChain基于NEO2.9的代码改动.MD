@@ -64,13 +64,13 @@
 #### Blockchain
 * NEO中只有一个`Blockchain`的对象实例，Zoro中每一条链对应一个`Blockchain`的对象实例
 
-* 新增静态变量 `Dictionary<UInt160, Blockchain> blockchains;`
-  * 记录所有的链对象实例，包括根链和应用链
+* 新增静态变量 `Dictionary<UInt160, Blockchain> appchains;`
+  * 记录所有的应用链对象实例，不包括根链
 
-* 新增静态函数 `GetBlockchain(hash)`
+* 新增静态函数 `GetAppChain(hash)`
   * 从`blockchains`里查找对应的`blockchain`
 
-* 新增静态函数 `RegisterBlockchain(hash)`
+* 新增静态函数 `RegisterAppChain(hash)`
   * 把`blockchain`加入到`blockchains`字典里
 
 * 修改变量 `StandbyValidators`
@@ -262,6 +262,12 @@
   * 创建`ConsensusService`对象，调用该对象的`Start`函数
 
 ### SmartContract模块
+#### ApplicationEngine 
+* 修改`Run`函数
+  * 增加参数`Snapshot snapshot`
+  * 去掉用`Blockchain.Singleton`创建数据库快照的代码
+  * 修改所有调用`Application.Run`的地方
+
 #### NeoService
 * 把系统调用函数的名字空间从`Neo`改为`Zoro`
 * 新增系统调用函数`Zoro.AppChain.Create`
