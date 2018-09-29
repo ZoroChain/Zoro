@@ -134,6 +134,7 @@
 #### Store
 * 新增抽象函数 `public abstract DataCache<UInt160, AppChainState> GetAppChains();`
 * 定义接口实现 `DataCache<UInt160, AppChainState> IPersistence.AppChains => GetAppChains();`
+* 新增象函数`public abstract Blockchain Blockchain();`
 
 #### LevelDBStore
 * 实现`GetAppChains`函数
@@ -143,6 +144,8 @@
     return new DbCache<UInt160, AppChainState>(db, null, null, Prefixes.ST_Appchain);
   }
   ``` 
+* 新增属性访问方法`public override Blockchain Blockchain { get; set; }`
+  * 在`Blockchain`的构造函数里对上面这个属性赋值
 ---
 ### Network模块的修改
 #### Peer
@@ -226,7 +229,7 @@
 
 #### ConsensusContext
 * 修改函数`Reset`
-  * 增加参数`blockchain`，把`Blockchain.Singleton`
+  * 增加参数`blockchain`，把`Blockchain.Singleton`替换掉
 
 ### NeoSystem模块的修改
 #### Settings
@@ -264,6 +267,9 @@
   * 如果`startConsensusu`为`true`，调用`StartConsensus`，启动该应用链的共识服务
 
 ### SmartContract模块
+#### Application
+* 修改`Run`函数，增加参数`snapshot`
+
 #### NeoService
 * 把系统调用函数的名字空间从`Neo`改为`Zoro`
 * 新增系统调用函数`Zoro.AppChain.Create`
