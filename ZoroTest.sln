@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27703.2035
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Zoro", "Zoro\Zoro.csproj", "{35658CD6-1477-499D-9E8B-2F46D975B049}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Zoro", "ZoroTest\Zoro.csproj", "{35658CD6-1477-499D-9E8B-2F46D975B049}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "neo-vm", "..\neo-vm\src\neo-vm\neo-vm.csproj", "{F45C6F3F-FA83-49A1-895F-8619A84D0506}"
 EndProject
