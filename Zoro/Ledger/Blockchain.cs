@@ -130,13 +130,17 @@ namespace Zoro.Ledger
         public UInt256 CurrentBlockHash => currentSnapshot.CurrentBlockHash;
         public UInt256 CurrentHeaderHash => header_index[header_index.Count - 1];
 
-        private static Blockchain singleton;
-        public static Blockchain Singleton
+        private static Dictionary<UInt160, Blockchain> appchains = new Dictionary<UInt160, Blockchain>();
+
+        public UInt160 ChainHash { get; }
+
+        private static Blockchain root;
+        public static Blockchain Root
         {
             get
             {
-                while (singleton == null) Thread.Sleep(10);
-                return singleton;
+                while (root == null) Thread.Sleep(10);
+                return root;
             }
         }
 
@@ -145,14 +149,15 @@ namespace Zoro.Ledger
             GenesisBlock.RebuildMerkleRoot();
         }
 
-        public Blockchain(ZoroSystem system, Store store)
+        public Blockchain(ZoroSystem system, Store store, UInt160 chainHash)
         {
+            this.ChainHash = chainHash;
             this.system = system;
             this.Store = store;
+            store.Blockchain = this;
+
             lock (GetType())
             {
-                if (singleton != null)
-                    throw new InvalidOperationException();
                 header_index.AddRange(store.GetHeaderHashList().Find().OrderBy(p => (uint)p.Key).SelectMany(p => p.Value.Hashes));
                 stored_header_count += (uint)header_index.Count;
                 if (stored_header_count == 0)
@@ -176,7 +181,36 @@ namespace Zoro.Ledger
                     Persist(GenesisBlock);
                 else
                     UpdateCurrentSnapshot();
-                singleton = this;
+
+                if (root == null)
+                {
+                    root = this;
+                }
+                else
+                {
+                    if (chainHash.Size == 0)
+                        throw new ArgumentException();
+
+                    RegisterAppChain(chainHash, this);
+                }
+            }
+        }
+
+        public static void RegisterAppChain(UInt160 chainHash, Blockchain blockchain)
+        {
+            appchains[chainHash] = blockchain;
+        }
+        
+        public static Blockchain GetBlockchain(UInt160 chainHash)
+        {
+            if (chainHash.Size > 0)
+            {
+                appchains.TryGetValue(chainHash, out Blockchain blockchain);
+                return blockchain;
+            }
+            else
+            {
+                return Root;
             }
         }
 
@@ -649,9 +683,9 @@ namespace Zoro.Ledger
             }
         }
 
-        public static Props Props(ZoroSystem system, Store store)
+        public static Props Props(ZoroSystem system, Store store, UInt160 chainHash)
         {
-            return Akka.Actor.Props.Create(() => new Blockchain(system, store)).WithMailbox("blockchain-mailbox");
+            return Akka.Actor.Props.Create(() => new Blockchain(system, store, chainHash)).WithMailbox("blockchain-mailbox");
         }
 
         private void SaveHeaderHashList(Snapshot snapshot = null)

@@ -12,8 +12,9 @@ namespace Zoro
         public byte AddressVersion { get; private set; }
         public string[] StandbyValidators { get; private set; }
         public string[] SeedList { get; private set; }
-        public IReadOnlyDictionary<TransactionType, Fixed8> SystemFee { get; private set; }
+        public IReadOnlyDictionary<TransactionType, Fixed8> SystemFee { get; private set; }        
         public uint SecondsPerBlock { get; private set; }
+        public AppChainsSettings AppChains { get; }
 
         public static Settings Default { get; private set; }
 
@@ -31,12 +32,25 @@ namespace Zoro
             this.SeedList = section.GetSection("SeedList").GetChildren().Select(p => p.Value).ToArray();
             this.SystemFee = section.GetSection("SystemFee").GetChildren().ToDictionary(p => (TransactionType)Enum.Parse(typeof(TransactionType), p.Key, true), p => Fixed8.Parse(p.Value));
             this.SecondsPerBlock = GetValueOrDefault(section.GetSection("SecondsPerBlock"), 15u, p => uint.Parse(p));
+            this.AppChains = new AppChainsSettings(section.GetSection("AppChains"));
         }
 
         public T GetValueOrDefault<T>(IConfigurationSection section, T defaultValue, Func<string, T> selector)
         {
             if (section.Value == null) return defaultValue;
             return selector(section.Value);
+        }
+    }
+
+    internal class AppChainsSettings
+    {
+        public string Path { get; }
+        public IReadOnlyDictionary<string, int> AppChainsFollowed { get; private set; }
+
+        public AppChainsSettings(IConfigurationSection section)
+        {
+            this.Path = section.GetSection("Path").Value;
+            this.AppChainsFollowed = section.GetSection("Follow").GetChildren().ToDictionary(p => p.Key, p => int.Parse(p.Value));
         }
     }
 }

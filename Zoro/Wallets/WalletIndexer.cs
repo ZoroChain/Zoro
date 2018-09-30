@@ -238,7 +238,7 @@ namespace Zoro.Wallets
                     {
                         if (indexes.Count == 0) break;
                         uint height = indexes.Keys.Min();
-                        Block block = Blockchain.Singleton.Store.GetBlock(height);
+                        Block block = Blockchain.Root.Store.GetBlock(height);
                         if (block == null) break;
                         WriteBatch batch = new WriteBatch();
                         HashSet<UInt160> accounts = indexes[height];

@@ -16,6 +16,7 @@ namespace Zoro.Persistence
         public abstract DataCache<UInt256, BlockState> Blocks { get; }
         public abstract DataCache<UInt256, TransactionState> Transactions { get; }
         public abstract DataCache<UInt160, AccountState> Accounts { get; }
+        public abstract DataCache<UInt160, AppChainState> AppChains { get; }
         public abstract DataCache<UInt256, UnspentCoinState> UnspentCoins { get; }
         public abstract DataCache<UInt256, SpentCoinState> SpentCoins { get; }
         public abstract DataCache<ECPoint, ValidatorState> Validators { get; }
@@ -31,6 +32,14 @@ namespace Zoro.Persistence
         public uint HeaderHeight => HeaderHashIndex.Get().Index;
         public UInt256 CurrentBlockHash => BlockHashIndex.Get().Hash;
         public UInt256 CurrentHeaderHash => HeaderHashIndex.Get().Hash;
+
+        private Blockchain _blockchain = null;
+        public Blockchain Blockchain { get; }
+
+        public Snapshot(Blockchain blockchain)
+        {
+            _blockchain = blockchain;
+        }
 
         public Fixed8 CalculateBonus(IEnumerable<CoinReference> inputs, bool ignoreClaimed = true)
         {
@@ -117,7 +126,7 @@ namespace Zoro.Persistence
 
         public Snapshot Clone()
         {
-            return new CloneSnapshot(this);
+            return new CloneSnapshot(this, Blockchain);
         }
 
         public virtual void Commit()

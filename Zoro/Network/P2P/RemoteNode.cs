@@ -30,13 +30,16 @@ namespace Zoro.Network.P2P
         public override int ListenerPort => Version?.Port ?? 0;
         public VersionPayload Version { get; private set; }
 
-        public RemoteNode(ZoroSystem system, object connection, IPEndPoint remote, IPEndPoint local)
+        private readonly LocalNode localNode;
+
+        public RemoteNode(ZoroSystem system, object connection, IPEndPoint remote, IPEndPoint local, LocalNode localNode)
             : base(connection, remote, local)
         {
             this.system = system;
-            this.protocol = Context.ActorOf(ProtocolHandler.Props(system));
-            LocalNode.Singleton.RemoteNodes.TryAdd(Self, this);
-            SendMessage(Message.Create("version", VersionPayload.Create(LocalNode.Singleton.ListenerPort, LocalNode.Nonce, LocalNode.UserAgent, Blockchain.Singleton.Height)));
+            this.localNode = localNode;
+            this.protocol = Context.ActorOf(ProtocolHandler.Props(system, localNode, localNode.Blockchain));
+            localNode.RemoteNodes.TryAdd(Self, this);
+            SendMessage(Message.Create("version", VersionPayload.Create(localNode.ListenerPort, LocalNode.Nonce, LocalNode.UserAgent, localNode.Blockchain.Height)));
         }
 
         private void CheckMessageQueue()
@@ -168,7 +171,7 @@ namespace Zoro.Network.P2P
                 Disconnect(true);
                 return;
             }
-            if (LocalNode.Singleton.RemoteNodes.Values.Where(p => p != this).Any(p => p.Remote.Address.Equals(Remote.Address) && p.Version?.Nonce == version.Nonce))
+            if (localNode.RemoteNodes.Values.Where(p => p != this).Any(p => p.Remote.Address.Equals(Remote.Address) && p.Version?.Nonce == version.Nonce))
             {
                 Disconnect(true);
                 return;
@@ -178,13 +181,13 @@ namespace Zoro.Network.P2P
 
         protected override void PostStop()
         {
-            LocalNode.Singleton.RemoteNodes.TryRemove(Self, out _);
+            localNode.RemoteNodes.TryRemove(Self, out _);
             base.PostStop();
         }
 
-        internal static Props Props(ZoroSystem system, object connection, IPEndPoint remote, IPEndPoint local)
+        internal static Props Props(ZoroSystem system, object connection, IPEndPoint remote, IPEndPoint local, LocalNode localNode)
         {
-            return Akka.Actor.Props.Create(() => new RemoteNode(system, connection, remote, local)).WithMailbox("remote-node-mailbox");
+            return Akka.Actor.Props.Create(() => new RemoteNode(system, connection, remote, local, localNode)).WithMailbox("remote-node-mailbox");
         }
 
         private void SendMessage(Message message)

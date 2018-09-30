@@ -85,6 +85,16 @@ namespace Zoro.IO
             return GetVarSize(size) + size;
         }
 
+        internal static int GetVarSize(this string[] value)
+        {
+            int size = 0;
+            for (int i = 0;i < value.Length;i ++)
+            {
+                size += GetVarSize(value[i]);
+            }
+            return GetVarSize(size) + size;
+        }
+
         public static byte[] ReadBytesWithGrouping(this BinaryReader reader)
         {
             const int GROUP_SIZE = 16;
@@ -259,6 +269,15 @@ namespace Zoro.IO
         public static void WriteVarString(this BinaryWriter writer, string value)
         {
             writer.WriteVarBytes(Encoding.UTF8.GetBytes(value));
+        }
+
+        public static void WriteVarStringArray(this BinaryWriter writer, string[] value)
+        {
+            writer.WriteVarInt(value.Length);
+            for (int i = 0;i < value.Length;i ++)
+            {
+                writer.WriteVarString(value[i]);
+            }
         }
     }
 }

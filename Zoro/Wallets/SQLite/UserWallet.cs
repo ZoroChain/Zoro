@@ -90,7 +90,7 @@ namespace Zoro.Wallets.SQLite
                 }
                 else
                 {
-                    indexer.RegisterAccounts(new[] { account.ScriptHash }, is_import ? 0 : Blockchain.Singleton.Height);
+                    indexer.RegisterAccounts(new[] { account.ScriptHash }, is_import ? 0 : Blockchain.Root.Height);
                 }
                 accounts[account.ScriptHash] = account;
             }

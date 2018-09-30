@@ -10,6 +10,7 @@ namespace Zoro.Persistence
         DataCache<UInt256, BlockState> Blocks { get; }
         DataCache<UInt256, TransactionState> Transactions { get; }
         DataCache<UInt160, AccountState> Accounts { get; }
+        DataCache<UInt160, AppChainState> AppChains { get; }
         DataCache<UInt256, UnspentCoinState> UnspentCoins { get; }
         DataCache<UInt256, SpentCoinState> SpentCoins { get; }
         DataCache<ECPoint, ValidatorState> Validators { get; }
@@ -20,5 +21,7 @@ namespace Zoro.Persistence
         MetaDataCache<ValidatorsCountState> ValidatorsCount { get; }
         MetaDataCache<HashIndexState> BlockHashIndex { get; }
         MetaDataCache<HashIndexState> HeaderHashIndex { get; }
+
+        Blockchain Blockchain { get; }
     }
 }

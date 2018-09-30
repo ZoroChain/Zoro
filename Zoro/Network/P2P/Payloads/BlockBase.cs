@@ -35,6 +35,8 @@ namespace Zoro.Network.P2P.Payloads
             }
         }
 
+        public UInt160 ChainHash { get; set; }
+
         Witness[] IVerifiable.Witnesses
         {
             get

@@ -26,10 +26,17 @@ namespace Zoro.Consensus
         private readonly Wallet wallet;
         private DateTime block_received_time;
 
-        public ConsensusService(ZoroSystem system, Wallet wallet)
+        private readonly UInt160 chainHash;
+        private readonly LocalNode localNode;
+        private readonly Blockchain blockchain;        
+
+        public ConsensusService(ZoroSystem system, Wallet wallet, UInt160 chainHash)
         {
             this.system = system;
             this.wallet = wallet;
+            this.chainHash = chainHash;
+            this.localNode = LocalNode.GetLocalNode(chainHash);
+            this.blockchain = Blockchain.GetBlockchain(chainHash);
         }
 
         private bool AddTransaction(Transaction tx, bool verify)
@@ -86,7 +93,7 @@ namespace Zoro.Consensus
             {
                 Contract contract = Contract.CreateMultiSigContract(context.M, context.Validators);
                 Block block = context.MakeHeader();
-                ContractParametersContext sc = new ContractParametersContext(block);
+                ContractParametersContext sc = new ContractParametersContext(block, blockchain);
                 for (int i = 0, j = 0; i < context.Validators.Length && j < context.M; i++)
                     if (context.Signatures[i] != null)
                     {
@@ -102,8 +109,8 @@ namespace Zoro.Consensus
         }
 
         private void FillContext()
-        {
-            IEnumerable<Transaction> mem_pool = Blockchain.Singleton.GetMemoryPool();
+        {            
+            IEnumerable<Transaction> mem_pool = blockchain.GetMemoryPool();
             foreach (IPolicyPlugin plugin in Plugin.Policies)
                 mem_pool = plugin.FilterForBlock(mem_pool);
             List<Transaction> transactions = mem_pool.ToList();
@@ -148,7 +155,7 @@ namespace Zoro.Consensus
         private void InitializeConsensus(byte view_number)
         {
             if (view_number == 0)
-                context.Reset(wallet);
+                context.Reset(wallet, blockchain);
             else
                 context.ChangeView(view_number);
             if (context.MyIndex < 0) return;
@@ -194,7 +201,7 @@ namespace Zoro.Consensus
             {
                 if (context.Snapshot.Height + 1 < payload.BlockIndex)
                 {
-                    Log($"chain sync: expected={payload.BlockIndex} current: {context.Snapshot.Height} nodes={LocalNode.Singleton.ConnectedCount}", LogLevel.Warning);
+                    Log($"chain sync: expected={payload.BlockIndex} current: {context.Snapshot.Height} nodes={localNode.ConnectedCount}", LogLevel.Warning);
                 }
                 return;
             }
@@ -251,7 +258,7 @@ namespace Zoro.Consensus
             if (!Crypto.Default.VerifySignature(context.MakeHeader().GetHashData(), message.Signature, context.Validators[payload.ValidatorIndex].EncodePoint(false))) return;
             context.Signatures = new byte[context.Validators.Length][];
             context.Signatures[payload.ValidatorIndex] = message.Signature;
-            Dictionary<UInt256, Transaction> mempool = Blockchain.Singleton.GetMemoryPool().ToDictionary(p => p.Hash);
+            Dictionary<UInt256, Transaction> mempool = blockchain.GetMemoryPool().ToDictionary(p => p.Hash);
             foreach (UInt256 hash in context.TransactionHashes.Skip(1))
             {
                 if (mempool.TryGetValue(hash, out Transaction tx))
@@ -353,9 +360,9 @@ namespace Zoro.Consensus
             base.PostStop();
         }
 
-        public static Props Props(ZoroSystem system, Wallet wallet)
+        public static Props Props(ZoroSystem system, Wallet wallet, UInt160 chainHash)
         {
-            return Akka.Actor.Props.Create(() => new ConsensusService(system, wallet)).WithMailbox("consensus-service-mailbox");
+            return Akka.Actor.Props.Create(() => new ConsensusService(system, wallet, chainHash)).WithMailbox("consensus-service-mailbox");
         }
 
         private void RequestChangeView()
@@ -373,7 +380,7 @@ namespace Zoro.Consensus
             ContractParametersContext sc;
             try
             {
-                sc = new ContractParametersContext(payload);
+                sc = new ContractParametersContext(payload, blockchain);
                 wallet.Sign(sc);
             }
             catch (InvalidOperationException)

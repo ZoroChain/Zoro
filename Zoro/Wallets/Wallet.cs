@@ -366,7 +366,7 @@ namespace Zoro.Wallets
             tx.Witnesses = new Witness[0];
             if (tx is InvocationTransaction itx)
             {
-                ApplicationEngine engine = ApplicationEngine.Run(itx.Script, itx);
+                ApplicationEngine engine = ApplicationEngine.Run(itx.Script, null, itx);
                 if (engine.State.HasFlag(VMState.FAULT)) return null;
                 tx = new InvocationTransaction
                 {

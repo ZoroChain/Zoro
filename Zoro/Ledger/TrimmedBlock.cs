@@ -19,6 +19,7 @@ namespace Zoro.Ledger
             {
                 Version = Version,
                 PrevHash = PrevHash,
+                ChainHash = ChainHash,
                 MerkleRoot = MerkleRoot,
                 Timestamp = Timestamp,
                 Index = Index,
@@ -40,6 +41,7 @@ namespace Zoro.Ledger
                     {
                         Version = Version,
                         PrevHash = PrevHash,
+                        ChainHash = ChainHash,
                         MerkleRoot = MerkleRoot,
                         Timestamp = Timestamp,
                         Index = Index,

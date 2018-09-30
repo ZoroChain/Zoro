@@ -22,15 +22,20 @@ namespace Zoro.Network.P2P
         public class SetFilter { public BloomFilter Filter; }
 
         private readonly ZoroSystem system;
+        private readonly LocalNode localNode;
+        private readonly Blockchain blockchain;
+        
         private readonly HashSet<UInt256> knownHashes = new HashSet<UInt256>();
         private readonly HashSet<UInt256> sentHashes = new HashSet<UInt256>();
         private VersionPayload version;
         private bool verack = false;
         private BloomFilter bloom_filter;
 
-        public ProtocolHandler(ZoroSystem system)
+        public ProtocolHandler(ZoroSystem system, LocalNode localNode, Blockchain blockchain)
         {
             this.system = system;
+            this.localNode = localNode;
+            this.blockchain = blockchain;
         }
 
         protected override void OnReceive(object message)
@@ -139,7 +144,7 @@ namespace Zoro.Network.P2P
         private void OnGetAddrMessageReceived()
         {
             Random rand = new Random();
-            IEnumerable<RemoteNode> peers = LocalNode.Singleton.RemoteNodes.Values
+            IEnumerable<RemoteNode> peers = localNode.RemoteNodes.Values
                 .Where(p => p.ListenerPort > 0)
                 .GroupBy(p => p.Remote.Address, (k, g) => g.First())
                 .OrderBy(p => rand.Next())
@@ -153,15 +158,15 @@ namespace Zoro.Network.P2P
         {
             UInt256 hash = payload.HashStart[0];
             if (hash == payload.HashStop) return;
-            BlockState state = Blockchain.Singleton.Store.GetBlocks().TryGet(hash);
+            BlockState state = blockchain.Store.GetBlocks().TryGet(hash);
             if (state == null) return;
             List<UInt256> hashes = new List<UInt256>();
             for (uint i = 1; i <= InvPayload.MaxHashesCount; i++)
             {
                 uint index = state.TrimmedBlock.Index + i;
-                if (index > Blockchain.Singleton.Height)
+                if (index > blockchain.Height)
                     break;
-                hash = Blockchain.Singleton.GetBlockHash(index);
+                hash = blockchain.GetBlockHash(index);
                 if (hash == null) break;
                 hashes.Add(hash);
             }
@@ -174,18 +179,18 @@ namespace Zoro.Network.P2P
             UInt256[] hashes = payload.Hashes.Where(p => sentHashes.Add(p)).ToArray();
             foreach (UInt256 hash in hashes)
             {
-                Blockchain.Singleton.RelayCache.TryGet(hash, out IInventory inventory);
+                blockchain.RelayCache.TryGet(hash, out IInventory inventory);
                 switch (payload.Type)
                 {
                     case InventoryType.TX:
                         if (inventory == null)
-                            inventory = Blockchain.Singleton.GetTransaction(hash);
+                            inventory = blockchain.GetTransaction(hash);
                         if (inventory is Transaction)
                             Context.Parent.Tell(Message.Create("tx", inventory));
                         break;
                     case InventoryType.Block:
                         if (inventory == null)
-                            inventory = Blockchain.Singleton.GetBlock(hash);
+                            inventory = blockchain.GetBlock(hash);
                         if (inventory is Block block)
                         {
                             if (bloom_filter == null)
@@ -211,14 +216,14 @@ namespace Zoro.Network.P2P
         {
             UInt256 hash = payload.HashStart[0];
             if (hash == payload.HashStop) return;
-            DataCache<UInt256, BlockState> cache = Blockchain.Singleton.Store.GetBlocks();
+            DataCache<UInt256, BlockState> cache = blockchain.Store.GetBlocks();
             BlockState state = cache.TryGet(hash);
             if (state == null) return;
             List<Header> headers = new List<Header>();
             for (uint i = 1; i <= HeadersPayload.MaxHeadersCount; i++)
             {
                 uint index = state.TrimmedBlock.Index + i;
-                hash = Blockchain.Singleton.GetBlockHash(index);
+                hash = blockchain.GetBlockHash(index);
                 if (hash == null) break;
                 Header header = cache.TryGet(hash)?.TrimmedBlock.Header;
                 if (header == null) break;
@@ -248,11 +253,11 @@ namespace Zoro.Network.P2P
             switch (payload.Type)
             {
                 case InventoryType.Block:
-                    using (Snapshot snapshot = Blockchain.Singleton.GetSnapshot())
+                    using (Snapshot snapshot = blockchain.GetSnapshot())
                         hashes = hashes.Where(p => !snapshot.ContainsBlock(p)).ToArray();
                     break;
                 case InventoryType.TX:
-                    using (Snapshot snapshot = Blockchain.Singleton.GetSnapshot())
+                    using (Snapshot snapshot = blockchain.GetSnapshot())
                         hashes = hashes.Where(p => !snapshot.ContainsTransaction(p)).ToArray();
                     break;
             }
@@ -262,7 +267,7 @@ namespace Zoro.Network.P2P
 
         private void OnMemPoolMessageReceived()
         {
-            foreach (InvPayload payload in InvPayload.CreateGroup(InventoryType.TX, Blockchain.Singleton.GetMemoryPool().Select(p => p.Hash).ToArray()))
+            foreach (InvPayload payload in InvPayload.CreateGroup(InventoryType.TX, blockchain.GetMemoryPool().Select(p => p.Hash).ToArray()))
                 Context.Parent.Tell(Message.Create("inv", payload));
         }
 
@@ -278,9 +283,9 @@ namespace Zoro.Network.P2P
             Context.Parent.Tell(new SetVersion { Version = payload });
         }
 
-        public static Props Props(ZoroSystem system)
+        public static Props Props(ZoroSystem system, LocalNode localNode, Blockchain blockchain)
         {
-            return Akka.Actor.Props.Create(() => new ProtocolHandler(system)).WithMailbox("protocol-handler-mailbox");
+            return Akka.Actor.Props.Create(() => new ProtocolHandler(system, localNode, blockchain)).WithMailbox("protocol-handler-mailbox");
         }
     }
 

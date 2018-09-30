@@ -32,6 +32,8 @@ namespace Zoro.Network.P2P.Payloads
             }
         }
 
+        public UInt160 ChainHash { get; set; }
+
         InventoryType IInventory.InventoryType => InventoryType.Consensus;
 
         Witness[] IVerifiable.Witnesses

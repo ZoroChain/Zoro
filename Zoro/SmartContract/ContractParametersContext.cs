@@ -21,7 +21,7 @@ namespace Zoro.SmartContract
             public ContractParameter[] Parameters;
             public Dictionary<ECPoint, byte[]> Signatures;
 
-            private ContextItem() { }
+            private ContextItem() { }            
 
             public ContextItem(Contract contract)
             {
@@ -61,6 +61,7 @@ namespace Zoro.SmartContract
 
         public readonly IVerifiable Verifiable;
         private readonly Dictionary<UInt160, ContextItem> ContextItems;
+        private readonly Blockchain Blockchain;
 
         public bool Completed
         {
@@ -78,7 +79,7 @@ namespace Zoro.SmartContract
             get
             {
                 if (_ScriptHashes == null)
-                    using (Snapshot snapshot = Blockchain.Singleton.GetSnapshot())
+                    using (Snapshot snapshot = Blockchain.GetSnapshot())
                     {
                         _ScriptHashes = Verifiable.GetScriptHashesForVerifying(snapshot);
                     }
@@ -86,9 +87,10 @@ namespace Zoro.SmartContract
             }
         }
 
-        public ContractParametersContext(IVerifiable verifiable)
+        public ContractParametersContext(IVerifiable verifiable, Blockchain blockchain)
         {
             this.Verifiable = verifiable;
+            this.Blockchain = blockchain;
             this.ContextItems = new Dictionary<UInt160, ContextItem>();
         }
 
@@ -190,7 +192,10 @@ namespace Zoro.SmartContract
             {
                 verifiable.DeserializeUnsigned(reader);
             }
-            ContractParametersContext context = new ContractParametersContext(verifiable);
+            UInt160 chainHash = UInt160.Parse(json["chainhash"].AsString());
+            Blockchain blockchain = Blockchain.GetBlockchain(chainHash);
+            if (blockchain == null) throw new FormatException();
+            ContractParametersContext context = new ContractParametersContext(verifiable, blockchain);
             foreach (var property in json["items"].Properties)
             {
                 context.ContextItems.Add(UInt160.Parse(property.Key), ContextItem.FromJson(property.Value));

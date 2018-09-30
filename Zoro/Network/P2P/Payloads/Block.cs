@@ -23,6 +23,7 @@ namespace Zoro.Network.P2P.Payloads
                     _header = new Header
                     {
                         PrevHash = PrevHash,
+                        ChainHash = ChainHash,
                         MerkleRoot = MerkleRoot,
                         Timestamp = Timestamp,
                         Index = Index,
@@ -110,8 +111,9 @@ namespace Zoro.Network.P2P.Payloads
         {
             return new TrimmedBlock
             {
-                Version = Version,
+                Version = Version,                
                 PrevHash = PrevHash,
+                ChainHash = ChainHash,
                 MerkleRoot = MerkleRoot,
                 Timestamp = Timestamp,
                 Index = Index,

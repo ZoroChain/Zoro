@@ -27,11 +27,16 @@ namespace Zoro.Network.P2P
         private readonly Dictionary<IActorRef, TaskSession> sessions = new Dictionary<IActorRef, TaskSession>();
         private readonly ICancelable timer = Context.System.Scheduler.ScheduleTellRepeatedlyCancelable(TimerInterval, TimerInterval, Context.Self, new Timer(), ActorRefs.NoSender);
 
+        private readonly UInt160 chainHash;
+        private readonly Blockchain blockchain;
+
         private bool HeaderTask => sessions.Values.Any(p => p.HeaderTask);
 
-        public TaskManager(ZoroSystem system)
+        public TaskManager(ZoroSystem system, UInt160 chainHash)
         {
             this.system = system;
+            this.chainHash = chainHash;
+            this.blockchain = Blockchain.GetBlockchain(chainHash);
         }
 
         private void OnHeaderTaskCompleted()
@@ -46,7 +51,7 @@ namespace Zoro.Network.P2P
         {
             if (!sessions.TryGetValue(Sender, out TaskSession session))
                 return;
-            if (payload.Type == InventoryType.TX && Blockchain.Singleton.Height < Blockchain.Singleton.HeaderHeight)
+            if (payload.Type == InventoryType.TX && blockchain.Height < blockchain.HeaderHeight)
             {
                 RequestTasks(session);
                 return;
@@ -152,9 +157,9 @@ namespace Zoro.Network.P2P
             base.PostStop();
         }
 
-        public static Props Props(ZoroSystem system)
+        public static Props Props(ZoroSystem system, UInt160 chainHash)
         {
-            return Akka.Actor.Props.Create(() => new TaskManager(system)).WithMailbox("task-manager-mailbox");
+            return Akka.Actor.Props.Create(() => new TaskManager(system, chainHash)).WithMailbox("task-manager-mailbox");
         }
 
         private void RequestTasks(TaskSession session)
@@ -163,7 +168,7 @@ namespace Zoro.Network.P2P
             if (session.AvailableTasks.Count > 0)
             {
                 session.AvailableTasks.ExceptWith(knownHashes);
-                session.AvailableTasks.RemoveWhere(p => Blockchain.Singleton.ContainsBlock(p));
+                session.AvailableTasks.RemoveWhere(p => blockchain.ContainsBlock(p));
                 HashSet<UInt256> hashes = new HashSet<UInt256>(session.AvailableTasks);
                 hashes.ExceptWith(globalTasks);
                 if (hashes.Count > 0)
@@ -177,20 +182,20 @@ namespace Zoro.Network.P2P
                     return;
                 }
             }
-            if (!HeaderTask && Blockchain.Singleton.HeaderHeight < session.Version.StartHeight)
+            if (!HeaderTask && blockchain.HeaderHeight < session.Version.StartHeight)
             {
                 session.Tasks[UInt256.Zero] = DateTime.UtcNow;
-                session.RemoteNode.Tell(Message.Create("getheaders", GetBlocksPayload.Create(Blockchain.Singleton.CurrentHeaderHash)));
+                session.RemoteNode.Tell(Message.Create("getheaders", GetBlocksPayload.Create(blockchain.CurrentHeaderHash)));
             }
-            else if (Blockchain.Singleton.Height < session.Version.StartHeight)
+            else if (blockchain.Height < session.Version.StartHeight)
             {
-                UInt256 hash = Blockchain.Singleton.CurrentBlockHash;
-                for (uint i = Blockchain.Singleton.Height + 1; i <= Blockchain.Singleton.HeaderHeight; i++)
+                UInt256 hash = blockchain.CurrentBlockHash;
+                for (uint i = blockchain.Height + 1; i <= blockchain.HeaderHeight; i++)
                 {
-                    hash = Blockchain.Singleton.GetBlockHash(i);
+                    hash = blockchain.GetBlockHash(i);
                     if (!globalTasks.Contains(hash))
                     {
-                        hash = Blockchain.Singleton.GetBlockHash(i - 1);
+                        hash = blockchain.GetBlockHash(i - 1);
                         break;
                     }
                 }

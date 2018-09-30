@@ -10,6 +10,7 @@ namespace Zoro.Persistence
         DataCache<UInt256, BlockState> IPersistence.Blocks => GetBlocks();
         DataCache<UInt256, TransactionState> IPersistence.Transactions => GetTransactions();
         DataCache<UInt160, AccountState> IPersistence.Accounts => GetAccounts();
+        DataCache<UInt160, AppChainState> IPersistence.AppChains => GetAppChains();
         DataCache<UInt256, UnspentCoinState> IPersistence.UnspentCoins => GetUnspentCoins();
         DataCache<UInt256, SpentCoinState> IPersistence.SpentCoins => GetSpentCoins();
         DataCache<ECPoint, ValidatorState> IPersistence.Validators => GetValidators();
@@ -24,6 +25,7 @@ namespace Zoro.Persistence
         public abstract DataCache<UInt256, BlockState> GetBlocks();
         public abstract DataCache<UInt256, TransactionState> GetTransactions();
         public abstract DataCache<UInt160, AccountState> GetAccounts();
+        public abstract DataCache<UInt160, AppChainState> GetAppChains();
         public abstract DataCache<UInt256, UnspentCoinState> GetUnspentCoins();
         public abstract DataCache<UInt256, SpentCoinState> GetSpentCoins();
         public abstract DataCache<ECPoint, ValidatorState> GetValidators();
@@ -36,5 +38,7 @@ namespace Zoro.Persistence
         public abstract MetaDataCache<HashIndexState> GetHeaderHashIndex();
 
         public abstract Snapshot GetSnapshot();
+
+        public Blockchain Blockchain { get; set; }
     }
 }

@@ -43,6 +43,7 @@ namespace Zoro.Network.P2P.Payloads
             {
                 Version = Version,
                 PrevHash = PrevHash,
+                ChainHash = ChainHash,
                 MerkleRoot = MerkleRoot,
                 Timestamp = Timestamp,
                 Index = Index,

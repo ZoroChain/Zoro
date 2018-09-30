@@ -46,6 +46,8 @@ namespace Zoro.Network.P2P.Payloads
             }
         }
 
+        public UInt160 ChainHash { get; set; }
+
         InventoryType IInventory.InventoryType => InventoryType.TX;
 
         private Fixed8 _network_fee = -Fixed8.Satoshi;
@@ -71,19 +73,24 @@ namespace Zoro.Network.P2P.Payloads
                 if (_references == null)
                 {
                     Dictionary<CoinReference, TransactionOutput> dictionary = new Dictionary<CoinReference, TransactionOutput>();
-                    foreach (var group in Inputs.GroupBy(p => p.PrevHash))
+                    Blockchain blockchain = Blockchain.GetBlockchain(this.ChainHash);
+                    if (blockchain != null)
                     {
-                        Transaction tx = Blockchain.Singleton.Store.GetTransaction(group.Key);
-                        if (tx == null) return null;
-                        foreach (var reference in group.Select(p => new
+                        foreach (var group in Inputs.GroupBy(p => p.PrevHash))
                         {
-                            Input = p,
-                            Output = tx.Outputs[p.PrevIndex]
-                        }))
-                        {
-                            dictionary.Add(reference.Input, reference.Output);
+                            Transaction tx = blockchain.Store.GetTransaction(group.Key);
+                            if (tx == null) return null;
+                            foreach (var reference in group.Select(p => new
+                            {
+                                Input = p,
+                                Output = tx.Outputs[p.PrevIndex]
+                            }))
+                            {
+                                dictionary.Add(reference.Input, reference.Output);
+                            }
                         }
                     }
+
                     _references = dictionary;
                 }
                 return _references;

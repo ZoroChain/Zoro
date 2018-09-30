@@ -31,13 +31,18 @@ namespace Zoro.Network.P2P
         public static readonly uint Nonce;
         public static string UserAgent { get; set; }
 
-        private static LocalNode singleton { get; set; }
-        public static LocalNode Singleton
+        private static Dictionary<UInt160, LocalNode> appnodes = new Dictionary<UInt160, LocalNode>();
+
+        public UInt160 ChainHash { get; }
+        public Blockchain Blockchain { get; }
+
+        private static LocalNode root;
+        public static LocalNode Root
         {
             get
             {
-                while (singleton == null) Thread.Sleep(10);
-                return singleton;
+                while (root == null) Thread.Sleep(10);
+                return root;
             }
         }
 
@@ -48,14 +53,43 @@ namespace Zoro.Network.P2P
             UserAgent = $"/{Assembly.GetExecutingAssembly().GetName().Name}:{Assembly.GetExecutingAssembly().GetVersion()}/";
         }
 
-        public LocalNode(ZoroSystem system)
+        public LocalNode(ZoroSystem system, UInt160 chainHash)
         {
             lock (GetType())
             {
-                if (singleton != null)
-                    throw new InvalidOperationException();
                 this.system = system;
-                singleton = this;
+                this.ChainHash = chainHash;
+                this.Blockchain = Blockchain.GetBlockchain(chainHash);
+
+                if (root == null)
+                {
+                    root = this;
+                }
+                else
+                {
+                    if (chainHash.Size == 0)
+                        throw new ArgumentException();
+
+                    RegisterAppNode(chainHash, this);
+                }
+            }
+        }
+
+        public static void RegisterAppNode(UInt160 chainHash, LocalNode localNode)
+        {
+            appnodes[chainHash] = localNode;
+        }
+
+        public static LocalNode GetLocalNode(UInt160 chainHash)
+        {
+            if (chainHash.Size > 0)
+            {
+                appnodes.TryGetValue(chainHash, out LocalNode localNode);
+                return localNode;
+            }
+            else
+            {
+                return Root;
             }
         }
 
@@ -159,6 +193,7 @@ namespace Zoro.Network.P2P
 
         private void OnRelay(IInventory inventory)
         {
+            inventory.ChainHash = ChainHash;
             if (inventory is Transaction transaction)
                 system.Consensus?.Tell(transaction);
             system.Blockchain.Tell(inventory);
@@ -174,14 +209,14 @@ namespace Zoro.Network.P2P
             Connections.Tell(inventory);
         }
 
-        public static Props Props(ZoroSystem system)
+        public static Props Props(ZoroSystem system, UInt160 chainHash)
         {
-            return Akka.Actor.Props.Create(() => new LocalNode(system));
+            return Akka.Actor.Props.Create(() => new LocalNode(system, chainHash));
         }
 
         protected override Props ProtocolProps(object connection, IPEndPoint remote, IPEndPoint local)
         {
-            return RemoteNode.Props(system, connection, remote, local);
+            return RemoteNode.Props(system, connection, remote, local, this);
         }
     }
 }

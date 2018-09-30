@@ -30,6 +30,7 @@ namespace Zoro.Consensus
         public byte[][] Signatures;
         public byte[] ExpectedView;
         public KeyPair KeyPair;
+        public UInt160 ChainHash;
 
         public int M => Validators.Length - (Validators.Length - 1) / 3;
 
@@ -77,6 +78,7 @@ namespace Zoro.Consensus
                 {
                     Version = Version,
                     PrevHash = PrevHash,
+                    ChainHash = ChainHash,
                     MerkleRoot = MerkleTree.ComputeRoot(TransactionHashes),
                     Timestamp = Timestamp,
                     Index = BlockIndex,
@@ -95,6 +97,7 @@ namespace Zoro.Consensus
             {
                 Version = Version,
                 PrevHash = PrevHash,
+                ChainHash = ChainHash,
                 BlockIndex = BlockIndex,
                 ValidatorIndex = (ushort)MyIndex,
                 Timestamp = Timestamp,
@@ -122,10 +125,10 @@ namespace Zoro.Consensus
             });
         }
 
-        public void Reset(Wallet wallet)
+        public void Reset(Wallet wallet, Blockchain blockchain)
         {
             Snapshot?.Dispose();
-            Snapshot = Blockchain.Singleton.GetSnapshot();
+            Snapshot = blockchain.GetSnapshot();
             State = ConsensusState.Initial;
             PrevHash = Snapshot.CurrentBlockHash;
             BlockIndex = Snapshot.Height + 1;
@@ -137,6 +140,7 @@ namespace Zoro.Consensus
             Signatures = new byte[Validators.Length][];
             ExpectedView = new byte[Validators.Length];
             KeyPair = null;
+            ChainHash = blockchain.ChainHash;
             for (int i = 0; i < Validators.Length; i++)
             {
                 WalletAccount account = wallet.GetAccount(Validators[i]);

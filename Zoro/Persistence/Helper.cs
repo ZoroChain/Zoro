@@ -23,7 +23,7 @@ namespace Zoro.Persistence
 
         public static Block GetBlock(this IPersistence persistence, uint index)
         {
-            UInt256 hash = Blockchain.Singleton.GetBlockHash(index);
+            UInt256 hash = persistence.Blockchain.GetBlockHash(index);
             if (hash == null) return null;
             return persistence.GetBlock(hash);
         }
@@ -44,7 +44,7 @@ namespace Zoro.Persistence
 
         public static Header GetHeader(this IPersistence persistence, uint index)
         {
-            UInt256 hash = Blockchain.Singleton.GetBlockHash(index);
+            UInt256 hash = persistence.Blockchain.GetBlockHash(index);
             if (hash == null) return null;
             return persistence.GetHeader(hash);
         }
@@ -58,12 +58,12 @@ namespace Zoro.Persistence
         {
             BlockState state = persistence.Blocks.TryGet(hash);
             if (state == null) return null;
-            return Blockchain.Singleton.GetBlockHash(state.TrimmedBlock.Index + 1);
+            return persistence.Blockchain.GetBlockHash(state.TrimmedBlock.Index + 1);
         }
 
         public static long GetSysFeeAmount(this IPersistence persistence, uint height)
         {
-            return persistence.GetSysFeeAmount(Blockchain.Singleton.GetBlockHash(height));
+            return persistence.GetSysFeeAmount(persistence.Blockchain.GetBlockHash(height));
         }
 
         public static long GetSysFeeAmount(this IPersistence persistence, UInt256 hash)
