@@ -44,6 +44,7 @@
   * `Script` 表示在验证交易签名时，额外执行`Data`里的脚本，可以用来触发合约的鉴权函数
 * `Data`
   * 当`Usage=Script`的时候，`Data`里记录的是要调用的合约地址（脚本的Hash)
+* 在进行NEP5资产的转账和赎回时，进行鉴权
 
 ### TransactionState
 * 继承自`StateBase`，2.9版本中增加的类
