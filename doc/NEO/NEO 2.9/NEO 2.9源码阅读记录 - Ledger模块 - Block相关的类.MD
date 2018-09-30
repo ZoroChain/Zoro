@@ -15,7 +15,7 @@
 	Nonce是Number once的缩写，在密码学中Nonce是一个只被使用一次的任意或非重复的随机数值。
 	创世块的ConsensusData使用比特币创世块的Nonce值2083236893。
 	```
-  * `NextConsensus:`*UInt160* 下一个区块的记账合约的散列值
+  * `NextConsensus:`*UInt160* 下一个区块的记账合约的散列值，用来验证区块头签名的合法性
 	```
 	该变量的生成代码：
 	NextConsensus = GetConsensusAddress (GetValidators(transactions).ToArray());
