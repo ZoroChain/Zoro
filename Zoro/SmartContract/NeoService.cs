@@ -53,7 +53,10 @@ namespace Zoro.SmartContract
             Register("Zoro.Transaction.GetOutputs", Transaction_GetOutputs);
             Register("Zoro.Transaction.GetReferences", Transaction_GetReferences);
             Register("Zoro.Transaction.GetUnspentCoins", Transaction_GetUnspentCoins);
+            Register("Zoro.Transaction.GetWitnesses", Transaction_GetWitnesses);
             Register("Zoro.InvocationTransaction.GetScript", InvocationTransaction_GetScript);
+            Register("Zoro.Witness.GetInvocationScript", Witness_GetInvocationScript);
+            Register("Zoro.Witness.GetVerificationScript", Witness_GetVerificationScript);
             Register("Zoro.Attribute.GetUsage", Attribute_GetUsage);
             Register("Zoro.Attribute.GetData", Attribute_GetData);
             Register("Zoro.Input.GetHash", Input_GetHash);
@@ -317,6 +320,20 @@ namespace Zoro.SmartContract
             return false;
         }
 
+        private bool Transaction_GetWitnesses(ExecutionEngine engine)
+        {
+            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
+            {
+                Transaction tx = _interface.GetInterface<Transaction>();
+                if (tx == null) return false;
+                if (tx.Witnesses.Length > ApplicationEngine.MaxArraySize)
+                    return false;
+                engine.CurrentContext.EvaluationStack.Push(tx.Witnesses.Select(p => StackItem.FromInterface(p)).ToArray());
+                return true;
+            }
+            return false;
+        }
+
         private bool InvocationTransaction_GetScript(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
@@ -328,6 +345,31 @@ namespace Zoro.SmartContract
             }
             return false;
         }
+
+        private bool Witness_GetInvocationScript(ExecutionEngine engine)
+        {
+            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
+            {
+                Witness witness = _interface.GetInterface<Witness>();
+                if (witness == null) return false;
+                engine.CurrentContext.EvaluationStack.Push(witness.InvocationScript);
+                return true;
+            }
+            return false;
+        }
+
+        private bool Witness_GetVerificationScript(ExecutionEngine engine)
+        {
+            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
+            {
+                Witness witness = _interface.GetInterface<Witness>();
+                if (witness == null) return false;
+                engine.CurrentContext.EvaluationStack.Push(witness.VerificationScript);
+                return true;
+            }
+            return false;
+        }
+
 
         private bool Attribute_GetUsage(ExecutionEngine engine)
         {

@@ -543,6 +543,11 @@ namespace Zoro.SmartContract
                     return 200;
                 case "Zoro.Transaction.GetUnspentCoins":
                     return 200;
+                case "Zoro.Transaction.GetWitnesses":
+                    return 200;
+                case "Zoro.Witness.GetInvocationScript":
+                case "Zoro.Witness.GetVerificationScript":
+                    return 100;
                 case "Zoro.Account.IsStandard":
                     return 100;
                 case "Zoro.Asset.Create":
