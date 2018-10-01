@@ -388,7 +388,7 @@ namespace Zoro.Ledger
                 return RelayResultReason.AlreadyExists;
             if (!transaction.Verify(currentSnapshot, mem_pool.Values))
                 return RelayResultReason.Invalid;
-            if (!Plugin.CheckPolicy(transaction))
+            if (!system.PluginMgr.CheckPolicy(transaction))
                 return RelayResultReason.Unknown;
             mem_pool.TryAdd(transaction.Hash, transaction);
             if (mem_pool.Count > MemoryPoolSize)

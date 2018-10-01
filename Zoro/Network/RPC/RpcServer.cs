@@ -722,7 +722,7 @@ namespace Zoro.Network.RPC
             {
                 string method = request["method"].AsString();
                 JArray _params = (JArray)request["params"];
-                foreach (IRpcPlugin plugin in Plugin.RpcPlugins)
+                foreach (IRpcPlugin plugin in system.PluginMgr.RpcPlugins)
                 {
                     result = plugin.OnProcess(context, method, _params);
                     if (result != null) break;

@@ -17,6 +17,7 @@ namespace Zoro
 {
     public class ZoroSystem : IDisposable
     {
+        public readonly PluginManager PluginMgr;
         public readonly ActorSystem ActorSystem;
         public readonly IActorRef Blockchain;
         public readonly IActorRef LocalNode;
@@ -39,7 +40,9 @@ namespace Zoro
             this.Blockchain = ActorSystem.ActorOf(Ledger.Blockchain.Props(this, store, chainHash));
             this.LocalNode = ActorSystem.ActorOf(Network.P2P.LocalNode.Props(this, chainHash));
             this.TaskManager = ActorSystem.ActorOf(Network.P2P.TaskManager.Props(this, chainHash));
-            Plugin.LoadPlugins(this);
+
+            PluginMgr = new PluginManager(this, chainHash);
+            PluginMgr.LoadPlugins();
         }
 
         public void Dispose()
