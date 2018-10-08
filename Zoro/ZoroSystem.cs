@@ -17,6 +17,7 @@ namespace Zoro
 {
     public class ZoroSystem : IDisposable
     {
+        public static readonly object Sync = new object();
         public readonly PluginManager PluginMgr;
         public readonly ActorSystem ActorSystem;
         public readonly IActorRef Blockchain;

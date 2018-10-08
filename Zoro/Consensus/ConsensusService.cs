@@ -362,7 +362,10 @@ namespace Zoro.Consensus
 
         public static Props Props(ZoroSystem system, Wallet wallet, UInt160 chainHash)
         {
-            return Akka.Actor.Props.Create(() => new ConsensusService(system, wallet, chainHash)).WithMailbox("consensus-service-mailbox");
+            lock (ZoroSystem.Sync)
+            {
+                return Akka.Actor.Props.Create(() => new ConsensusService(system, wallet, chainHash)).WithMailbox("consensus-service-mailbox");
+            }
         }
 
         private void RequestChangeView()

@@ -187,7 +187,10 @@ namespace Zoro.Network.P2P
 
         internal static Props Props(ZoroSystem system, object connection, IPEndPoint remote, IPEndPoint local, LocalNode localNode)
         {
-            return Akka.Actor.Props.Create(() => new RemoteNode(system, connection, remote, local, localNode)).WithMailbox("remote-node-mailbox");
+            lock (ZoroSystem.Sync)
+            {
+                return Akka.Actor.Props.Create(() => new RemoteNode(system, connection, remote, local, localNode)).WithMailbox("remote-node-mailbox");
+            }
         }
 
         private void SendMessage(Message message)

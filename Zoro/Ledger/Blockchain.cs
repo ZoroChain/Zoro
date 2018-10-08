@@ -710,7 +710,10 @@ namespace Zoro.Ledger
 
         public static Props Props(ZoroSystem system, Store store, UInt160 chainHash)
         {
-            return Akka.Actor.Props.Create(() => new Blockchain(system, store, chainHash)).WithMailbox("blockchain-mailbox");
+            lock (ZoroSystem.Sync)
+            {
+                return Akka.Actor.Props.Create(() => new Blockchain(system, store, chainHash)).WithMailbox("blockchain-mailbox");
+            }
         }
 
         private void SaveHeaderHashList(Snapshot snapshot = null)

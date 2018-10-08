@@ -159,7 +159,10 @@ namespace Zoro.Network.P2P
 
         public static Props Props(ZoroSystem system, UInt160 chainHash)
         {
-            return Akka.Actor.Props.Create(() => new TaskManager(system, chainHash)).WithMailbox("task-manager-mailbox");
+            lock (ZoroSystem.Sync)
+            {
+                return Akka.Actor.Props.Create(() => new TaskManager(system, chainHash)).WithMailbox("task-manager-mailbox");
+            }
         }
 
         private void RequestTasks(TaskSession session)

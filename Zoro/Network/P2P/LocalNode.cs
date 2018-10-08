@@ -225,7 +225,10 @@ namespace Zoro.Network.P2P
 
         public static Props Props(ZoroSystem system, UInt160 chainHash)
         {
-            return Akka.Actor.Props.Create(() => new LocalNode(system, chainHash));
+            lock (ZoroSystem.Sync)
+            {
+                return Akka.Actor.Props.Create(() => new LocalNode(system, chainHash));
+            }
         }
 
         protected override Props ProtocolProps(object connection, IPEndPoint remote, IPEndPoint local)
