@@ -56,10 +56,10 @@ namespace Zoro.SmartContract
         private bool is_stackitem_count_strict = true;
 
         public Fixed8 GasConsumed => new Fixed8(gas_consumed);
-        public new NeoService Service => (NeoService)base.Service;
+        public new ZoroService Service => (ZoroService)base.Service;
 
         public ApplicationEngine(TriggerType trigger, IScriptContainer container, Snapshot snapshot, Fixed8 gas, bool testMode = false)
-            : base(container, Cryptography.Crypto.Default, snapshot, new NeoService(trigger, snapshot))
+            : base(container, Cryptography.Crypto.Default, snapshot, new ZoroService(trigger, snapshot))
         {
             this.gas_amount = gas_free + gas.GetData();
             this.testMode = testMode;

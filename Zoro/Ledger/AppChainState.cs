@@ -14,8 +14,8 @@ namespace Zoro.Ledger
     {
         public UInt160 Hash;
         public string Name;
-        public ECPoint Owner;        
-        uint Timestamp;
+        public ECPoint Owner;
+        public uint Timestamp;
         public int TcpPort;
         public int WsPort;
         public string[] SeedList;
