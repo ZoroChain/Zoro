@@ -120,9 +120,9 @@ namespace Zoro.Network.P2P
                 {
                     localAddresses.Add(UPnP.GetExternalIP());
                     if (port > 0)
-                        UPnP.ForwardPort(port, ProtocolType.Tcp, "NEO");
+                        UPnP.ForwardPort(port, ProtocolType.Tcp, "Zoro");
                     if (ws_port > 0)
-                        UPnP.ForwardPort(ws_port, ProtocolType.Tcp, "NEO WebSocket");
+                        UPnP.ForwardPort(ws_port, ProtocolType.Tcp, "Zoro WebSocket");
                 }
                 catch { }
             }
