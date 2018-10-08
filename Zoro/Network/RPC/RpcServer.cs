@@ -138,15 +138,6 @@ namespace Zoro.Network.RPC
         {
             switch (method)
             {
-                case "dumpprivkey":
-                    if (wallet == null)
-                        throw new RpcException(-400, "Access denied");
-                    else
-                    {
-                        UInt160 scriptHash = _params[0].AsString().ToScriptHash();
-                        WalletAccount account = wallet.GetAccount(scriptHash);
-                        return account.GetKey().Export();
-                    }
                 case "getaccountstate":
                     {
                         UInt160 script_hash = _params[0].AsString().ToScriptHash();
@@ -478,90 +469,6 @@ namespace Zoro.Network.RPC
                             account["watchonly"] = p.WatchOnly;
                             return account;
                         }).ToArray();
-                case "sendfrom":
-                    if (wallet == null)
-                        throw new RpcException(-400, "Access denied");
-                    else
-                    {
-                        UIntBase assetId = UIntBase.Parse(_params[0].AsString());
-                        AssetDescriptor descriptor = new AssetDescriptor(assetId);
-                        UInt160 from = _params[1].AsString().ToScriptHash();
-                        UInt160 to = _params[2].AsString().ToScriptHash();
-                        BigDecimal value = BigDecimal.Parse(_params[3].AsString(), descriptor.Decimals);
-                        if (value.Sign <= 0)
-                            throw new RpcException(-32602, "Invalid params");
-                        Fixed8 fee = _params.Count >= 5 ? Fixed8.Parse(_params[4].AsString()) : Fixed8.Zero;
-                        if (fee < Fixed8.Zero)
-                            throw new RpcException(-32602, "Invalid params");
-                        UInt160 change_address = _params.Count >= 6 ? _params[5].AsString().ToScriptHash() : null;
-                        Transaction tx = wallet.MakeTransaction(null, new[]
-                        {
-                            new TransferOutput
-                            {
-                                AssetId = assetId,
-                                Value = value,
-                                ScriptHash = to
-                            }
-                        }, from: from, change_address: change_address, fee: fee);
-                        if (tx == null)
-                            throw new RpcException(-300, "Insufficient funds");
-                        ContractParametersContext context = new ContractParametersContext(tx, Blockchain.Root);
-                        wallet.Sign(context);
-                        if (context.Completed)
-                        {
-                            tx.Witnesses = context.GetWitnesses();
-                            wallet.ApplyTransaction(tx);
-                            system.LocalNode.Tell(new LocalNode.Relay { Inventory = tx });
-                            return tx.ToJson();
-                        }
-                        else
-                        {
-                            return context.ToJson();
-                        }
-                    }
-                case "sendmany":
-                    if (wallet == null)
-                        throw new RpcException(-400, "Access denied");
-                    else
-                    {
-                        JArray to = (JArray)_params[0];
-                        if (to.Count == 0)
-                            throw new RpcException(-32602, "Invalid params");
-                        TransferOutput[] outputs = new TransferOutput[to.Count];
-                        for (int i = 0; i < to.Count; i++)
-                        {
-                            UIntBase asset_id = UIntBase.Parse(to[i]["asset"].AsString());
-                            AssetDescriptor descriptor = new AssetDescriptor(asset_id);
-                            outputs[i] = new TransferOutput
-                            {
-                                AssetId = asset_id,
-                                Value = BigDecimal.Parse(to[i]["value"].AsString(), descriptor.Decimals),
-                                ScriptHash = to[i]["address"].AsString().ToScriptHash()
-                            };
-                            if (outputs[i].Value.Sign <= 0)
-                                throw new RpcException(-32602, "Invalid params");
-                        }
-                        Fixed8 fee = _params.Count >= 2 ? Fixed8.Parse(_params[1].AsString()) : Fixed8.Zero;
-                        if (fee < Fixed8.Zero)
-                            throw new RpcException(-32602, "Invalid params");
-                        UInt160 change_address = _params.Count >= 3 ? _params[2].AsString().ToScriptHash() : null;
-                        Transaction tx = wallet.MakeTransaction(null, outputs, change_address: change_address, fee: fee);
-                        if (tx == null)
-                            throw new RpcException(-300, "Insufficient funds");
-                        ContractParametersContext context = new ContractParametersContext(tx, Blockchain.Root);
-                        wallet.Sign(context);
-                        if (context.Completed)
-                        {
-                            tx.Witnesses = context.GetWitnesses();
-                            wallet.ApplyTransaction(tx);
-                            system.LocalNode.Tell(new LocalNode.Relay { Inventory = tx });
-                            return tx.ToJson();
-                        }
-                        else
-                        {
-                            return context.ToJson();
-                        }
-                    }
                 case "sendrawtransaction":
                     {
                         UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
@@ -572,46 +479,6 @@ namespace Zoro.Network.RPC
                             return GetRelayResult(reason);
                         }
                         return RelayResultReason.Invalid;
-                    }
-                case "sendtoaddress":
-                    if (wallet == null)
-                        throw new RpcException(-400, "Access denied");
-                    else
-                    {
-                        UIntBase assetId = UIntBase.Parse(_params[0].AsString());
-                        AssetDescriptor descriptor = new AssetDescriptor(assetId);
-                        UInt160 scriptHash = _params[1].AsString().ToScriptHash();
-                        BigDecimal value = BigDecimal.Parse(_params[2].AsString(), descriptor.Decimals);
-                        if (value.Sign <= 0)
-                            throw new RpcException(-32602, "Invalid params");
-                        Fixed8 fee = _params.Count >= 4 ? Fixed8.Parse(_params[3].AsString()) : Fixed8.Zero;
-                        if (fee < Fixed8.Zero)
-                            throw new RpcException(-32602, "Invalid params");
-                        UInt160 change_address = _params.Count >= 5 ? _params[4].AsString().ToScriptHash() : null;
-                        Transaction tx = wallet.MakeTransaction(null, new[]
-                        {
-                            new TransferOutput
-                            {
-                                AssetId = assetId,
-                                Value = value,
-                                ScriptHash = scriptHash
-                            }
-                        }, change_address: change_address, fee: fee);
-                        if (tx == null)
-                            throw new RpcException(-300, "Insufficient funds");
-                        ContractParametersContext context = new ContractParametersContext(tx, Blockchain.Root);
-                        wallet.Sign(context);
-                        if (context.Completed)
-                        {
-                            tx.Witnesses = context.GetWitnesses();
-                            wallet.ApplyTransaction(tx);
-                            system.LocalNode.Tell(new LocalNode.Relay { Inventory = tx });
-                            return tx.ToJson();
-                        }
-                        else
-                        {
-                            return context.ToJson();
-                        }
                     }
                 case "submitblock":
                     {
