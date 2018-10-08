@@ -278,12 +278,12 @@
 * 新增系统调用函数`Zoro.AppChain.Create`
   * 类似`Neo.Contract.Create`，创建并保存`AppChainState`
 
-#### Zoro官方的应用链管理合约
-* 编写并发布一个官方的应用链管理合约
-* 该合约提供方法来修改应用链的各项数据，包括：
-  * 种子节点地址
-  * 备选记账人地址
-* 该合约内部，通过AppChainState来保存修改后的数据
+#### ZoroService
+* 继承自NeoService
+* 增加三个系统调用函数
+  * "Zoro.AppChain.Create" 创建应用链
+  * "Zoro.AppChain.ChangeSeedList" 更改应用链的种子节点
+  * "Zoro.AppChain.ChangeValidators" 更改应用链的备选记账人
 
 ### RPC模块
 #### RpcServer
