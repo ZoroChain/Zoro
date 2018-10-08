@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Copyright>2018-2019 The Zoro Project</Copyright>
-    <AssemblyTitle>Neo</AssemblyTitle>
+    <Copyright>2018-2019 The ZoroChain Project</Copyright>
+    <AssemblyTitle>ZoroChain</AssemblyTitle>
     <Version>0.1.0</Version>
     <Authors>The ZoroChain Project</Authors>
     <TargetFrameworks>netstandard2.0;net47</TargetFrameworks>
@@ -14,7 +14,7 @@
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/ZoroChain/Zoro.git</RepositoryUrl>
     <RootNamespace>Zoro</RootNamespace>
-    <Company>The Zoro Project</Company>
+    <Company>The ZoroChain Project</Company>
     <Description>ZoroChain</Description>
     <Product>ZoroChain</Product>
   </PropertyGroup>
