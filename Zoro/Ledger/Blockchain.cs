@@ -65,54 +65,71 @@ namespace Zoro.Ledger
         };
 #pragma warning restore CS0612
 
-        public static readonly Block GenesisBlock = new Block
+        private Block _genesisBlock = null;
+
+        public Block GenesisBlock
         {
-            PrevHash = UInt256.Zero,
-            Timestamp = (new DateTime(2016, 7, 15, 15, 8, 21, DateTimeKind.Utc)).ToTimestamp(),
-            Index = 0,
-            ConsensusData = 2083236893, //向比特币致敬
-            NextConsensus = GetConsensusAddress(Root.StandbyValidators),
-            Witness = new Witness
+            get
             {
-                InvocationScript = new byte[0],
-                VerificationScript = new[] { (byte)OpCode.PUSHT }
-            },
-            Transactions = new Transaction[]
-            {
-                new MinerTransaction
+                if (_genesisBlock == null)
                 {
-                    Nonce = 2083236893,
-                    Attributes = new TransactionAttribute[0],
-                    Inputs = new CoinReference[0],
-                    Outputs = new TransactionOutput[0],
-                    Witnesses = new Witness[0]
-                },
-                GoverningToken,
-                UtilityToken,
-                new IssueTransaction
-                {
-                    Attributes = new TransactionAttribute[0],
-                    Inputs = new CoinReference[0],
-                    Outputs = new[]
+                    GoverningToken.ChainHash = ChainHash;
+                    UtilityToken.ChainHash = ChainHash;
+
+                    _genesisBlock = new Block
                     {
-                        new TransactionOutput
-                        {
-                            AssetId = GoverningToken.Hash,
-                            Value = GoverningToken.Amount,
-                            ScriptHash = Contract.CreateMultiSigRedeemScript(Root.StandbyValidators.Length / 2 + 1, Root.StandbyValidators).ToScriptHash()
-                        }
-                    },
-                    Witnesses = new[]
-                    {
-                        new Witness
+                        PrevHash = UInt256.Zero,
+                        Timestamp = (new DateTime(2016, 7, 15, 15, 8, 21, DateTimeKind.Utc)).ToTimestamp(),
+                        Index = 0,
+                        ConsensusData = 2083236893, //向比特币致敬
+                        NextConsensus = GetConsensusAddress(StandbyValidators),
+                        Witness = new Witness
                         {
                             InvocationScript = new byte[0],
                             VerificationScript = new[] { (byte)OpCode.PUSHT }
+                        },
+                        Transactions = new Transaction[]
+                        {
+                            new MinerTransaction
+                            {
+                                ChainHash = ChainHash,
+                                Nonce = 2083236893,
+                                Attributes = new TransactionAttribute[0],
+                                Inputs = new CoinReference[0],
+                                Outputs = new TransactionOutput[0],
+                                Witnesses = new Witness[0]
+                            },
+                            GoverningToken,
+                            UtilityToken,
+                            new IssueTransaction
+                            {
+                                ChainHash = ChainHash,
+                                Attributes = new TransactionAttribute[0],
+                                Inputs = new CoinReference[0],
+                                Outputs = new[]
+                                {
+                                    new TransactionOutput
+                                    {
+                                        AssetId = GoverningToken.Hash,
+                                        Value = GoverningToken.Amount,
+                                        ScriptHash = Contract.CreateMultiSigRedeemScript(Root.StandbyValidators.Length / 2 + 1, Root.StandbyValidators).ToScriptHash()
+                                    }
+                                },
+                                Witnesses = new[]
+                                {
+                                    new Witness
+                                    {
+                                        InvocationScript = new byte[0],
+                                        VerificationScript = new[] { (byte)OpCode.PUSHT }
+                                    }
+                                }
+                            }
                         }
-                    }
+                    };
                 }
+                return _genesisBlock;
             }
-        };
+        }
 
         private readonly ZoroSystem system;
         private readonly List<UInt256> header_index = new List<UInt256>();
@@ -144,17 +161,27 @@ namespace Zoro.Ledger
             }
         }
 
-        static Blockchain()
-        {
-            GenesisBlock.RebuildMerkleRoot();
-        }
-
         public Blockchain(ZoroSystem system, Store store, UInt160 chainHash)
         {
             this.ChainHash = chainHash;
             this.system = system;
             this.Store = store;
             store.Blockchain = this;
+
+            if (root == null)
+            {
+                root = this;
+                StandbyValidators = Settings.Default.StandbyValidators.OfType<string>().Select(p => ECPoint.DecodePoint(p.HexToBytes(), ECCurve.Secp256r1)).ToArray();
+            }
+            else
+            {
+                if (chainHash.Size == 0)
+                    throw new ArgumentException();
+
+                RegisterAppChain(chainHash, this);
+            }
+
+            GenesisBlock.RebuildMerkleRoot();
 
             lock (GetType())
             {
@@ -177,23 +204,11 @@ namespace Zoro.Ledger
                         }
                     }
                 }
+
                 if (header_index.Count == 0)
                     Persist(GenesisBlock);
                 else
                     UpdateCurrentSnapshot();
-
-                if (root == null)
-                {
-                    root = this;
-                    StandbyValidators = Settings.Default.StandbyValidators.OfType<string>().Select(p => ECPoint.DecodePoint(p.HexToBytes(), ECCurve.Secp256r1)).ToArray();
-                }
-                else
-                {
-                    if (chainHash.Size == 0)
-                        throw new ArgumentException();
-
-                    RegisterAppChain(chainHash, this);
-                }
             }
         }
 
@@ -210,10 +225,10 @@ namespace Zoro.Ledger
 
             appchains[chainHash] = blockchain;
         }
-        
+
         public static Blockchain GetBlockchain(UInt160 chainHash)
         {
-            if (chainHash.Size > 0)
+            if (!chainHash.Equals(UInt160.Zero))
             {
                 appchains.TryGetValue(chainHash, out Blockchain blockchain);
                 return blockchain;

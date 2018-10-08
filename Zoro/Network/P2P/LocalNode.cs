@@ -96,7 +96,7 @@ namespace Zoro.Network.P2P
 
         public static LocalNode GetLocalNode(UInt160 chainHash)
         {
-            if (chainHash.Size > 0)
+            if (!chainHash.Equals(UInt160.Zero))
             {
                 appnodes.TryGetValue(chainHash, out LocalNode localNode);
                 return localNode;
