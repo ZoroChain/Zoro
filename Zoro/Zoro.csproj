@@ -4,18 +4,19 @@
     <Copyright>2018-2019 The Zoro Project</Copyright>
     <AssemblyTitle>Neo</AssemblyTitle>
     <Version>0.1.0</Version>
-    <Authors>The Zoro Project</Authors>
+    <Authors>The ZoroChain Project</Authors>
     <TargetFrameworks>netstandard2.0;net47</TargetFrameworks>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>Zoro</AssemblyName>
-    <PackageId>Zoro</PackageId>
+    <PackageId>ZoroChain</PackageId>
     <PackageTags>Zoro;AppChain;Blockchain;Smart Contract</PackageTags>
     <PackageProjectUrl>https://github.com/ZoroChain/Zoro</PackageProjectUrl>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/ZoroChain/Zoro.git</RepositoryUrl>
     <RootNamespace>Zoro</RootNamespace>
     <Company>The Zoro Project</Company>
-    <Description>Neo</Description>
+    <Description>ZoroChain</Description>
+    <Product>ZoroChain</Product>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
