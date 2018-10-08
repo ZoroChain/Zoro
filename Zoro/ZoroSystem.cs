@@ -103,9 +103,15 @@ namespace Zoro
 
         public void StartAppChainsConsensus(Wallet wallet)
         {
-            foreach (var item in AppChainSystems.Where(p => Settings.Default.AppChains.AppChainsFollowed.ContainsKey(p.Key.ToString())))
+            foreach (var item in AppChainSystems)
             {
-                item.Value.StartConsensus(item.Key, wallet);
+                if (Settings.Default.AppChains.AppChainsFollowed.TryGetValue(item.Key.ToString(), out int value))
+                {
+                    if (value == 1)
+                    {
+                        StartConsensus(item.Key, wallet);
+                    }
+                }
             }
         }
 
