@@ -1,5 +1,6 @@
 ﻿using Zoro.Cryptography.ECC;
 using Zoro.Ledger;
+using Zoro.Network.P2P;
 using Zoro.Network.P2P.Payloads;
 using Zoro.Persistence;
 using Zoro.SmartContract.Enumerators;
@@ -83,8 +84,8 @@ namespace Zoro.SmartContract
 
             UInt160 hash = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
 
-            AppChainState appchain = Snapshot.AppChains.TryGet(hash);
-            if (appchain == null)
+            AppChainState state = Snapshot.AppChains.TryGet(hash);
+            if (state == null)
                 return false;
 
             int validatorCount = (int)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
@@ -94,7 +95,14 @@ namespace Zoro.SmartContract
                 validators[i] = ECPoint.DecodePoint(engine.CurrentContext.EvaluationStack.Pop().GetByteArray(), ECCurve.Secp256r1);
             }
 
-            appchain.StandbyValidators = validators;
+            state.StandbyValidators = validators;
+
+            Blockchain appchain = Blockchain.GetBlockchain(hash);
+            if (appchain != null)
+            {
+                appchain.StandbyValidators = (ECPoint[])validators.Clone();
+            }
+
             return true;
         }
 
@@ -104,8 +112,8 @@ namespace Zoro.SmartContract
 
             UInt160 hash = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
 
-            AppChainState appchain = Snapshot.AppChains.TryGet(hash);
-            if (appchain == null)
+            AppChainState state = Snapshot.AppChains.TryGet(hash);
+            if (state == null)
                 return false;
 
             int seedCount = (int)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
@@ -115,7 +123,14 @@ namespace Zoro.SmartContract
                 seedList[i] = Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
             }
 
-            appchain.SeedList = seedList;
+            state.SeedList = seedList;
+
+            LocalNode appnode = LocalNode.GetLocalNode(hash);
+            if (appnode != null)
+            {
+                appnode.SeedList = seedList;
+            }
+
             return true;
         }
     }

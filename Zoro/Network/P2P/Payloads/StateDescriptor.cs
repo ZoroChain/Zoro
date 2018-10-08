@@ -129,7 +129,7 @@ namespace Zoro.Network.P2P.Payloads
                     if (pubkeys.Length > 0)
                     {
                         if (account.GetBalance(Blockchain.GoverningToken.Hash).Equals(Fixed8.Zero)) return false;
-                        HashSet<ECPoint> sv = new HashSet<ECPoint>(Blockchain.StandbyValidators);
+                        HashSet<ECPoint> sv = new HashSet<ECPoint>(Blockchain.Root.StandbyValidators);
                         foreach (ECPoint pubkey in pubkeys)
                             if (!sv.Contains(pubkey) && snapshot.Validators.TryGet(pubkey)?.Registered != true)
                                 return false;

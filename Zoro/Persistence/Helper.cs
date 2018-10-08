@@ -38,7 +38,7 @@ namespace Zoro.Persistence
 
         public static IEnumerable<ValidatorState> GetEnrollments(this IPersistence persistence)
         {
-            HashSet<ECPoint> sv = new HashSet<ECPoint>(Blockchain.StandbyValidators);
+            HashSet<ECPoint> sv = new HashSet<ECPoint>(Blockchain.Root.StandbyValidators);
             return persistence.Validators.Find().Select(p => p.Value).Where(p => p.Registered || sv.Contains(p.PublicKey));
         }
 

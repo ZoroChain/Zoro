@@ -33,7 +33,7 @@ namespace Zoro.Ledger
         public const uint MaxValidators = 1024;
         public static readonly uint[] GenerationAmount = { 8, 7, 6, 5, 4, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
         public static readonly TimeSpan TimePerBlock = TimeSpan.FromSeconds(SecondsPerBlock);
-        public static readonly ECPoint[] StandbyValidators = Settings.Default.StandbyValidators.OfType<string>().Select(p => ECPoint.DecodePoint(p.HexToBytes(), ECCurve.Secp256r1)).ToArray();
+        public ECPoint[] StandbyValidators = new ECPoint[0];
 
 #pragma warning disable CS0612
         public static readonly RegisterTransaction GoverningToken = new RegisterTransaction
@@ -71,7 +71,7 @@ namespace Zoro.Ledger
             Timestamp = (new DateTime(2016, 7, 15, 15, 8, 21, DateTimeKind.Utc)).ToTimestamp(),
             Index = 0,
             ConsensusData = 2083236893, //向比特币致敬
-            NextConsensus = GetConsensusAddress(StandbyValidators),
+            NextConsensus = GetConsensusAddress(Root.StandbyValidators),
             Witness = new Witness
             {
                 InvocationScript = new byte[0],
@@ -99,7 +99,7 @@ namespace Zoro.Ledger
                         {
                             AssetId = GoverningToken.Hash,
                             Value = GoverningToken.Amount,
-                            ScriptHash = Contract.CreateMultiSigRedeemScript(StandbyValidators.Length / 2 + 1, StandbyValidators).ToScriptHash()
+                            ScriptHash = Contract.CreateMultiSigRedeemScript(Root.StandbyValidators.Length / 2 + 1, Root.StandbyValidators).ToScriptHash()
                         }
                     },
                     Witnesses = new[]
@@ -185,6 +185,7 @@ namespace Zoro.Ledger
                 if (root == null)
                 {
                     root = this;
+                    StandbyValidators = Settings.Default.StandbyValidators.OfType<string>().Select(p => ECPoint.DecodePoint(p.HexToBytes(), ECCurve.Secp256r1)).ToArray();
                 }
                 else
                 {
@@ -198,6 +199,15 @@ namespace Zoro.Ledger
 
         public static void RegisterAppChain(UInt160 chainHash, Blockchain blockchain)
         {
+            AppChainState state = Root.Store.GetAppChains().TryGet(chainHash);
+
+            if (state == null)
+            {
+                throw new InvalidOperationException();
+            }
+
+            blockchain.StandbyValidators = (ECPoint[])state.StandbyValidators.Clone();
+
             appchains[chainHash] = blockchain;
         }
         

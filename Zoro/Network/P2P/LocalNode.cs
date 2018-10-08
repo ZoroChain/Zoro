@@ -33,6 +33,8 @@ namespace Zoro.Network.P2P
 
         private static Dictionary<UInt160, LocalNode> appnodes = new Dictionary<UInt160, LocalNode>();
 
+        public string[] SeedList { get; set; }
+
         public UInt160 ChainHash { get; }
         public Blockchain Blockchain { get; }
 
@@ -64,6 +66,9 @@ namespace Zoro.Network.P2P
                 if (root == null)
                 {
                     root = this;
+
+                    this.SeedList = Settings.Default.SeedList;
+
                 }
                 else
                 {
@@ -77,6 +82,15 @@ namespace Zoro.Network.P2P
 
         public static void RegisterAppNode(UInt160 chainHash, LocalNode localNode)
         {
+            AppChainState state = Blockchain.Root.Store.GetAppChains().TryGet(chainHash);
+
+            if (state == null)
+            {
+                throw new InvalidOperationException();
+            }
+
+            localNode.SeedList = (string[])state.SeedList.Clone();
+
             appnodes[chainHash] = localNode;
         }
 
@@ -103,7 +117,7 @@ namespace Zoro.Network.P2P
             Connections.Tell(message);
         }
 
-        private static IPEndPoint GetIPEndpointFromHostPort(string hostNameOrAddress, int port)
+        private IPEndPoint GetIPEndpointFromHostPort(string hostNameOrAddress, int port)
         {
             if (IPAddress.TryParse(hostNameOrAddress, out IPAddress ipAddress))
                 return new IPEndPoint(ipAddress, port);
@@ -121,12 +135,12 @@ namespace Zoro.Network.P2P
             return new IPEndPoint(ipAddress, port);
         }
 
-        private static IEnumerable<IPEndPoint> GetIPEndPointsFromSeedList(int seedsToTake)
+        private IEnumerable<IPEndPoint> GetIPEndPointsFromSeedList(int seedsToTake)
         {
             if (seedsToTake > 0)
             {
                 Random rand = new Random();
-                foreach (string hostAndPort in Settings.Default.SeedList.OrderBy(p => rand.Next()))
+                foreach (string hostAndPort in SeedList.OrderBy(p => rand.Next()))
                 {
                     if (seedsToTake == 0) break;
                     string[] p = hostAndPort.Split(':');
