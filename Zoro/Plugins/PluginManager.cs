@@ -51,7 +51,7 @@ namespace Zoro.Plugins
                 {
                     if (!type.IsSubclassOf(typeof(Plugin))) continue;
                     if (type.IsAbstract) continue;
-                    ConstructorInfo constructor = type.GetConstructor(Type.EmptyTypes);
+                    ConstructorInfo constructor = type.GetConstructor(new Type[] { typeof(PluginManager) });
                     if (constructor == null) continue;
                     constructor.Invoke(new object[] { this });
                 }
