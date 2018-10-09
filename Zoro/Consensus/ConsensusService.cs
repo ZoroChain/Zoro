@@ -126,6 +126,7 @@ namespace Zoro.Consensus
                 ulong nonce = GetNonce();
                 MinerTransaction tx = new MinerTransaction
                 {
+                    ChainHash = chainHash,
                     Nonce = (uint)(nonce % (uint.MaxValue + 1ul)),
                     Attributes = new TransactionAttribute[0],
                     Inputs = new CoinReference[0],
@@ -265,6 +266,7 @@ namespace Zoro.Consensus
                     if (!AddTransaction(tx, false))
                         return;
             }
+            message.MinerTransaction.ChainHash = chainHash;
             if (!AddTransaction(message.MinerTransaction, true)) return;
             if (context.Transactions.Count < context.TransactionHashes.Length)
             {

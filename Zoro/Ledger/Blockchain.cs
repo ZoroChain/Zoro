@@ -307,6 +307,8 @@ namespace Zoro.Ledger
 
         private RelayResultReason OnNewBlock(Block block)
         {
+            block.UpdateTransactionsChainHash();
+
             if (block.Index <= Height)
                 return RelayResultReason.AlreadyExists;
             if (block_cache.ContainsKey(block.Hash))

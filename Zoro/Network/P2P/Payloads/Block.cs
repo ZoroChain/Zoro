@@ -123,5 +123,13 @@ namespace Zoro.Network.P2P.Payloads
                 Hashes = Transactions.Select(p => p.Hash).ToArray()
             };
         }
+
+        public void UpdateTransactionsChainHash()
+        {
+            foreach (Transaction tx in Transactions)
+            {
+                tx.ChainHash = ChainHash;
+            }
+        }
     }
 }

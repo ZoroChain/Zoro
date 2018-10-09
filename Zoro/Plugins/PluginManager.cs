@@ -24,6 +24,18 @@ namespace Zoro.Plugins
         public void AddPlugin(Plugin plugin)
         {
             Plugins.Add(plugin);
+            if (plugin is ILogPlugin)
+            {
+                Loggers.Add((ILogPlugin)plugin);
+            }
+            if (plugin is IPolicyPlugin)
+            {
+                Policies.Add((IPolicyPlugin)plugin);
+            }
+            if (plugin is IRpcPlugin)
+            {
+                RpcPlugins.Add((IRpcPlugin)plugin);
+            }
         }
 
         public bool CheckPolicy(Transaction tx)

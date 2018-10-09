@@ -33,12 +33,11 @@ namespace Zoro.Persistence
         public UInt256 CurrentBlockHash => BlockHashIndex.Get().Hash;
         public UInt256 CurrentHeaderHash => HeaderHashIndex.Get().Hash;
 
-        private Blockchain _blockchain = null;
         public Blockchain Blockchain { get; }
 
         public Snapshot(Blockchain blockchain)
         {
-            _blockchain = blockchain;
+            Blockchain = blockchain;
         }
 
         public Fixed8 CalculateBonus(IEnumerable<CoinReference> inputs, bool ignoreClaimed = true)
