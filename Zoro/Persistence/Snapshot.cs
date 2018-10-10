@@ -146,6 +146,7 @@ namespace Zoro.Persistence
             ValidatorsCount.Commit();
             BlockHashIndex.Commit();
             HeaderHashIndex.Commit();
+            AppChains.Commit();
         }
 
         public virtual void Dispose()
