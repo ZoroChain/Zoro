@@ -24,7 +24,7 @@ namespace Zoro.Network.P2P
         private class Timer { }
         private class WsConnected { public WebSocket Socket; public IPEndPoint Remote; public IPEndPoint Local; }
 
-        private const int MaxConnectionsPerAddress = 3;
+        private const int MaxConnectionsPerAddress = 5;
 
         private static readonly IActorRef tcp_manager = Context.System.Tcp();
         private IActorRef tcp_listener;
