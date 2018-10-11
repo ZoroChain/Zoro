@@ -22,6 +22,7 @@ namespace Zoro.Ledger
 {
     public sealed class Blockchain : UntypedActor
     {
+        public class AskChain { public UInt160 chainHash; }
         public class Register { }
         public class ApplicationExecuted { public Transaction Transaction; public ApplicationExecutionResult[] ExecutionResults; }
         public class PersistCompleted { public Block Block; }
@@ -168,16 +169,16 @@ namespace Zoro.Ledger
             this.Store = store;
             store.Blockchain = this;
 
-            if (root == null)
+            if (chainHash == UInt160.Zero)
             {
+                if (root != null)
+                    throw new InvalidOperationException();
+
                 root = this;
                 StandbyValidators = Settings.Default.StandbyValidators.OfType<string>().Select(p => ECPoint.DecodePoint(p.HexToBytes(), ECCurve.Secp256r1)).ToArray();
             }
             else
             {
-                if (chainHash.Size == 0)
-                    throw new ArgumentException();
-
                 RegisterAppChain(chainHash, this);
             }
 
@@ -212,7 +213,7 @@ namespace Zoro.Ledger
             }
         }
 
-        public static void RegisterAppChain(UInt160 chainHash, Blockchain blockchain)
+        private static void RegisterAppChain(UInt160 chainHash, Blockchain blockchain)
         {
             AppChainState state = Root.Store.GetAppChains().TryGet(chainHash);
 
@@ -223,20 +224,52 @@ namespace Zoro.Ledger
 
             blockchain.StandbyValidators = (ECPoint[])state.StandbyValidators.Clone();
 
-            appchains[chainHash] = blockchain;
+            lock (appchains)
+            {
+                appchains[chainHash] = blockchain;
+            }
         }
 
-        public static Blockchain GetBlockchain(UInt160 chainHash)
+        public static Blockchain GetBlockchain(UInt160 chainHash, bool throwException = true)
         {
             if (!chainHash.Equals(UInt160.Zero))
             {
-                appchains.TryGetValue(chainHash, out Blockchain blockchain);
-                return blockchain;
+                lock (appchains)
+                {
+                    if (appchains.TryGetValue(chainHash, out Blockchain blockchain))
+                    {
+                        return blockchain;
+                    }
+                    else
+                    {
+                        if (throwException)
+                        {
+                            throw new InvalidOperationException();
+                        }
+
+                        return null;
+                    }
+                }
             }
             else
             {
                 return Root;
             }
+        }
+
+        public static Blockchain AskBlockchain(ZoroSystem system, UInt160 chainHash)
+        {
+            bool result = false;
+            while (!result)
+            {
+                result = system.Blockchain.Ask<bool>(new AskChain { chainHash = chainHash }).Result;
+                if (result)
+                    break;
+                else
+                    Thread.Sleep(10);
+            }
+
+            return GetBlockchain(chainHash);
         }
 
         public bool ContainsBlock(UInt256 hash)
@@ -478,6 +511,9 @@ namespace Zoro.Ledger
                 case Terminated terminated:
                     subscribers.Remove(terminated.ActorRef);
                     break;
+                case AskChain ask:
+                    Sender.Tell(OnAskChain(ask.chainHash));
+                    break;
             }
         }
 
@@ -712,10 +748,7 @@ namespace Zoro.Ledger
 
         public static Props Props(ZoroSystem system, Store store, UInt160 chainHash)
         {
-            lock (ZoroSystem.Sync)
-            {
-                return Akka.Actor.Props.Create(() => new Blockchain(system, store, chainHash)).WithMailbox("blockchain-mailbox");
-            }
+            return Akka.Actor.Props.Create(() => new Blockchain(system, store, chainHash)).WithMailbox("blockchain-mailbox");
         }
 
         private void SaveHeaderHashList(Snapshot snapshot = null)
@@ -745,6 +778,11 @@ namespace Zoro.Ledger
         private void UpdateCurrentSnapshot()
         {
             Interlocked.Exchange(ref currentSnapshot, GetSnapshot())?.Dispose();
+        }
+
+        private bool OnAskChain(UInt160 chainHash)
+        {
+            return GetBlockchain(chainHash, false) != null;
         }
     }
 

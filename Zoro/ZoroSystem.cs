@@ -17,7 +17,6 @@ namespace Zoro
 {
     public class ZoroSystem : IDisposable
     {
-        public static readonly object Sync = new object();
         public readonly PluginManager PluginMgr;
         public readonly ActorSystem ActorSystem;
         public readonly IActorRef Blockchain;
@@ -76,21 +75,21 @@ namespace Zoro
 
         public void StartAppChains(Blockchain blockchain)
         {
-            foreach (var app in Settings.Default.AppChains.AppChainsFollowed)
+            foreach (var settings in Settings.Default.AppChains.Chains.Values)
             {
-                FollowAppChain(blockchain, app.Key);
+                FollowAppChain(blockchain, settings);
             }
         }    
 
-        private void FollowAppChain(Blockchain blockchain, string hashString)
+        private void FollowAppChain(Blockchain blockchain, AppChainSettings settings)
         {
-            UInt160 chainHash = UInt160.Parse(hashString);
+            UInt160 chainHash = UInt160.Parse(settings.Hash);
 
             AppChainState state = blockchain.Store.GetAppChains().TryGet(chainHash);
 
             if (state != null)
             {
-                string path = string.Format(Settings.Default.AppChains.Path, hashString);
+                string path = string.Format(Settings.Default.AppChains.Path, settings.Hash);
 
                 Store appStore = new LevelDBStore(Path.GetFullPath(path));
 
@@ -98,19 +97,21 @@ namespace Zoro
 
                 AppChainSystems[chainHash] = appSystem;
 
-                appSystem.StartNode(state.TcpPort, state.WsPort);
+                appSystem.StartNode(settings.Port, settings.WsPort);
             }
         }
 
         public void StartAppChainsConsensus(Wallet wallet)
         {
-            foreach (var item in AppChainSystems)
+            foreach (var settings in Settings.Default.AppChains.Chains.Values)
             {
-                if (Settings.Default.AppChains.AppChainsFollowed.TryGetValue(item.Key.ToString(), out int value))
+                if (settings.StartConsensus)
                 {
-                    if (value == 1)
+                    UInt160 chainHash = UInt160.Parse(settings.Hash);
+
+                    if (GetAppChainSystem(chainHash, out ZoroSystem system))
                     {
-                        StartConsensus(item.Key, wallet);
+                        system.StartConsensus(chainHash, wallet);
                     }
                 }
             }

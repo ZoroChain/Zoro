@@ -27,9 +27,19 @@
     },
     "AppChains": {
       "Path": "AppChain_{0}",
-      "Follow": [
-        { "03b209fd4f53a7170ea4444e0cb0a6bb6a53c2bd016926989cf85f9b0fba17a70c": 0 },
-        { "02df48f60e8f3e01c48ff40b9b7f1310d7a8b2a193188befe1c2e3df740e895093": 0 }
+      "Chains": [
+        {
+          "Hash": "46650ecd479d802040de34124b35fc3be16f1800",
+          "Port": 21003,
+          "WsPort": 21004,
+          "StartConsensus": true
+        },
+        {
+          "Hash": "577ef9c6c331efa6fd479f57f9ba4e4796c46f81",
+          "Port": 22003,
+          "WsPort": 22004,
+          "StartConsensus": true
+        }
       ]
     }
   }

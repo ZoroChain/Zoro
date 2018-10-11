@@ -48,6 +48,16 @@ namespace Zoro.Network.P2P
             }
         }
 
+        public static LocalNode[] AppChainNodes()
+        {
+            lock (appnodes)
+            {
+                LocalNode[] array = appnodes.Values.ToArray();
+
+                return array;
+            }
+        }
+
         static LocalNode()
         {
             Random rand = new Random();
@@ -60,27 +70,27 @@ namespace Zoro.Network.P2P
             lock (GetType())
             {
                 this.system = system;
-                this.ChainHash = chainHash;
-                this.Blockchain = Blockchain.GetBlockchain(chainHash);
+                this.ChainHash = chainHash;                
 
-                if (root == null)
+                if (chainHash == UInt160.Zero)
                 {
+                    if (root != null)
+                        throw new InvalidOperationException();
+
                     root = this;
 
                     this.SeedList = Settings.Default.SeedList;
-
                 }
                 else
                 {
-                    if (chainHash.Size == 0)
-                        throw new ArgumentException();
-
                     RegisterAppNode(chainHash, this);
                 }
+
+                this.Blockchain = Blockchain.AskBlockchain(system, chainHash);
             }
         }
 
-        public static void RegisterAppNode(UInt160 chainHash, LocalNode localNode)
+        private static void RegisterAppNode(UInt160 chainHash, LocalNode localNode)
         {
             AppChainState state = Blockchain.Root.Store.GetAppChains().TryGet(chainHash);
 
@@ -91,15 +101,23 @@ namespace Zoro.Network.P2P
 
             localNode.SeedList = (string[])state.SeedList.Clone();
 
-            appnodes[chainHash] = localNode;
+            lock (appnodes)
+            {
+                appnodes[chainHash] = localNode;
+            }
         }
 
         public static LocalNode GetLocalNode(UInt160 chainHash)
         {
             if (!chainHash.Equals(UInt160.Zero))
             {
-                appnodes.TryGetValue(chainHash, out LocalNode localNode);
-                return localNode;
+                lock (appnodes)
+                {
+                    if (appnodes.TryGetValue(chainHash, out LocalNode localNode))
+                        return localNode;
+                    else
+                        throw new InvalidOperationException();
+                }
             }
             else
             {
@@ -225,10 +243,7 @@ namespace Zoro.Network.P2P
 
         public static Props Props(ZoroSystem system, UInt160 chainHash)
         {
-            lock (ZoroSystem.Sync)
-            {
-                return Akka.Actor.Props.Create(() => new LocalNode(system, chainHash));
-            }
+            return Akka.Actor.Props.Create(() => new LocalNode(system, chainHash));
         }
 
         protected override Props ProtocolProps(object connection, IPEndPoint remote, IPEndPoint local)

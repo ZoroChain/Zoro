@@ -36,7 +36,7 @@ namespace Zoro.Consensus
             this.wallet = wallet;
             this.chainHash = chainHash;
             this.localNode = LocalNode.GetLocalNode(chainHash);
-            this.blockchain = Blockchain.GetBlockchain(chainHash);
+            this.blockchain = Blockchain.AskBlockchain(system, chainHash);
         }
 
         private bool AddTransaction(Transaction tx, bool verify)
@@ -364,10 +364,7 @@ namespace Zoro.Consensus
 
         public static Props Props(ZoroSystem system, Wallet wallet, UInt160 chainHash)
         {
-            lock (ZoroSystem.Sync)
-            {
-                return Akka.Actor.Props.Create(() => new ConsensusService(system, wallet, chainHash)).WithMailbox("consensus-service-mailbox");
-            }
+            return Akka.Actor.Props.Create(() => new ConsensusService(system, wallet, chainHash)).WithMailbox("consensus-service-mailbox");
         }
 
         private void RequestChangeView()

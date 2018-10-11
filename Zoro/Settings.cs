@@ -45,12 +45,29 @@ namespace Zoro
     internal class AppChainsSettings
     {
         public string Path { get; }
-        public IReadOnlyDictionary<string, int> AppChainsFollowed { get; private set; }
+        public IReadOnlyDictionary<string, AppChainSettings> Chains { get; private set; }
 
         public AppChainsSettings(IConfigurationSection section)
         {
             this.Path = section.GetSection("Path").Value;
-            this.AppChainsFollowed = section.GetSection("Follow").GetChildren().ToDictionary(p => p.Key, p => int.Parse(p.Value));
+
+            this.Chains = section.GetSection("Chains").GetChildren().Select(p => new AppChainSettings(p)).ToDictionary(p => p.Hash);
+        }
+    }
+
+    internal class AppChainSettings
+    {
+        public string Hash { get; }
+        public ushort Port { get; }
+        public ushort WsPort { get; }
+        public bool StartConsensus { get; }
+
+        public AppChainSettings(IConfigurationSection section)
+        {
+            this.Hash = section.GetSection("Hash").Value;
+            this.Port = ushort.Parse(section.GetSection("Port").Value);
+            this.WsPort = ushort.Parse(section.GetSection("WsPort").Value);
+            this.StartConsensus = bool.Parse(section.GetSection("StartConsensus").Value);
         }
     }
 }

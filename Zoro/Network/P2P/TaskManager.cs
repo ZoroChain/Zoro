@@ -36,7 +36,7 @@ namespace Zoro.Network.P2P
         {
             this.system = system;
             this.chainHash = chainHash;
-            this.blockchain = Blockchain.GetBlockchain(chainHash);
+            this.blockchain = Blockchain.AskBlockchain(system, chainHash);
         }
 
         private void OnHeaderTaskCompleted()
@@ -159,10 +159,7 @@ namespace Zoro.Network.P2P
 
         public static Props Props(ZoroSystem system, UInt160 chainHash)
         {
-            lock (ZoroSystem.Sync)
-            {
-                return Akka.Actor.Props.Create(() => new TaskManager(system, chainHash)).WithMailbox("task-manager-mailbox");
-            }
+            return Akka.Actor.Props.Create(() => new TaskManager(system, chainHash)).WithMailbox("task-manager-mailbox");
         }
 
         private void RequestTasks(TaskSession session)
