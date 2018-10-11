@@ -68,7 +68,6 @@ namespace Zoro.Ledger
             StandbyValidators = new ECPoint[reader.ReadVarInt()];
             for (int i = 0; i < StandbyValidators.Length; i++)
                 StandbyValidators[i] = ECPoint.DeserializeFrom(reader, ECCurve.Secp256r1);
-            int count = (int)reader.ReadVarInt();
         }
 
         void ICloneable<AppChainState>.FromReplica(AppChainState replica)
