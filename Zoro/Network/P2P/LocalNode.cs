@@ -15,6 +15,7 @@ namespace Zoro.Network.P2P
 {
     public class LocalNode : Peer
     {
+        public class AskNode { public UInt160 chainHash; }
         public class Relay { public IInventory Inventory; }
         internal class RelayDirectly { public IInventory Inventory; }
         internal class SendDirectly { public IInventory Inventory; }
@@ -107,22 +108,43 @@ namespace Zoro.Network.P2P
             }
         }
 
-        public static LocalNode GetLocalNode(UInt160 chainHash)
+        public static LocalNode GetLocalNode(UInt160 chainHash, bool throwException = true)
         {
             if (!chainHash.Equals(UInt160.Zero))
             {
                 lock (appnodes)
                 {
                     if (appnodes.TryGetValue(chainHash, out LocalNode localNode))
+                    {
                         return localNode;
-                    else
+                    }
+                    else if (throwException)
+                    {
                         throw new InvalidOperationException();
+                    }
+
+                    return null;
                 }
             }
             else
             {
                 return Root;
             }
+        }
+
+        public static LocalNode AskLocalNode(ZoroSystem system, UInt160 chainHash)
+        {
+            bool result = false;
+            while (!result)
+            {
+                result = system.LocalNode.Ask<bool>(new AskNode { chainHash = chainHash }).Result;
+                if (result)
+                    break;
+                else
+                    Thread.Sleep(10);
+            }
+
+            return GetLocalNode(chainHash);
         }
 
         private void BroadcastMessage(string command, ISerializable payload = null)
@@ -220,6 +242,9 @@ namespace Zoro.Network.P2P
                     break;
                 case RelayResultReason _:
                     break;
+                case AskNode ask:
+                    Sender.Tell(OnAskNode(ask.chainHash));
+                    break;
             }
         }
 
@@ -249,6 +274,11 @@ namespace Zoro.Network.P2P
         protected override Props ProtocolProps(object connection, IPEndPoint remote, IPEndPoint local)
         {
             return RemoteNode.Props(system, connection, remote, local, this);
+        }
+
+        private bool OnAskNode(UInt160 chainHash)
+        {
+            return GetLocalNode(chainHash, false) != null;
         }
     }
 }

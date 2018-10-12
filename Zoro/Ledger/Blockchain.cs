@@ -240,15 +240,12 @@ namespace Zoro.Ledger
                     {
                         return blockchain;
                     }
-                    else
+                    else if (throwException)
                     {
-                        if (throwException)
-                        {
-                            throw new InvalidOperationException();
-                        }
-
-                        return null;
+                        throw new InvalidOperationException();
                     }
+
+                    return null;
                 }
             }
             else
@@ -474,13 +471,16 @@ namespace Zoro.Ledger
             block_cache.Remove(block.Hash);
             foreach (Transaction tx in block.Transactions)
                 mem_pool.TryRemove(tx.Hash, out _);
-            
+
             foreach (Transaction tx in mem_pool.Values
                 .OrderByDescending(p => p.NetworkFee / p.Size)
                 .ThenByDescending(p => p.NetworkFee)
                 .ThenByDescending(p => new BigInteger(p.Hash.ToArray())))
                 Self.Tell(tx, ActorRefs.NoSender);
             mem_pool.Clear();
+
+            Log("Block Persisted:" + block.Index + ", ChainHash:" + this.ChainHash.ToString());
+
             PersistCompleted completed = new PersistCompleted { Block = block };
             system.Consensus?.Tell(completed);
             Distribute(completed);
@@ -783,6 +783,11 @@ namespace Zoro.Ledger
         private bool OnAskChain(UInt160 chainHash)
         {
             return GetBlockchain(chainHash, false) != null;
+        }
+
+        private void Log(string message, LogLevel level = LogLevel.Info)
+        {
+            system.PluginMgr.Log(nameof(Blockchain), level, message);
         }
     }
 

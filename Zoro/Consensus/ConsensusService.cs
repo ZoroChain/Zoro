@@ -35,8 +35,8 @@ namespace Zoro.Consensus
             this.system = system;
             this.wallet = wallet;
             this.chainHash = chainHash;
-            this.localNode = LocalNode.GetLocalNode(chainHash);
             this.blockchain = Blockchain.AskBlockchain(system, chainHash);
+            this.localNode = LocalNode.AskLocalNode(system, chainHash);
         }
 
         private bool AddTransaction(Transaction tx, bool verify)
@@ -313,7 +313,7 @@ namespace Zoro.Consensus
 
         private void OnStart()
         {
-            Log("OnStart");
+            Log("OnStart hash:" + chainHash.ToString());
             InitializeConsensus(0);
         }
 
