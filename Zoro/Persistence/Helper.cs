@@ -33,7 +33,11 @@ namespace Zoro.Persistence
             BlockState state = persistence.Blocks.TryGet(hash);
             if (state == null) return null;
             if (!state.TrimmedBlock.IsBlock) return null;
-            return state.TrimmedBlock.GetBlock(persistence.Transactions);
+            state.TrimmedBlock.ChainHash = persistence.Blockchain.ChainHash;
+            Block block = state.TrimmedBlock.GetBlock(persistence.Transactions);
+            block?.UpdateTransactionsChainHash();
+
+            return block;
         }
 
         public static IEnumerable<ValidatorState> GetEnrollments(this IPersistence persistence)
