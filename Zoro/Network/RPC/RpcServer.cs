@@ -69,9 +69,9 @@ namespace Zoro.Network.RPC
             }
         }
 
-        private JObject GetInvokeResult(UInt160 chain_hash, byte[] script)
+        private JObject GetInvokeResult(JObject param, byte[] script)
         {
-            Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
+            Blockchain blockchain = GetBlockchainByParam(param);
             if (blockchain == null)
                 throw new RpcException(-100, "Unknown blockchain");
 
@@ -94,6 +94,7 @@ namespace Zoro.Network.RPC
                 InvocationTransaction tx = new InvocationTransaction
                 {
                     Version = 1,
+                    ChainHash = blockchain.ChainHash,
                     Script = json["script"].AsString().HexToBytes(),
                     Gas = Fixed8.Parse(json["gas_consumed"].AsString())
                 };
@@ -462,7 +463,6 @@ namespace Zoro.Network.RPC
                         return (wallet.WalletHeight > 0) ? wallet.WalletHeight - 1 : 0;
                 case "invoke":
                     {
-                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
                         UInt160 script_hash = UInt160.Parse(_params[1].AsString());
                         ContractParameter[] parameters = ((JArray)_params[2]).Select(p => ContractParameter.FromJson(p)).ToArray();
                         byte[] script;
@@ -470,11 +470,10 @@ namespace Zoro.Network.RPC
                         {
                             script = sb.EmitAppCall(script_hash, parameters).ToArray();
                         }
-                        return GetInvokeResult(chain_hash, script);
+                        return GetInvokeResult(_params[0], script);
                     }
                 case "invokefunction":
                     {
-                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
                         UInt160 script_hash = UInt160.Parse(_params[1].AsString());
                         string operation = _params[2].AsString();
                         ContractParameter[] args = _params.Count >= 4 ? ((JArray)_params[3]).Select(p => ContractParameter.FromJson(p)).ToArray() : new ContractParameter[0];
@@ -483,13 +482,12 @@ namespace Zoro.Network.RPC
                         {
                             script = sb.EmitAppCall(script_hash, operation, args).ToArray();
                         }
-                        return GetInvokeResult(chain_hash, script);
+                        return GetInvokeResult(_params[0], script);
                     }
                 case "invokescript":
                     {
-                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
                         byte[] script = _params[1].AsString().HexToBytes();
-                        return GetInvokeResult(chain_hash, script);
+                        return GetInvokeResult(_params[0], script);
                     }
                 case "listaddress":
                     if (wallet == null)

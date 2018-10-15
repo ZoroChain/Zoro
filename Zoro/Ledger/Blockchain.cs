@@ -441,6 +441,7 @@ namespace Zoro.Ledger
         private RelayResultReason OnNewTransaction(Transaction transaction)
         {
             const int MemoryPoolSize = 50000;
+            transaction.ChainHash = ChainHash;
             if (transaction.Type == TransactionType.MinerTransaction)
                 return RelayResultReason.Invalid;
             if (ContainsTransaction(transaction.Hash))
