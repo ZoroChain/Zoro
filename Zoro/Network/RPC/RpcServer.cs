@@ -134,6 +134,55 @@ namespace Zoro.Network.RPC
             }
         }
 
+        private Blockchain GetBlockchainByParam(JObject param)
+        {
+            string hashString = param.AsString();
+            if (hashString.Length == 40 || (hashString.StartsWith("0x") && hashString.Length == 42))
+            {
+                UInt160 chain_hash = UInt160.Parse(param.AsString());
+                Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
+                return blockchain;
+            }
+            else
+            {
+                return Blockchain.Root;
+            }
+        }
+
+        private LocalNode GetLocalNodeByParam(JObject param)
+        {
+            string hashString = param.AsString();
+            if (hashString.Length == 40 || (hashString.StartsWith("0x") && hashString.Length == 42))
+            {
+                UInt160 chain_hash = UInt160.Parse(param.AsString());
+                LocalNode localNode = LocalNode.GetLocalNode(chain_hash);
+                return localNode;
+            }
+            else
+            {
+                return LocalNode.Root;
+            }
+        }
+
+        private ZoroSystem GetSystemByParam(JObject param)
+        {
+            string hashString = param.AsString();
+            if (hashString.Length == 40 || (hashString.StartsWith("0x") && hashString.Length == 42))
+            {
+                UInt160 chain_hash = UInt160.Parse(param.AsString());
+                if (ZoroSystem.GetAppChainSystem(chain_hash, out ZoroSystem app_system))
+                {
+                    return app_system;
+                }
+
+                return null;
+            }
+            else
+            {
+                return this.system;
+            }
+        }
+
         private JObject Process(string method, JArray _params)
         {
             switch (method)
@@ -171,8 +220,7 @@ namespace Zoro.Network.RPC
                     }
                 case "getbestblockhash":
                     {
-                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
-                        Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
+                        Blockchain blockchain = GetBlockchainByParam(_params[0]);
                         if (blockchain == null)
                             throw new RpcException(-100, "Unknown blockchain");
                         return blockchain.CurrentBlockHash.ToString();
@@ -180,8 +228,7 @@ namespace Zoro.Network.RPC
                 case "getblock":
                     {
                         Block block;
-                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
-                        Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
+                        Blockchain blockchain = GetBlockchainByParam(_params[0]);
                         if (blockchain == null)
                             throw new RpcException(-100, "Unknown blockchain");
                         if (_params[1] is JNumber)
@@ -210,16 +257,14 @@ namespace Zoro.Network.RPC
                     }
                 case "getblockcount":
                     {
-                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
-                        Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
+                        Blockchain blockchain = GetBlockchainByParam(_params[0]);
                         if (blockchain == null)
                             throw new RpcException(-100, "Unknown blockchain");
                         return blockchain.Height + 1;
                     }
                 case "getblockhash":
                     {
-                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
-                        Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
+                        Blockchain blockchain = GetBlockchainByParam(_params[0]);
                         if (blockchain == null)
                             throw new RpcException(-100, "Unknown blockchain");
                         uint height = (uint)_params[1].AsNumber();
@@ -232,8 +277,7 @@ namespace Zoro.Network.RPC
                 case "getblockheader":
                     {
                         Header header;
-                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
-                        Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
+                        Blockchain blockchain = GetBlockchainByParam(_params[0]);
                         if (blockchain == null)
                             throw new RpcException(-100, "Unknown blockchain");
                         if (_params[1] is JNumber)
@@ -264,8 +308,7 @@ namespace Zoro.Network.RPC
                     }
                 case "getblocksysfee":
                     {
-                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
-                        Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
+                        Blockchain blockchain = GetBlockchainByParam(_params[0]);
                         if (blockchain == null)
                             throw new RpcException(-100, "Unknown blockchain");
 
@@ -278,14 +321,12 @@ namespace Zoro.Network.RPC
                     }
                 case "getconnectioncount":
                     {
-                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
-                        LocalNode localNode = LocalNode.GetLocalNode(chain_hash);
+                        LocalNode localNode = GetLocalNodeByParam(_params[0]);
                         return localNode != null ? localNode.ConnectedCount : 0;
                     }
                 case "getcontractstate":
                     {
-                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
-                        Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
+                        Blockchain blockchain = GetBlockchainByParam(_params[0]);
                         if (blockchain == null)
                             throw new RpcException(-100, "Unknown blockchain");
 
@@ -306,8 +347,7 @@ namespace Zoro.Network.RPC
                 case "getpeers":
                     {
                         JObject json = new JObject();
-                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
-                        LocalNode localNode = LocalNode.GetLocalNode(chain_hash);
+                        LocalNode localNode = GetLocalNodeByParam(_params[0]);
                         if (localNode != null)
                         {
                             json["unconnected"] = new JArray(localNode.GetUnconnectedPeers().Select(p =>
@@ -331,8 +371,7 @@ namespace Zoro.Network.RPC
                     }
                 case "getrawmempool":
                     {
-                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
-                        Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
+                        Blockchain blockchain = GetBlockchainByParam(_params[0]);
                         if (blockchain == null)
                             throw new RpcException(-100, "Unknown blockchain");
 
@@ -340,8 +379,7 @@ namespace Zoro.Network.RPC
                     }
                 case "getrawtransaction":
                     {
-                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
-                        Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
+                        Blockchain blockchain = GetBlockchainByParam(_params[0]);
                         if (blockchain == null)
                             throw new RpcException(-100, "Unknown blockchain");
 
@@ -367,8 +405,7 @@ namespace Zoro.Network.RPC
                     }
                 case "getstorage":
                     {
-                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
-                        Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
+                        Blockchain blockchain = GetBlockchainByParam(_params[0]);
                         if (blockchain == null)
                             throw new RpcException(-100, "Unknown blockchain");
 
@@ -383,8 +420,7 @@ namespace Zoro.Network.RPC
                     }
                 case "gettxout":
                     {
-                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
-                        Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
+                        Blockchain blockchain = GetBlockchainByParam(_params[0]);
                         if (blockchain == null)
                             throw new RpcException(-100, "Unknown blockchain");
 
@@ -394,8 +430,7 @@ namespace Zoro.Network.RPC
                     }
                 case "getvalidators":
                     {
-                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
-                        Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
+                        Blockchain blockchain = GetBlockchainByParam(_params[0]);
                         if (blockchain == null)
                             throw new RpcException(-100, "Unknown blockchain");
 
@@ -471,8 +506,8 @@ namespace Zoro.Network.RPC
                         }).ToArray();
                 case "sendrawtransaction":
                     {
-                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
-                        if(ZoroSystem.GetAppChainSystem(chain_hash, out ZoroSystem targetSystem))
+                        ZoroSystem targetSystem = GetSystemByParam(_params[0]);
+                        if (targetSystem != null)
                         {
                             Transaction tx = Transaction.DeserializeFrom(_params[1].AsString().HexToBytes());
                             RelayResultReason reason = targetSystem.Blockchain.Ask<RelayResultReason>(tx).Result;
@@ -482,8 +517,8 @@ namespace Zoro.Network.RPC
                     }
                 case "submitblock":
                     {
-                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
-                        if (ZoroSystem.GetAppChainSystem(chain_hash, out ZoroSystem targetSystem))
+                        ZoroSystem targetSystem = GetSystemByParam(_params[0]);
+                        if (targetSystem != null)
                         {
                             Block block = _params[0].AsString().HexToBytes().AsSerializable<Block>();
                             RelayResultReason reason = targetSystem.Blockchain.Ask<RelayResultReason>(block).Result;
