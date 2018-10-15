@@ -37,8 +37,6 @@ namespace Zoro.SmartContract
                     return false;
 
                 uint timestamp = (uint)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
-                int tcpPort = (int)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
-                int wsPort = (int)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
 
                 int seedCount = (int)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
                 string[] seedList = new string[seedCount];
