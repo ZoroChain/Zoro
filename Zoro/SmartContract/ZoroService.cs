@@ -1,17 +1,13 @@
-﻿using Zoro.Cryptography.ECC;
+﻿using Akka.Actor;
+using Zoro.Cryptography.ECC;
 using Zoro.Ledger;
 using Zoro.Network.P2P;
-using Zoro.Network.P2P.Payloads;
 using Zoro.Persistence;
-using Zoro.SmartContract.Enumerators;
-using Zoro.SmartContract.Iterators;
 using Neo.VM;
-using Neo.VM.Types;
 using System;
 using System.IO;
 using System.Linq;
 using System.Text;
-using VMArray = Neo.VM.Types.Array;
 
 namespace Zoro.SmartContract
 {
@@ -41,8 +37,6 @@ namespace Zoro.SmartContract
                     return false;
 
                 uint timestamp = (uint)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
-                int tcpPort = (int)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
-                int wsPort = (int)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
 
                 int seedCount = (int)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
                 string[] seedList = new string[seedCount];
@@ -67,8 +61,6 @@ namespace Zoro.SmartContract
                         Name = name,
                         Owner = owner,
                         Timestamp = timestamp,
-                        TcpPort = tcpPort,
-                        WsPort = wsPort,
                         SeedList = seedList,
                         StandbyValidators = validators,
                     };
@@ -103,10 +95,9 @@ namespace Zoro.SmartContract
 
             state.StandbyValidators = validators;
 
-            Blockchain appchain = Blockchain.GetBlockchain(hash);
-            if (appchain != null)
+            if (ZoroSystem.GetAppChainSystem(hash, out ZoroSystem system))
             {
-                appchain.StandbyValidators = (ECPoint[])validators.Clone();
+                system.Blockchain.Tell(new Blockchain.ChangeValidators { Validators = validators });
             }
 
             return true;
@@ -131,10 +122,9 @@ namespace Zoro.SmartContract
 
             state.SeedList = seedList;
 
-            LocalNode appnode = LocalNode.GetLocalNode(hash);
-            if (appnode != null)
+            if (ZoroSystem.GetAppChainSystem(hash, out ZoroSystem system))
             {
-                appnode.SeedList = seedList;
+                system.LocalNode.Tell(new LocalNode.ChangeSeedList { SeedList = seedList });
             }
 
             return true;

@@ -15,7 +15,9 @@ namespace Zoro.Network.P2P
 {
     public class LocalNode : Peer
     {
-        public class AskNode { public UInt160 chainHash; }
+        public class AskNode { public UInt160 ChainHash; }
+        public class ChangeSeedList { public string[] SeedList; }
+
         public class Relay { public IInventory Inventory; }
         internal class RelayDirectly { public IInventory Inventory; }
         internal class SendDirectly { public IInventory Inventory; }
@@ -137,7 +139,7 @@ namespace Zoro.Network.P2P
             bool result = false;
             while (!result)
             {
-                result = system.LocalNode.Ask<bool>(new AskNode { chainHash = chainHash }).Result;
+                result = system.LocalNode.Ask<bool>(new AskNode { ChainHash = chainHash }).Result;
                 if (result)
                     break;
                 else
@@ -243,7 +245,10 @@ namespace Zoro.Network.P2P
                 case RelayResultReason _:
                     break;
                 case AskNode ask:
-                    Sender.Tell(OnAskNode(ask.chainHash));
+                    Sender.Tell(OnAskNode(ask.ChainHash));
+                    break;
+                case ChangeSeedList msg:
+                    OnChangeSeedList(msg.SeedList);
                     break;
             }
         }
@@ -279,6 +284,11 @@ namespace Zoro.Network.P2P
         private bool OnAskNode(UInt160 chainHash)
         {
             return GetLocalNode(chainHash, false) != null;
+        }
+
+        private void OnChangeSeedList(string[] seedList)
+        {
+            SeedList = seedList;
         }
     }
 }

@@ -16,12 +16,10 @@ namespace Zoro.Ledger
         public string Name;
         public ECPoint Owner;
         public uint Timestamp;
-        public int TcpPort;
-        public int WsPort;
         public string[] SeedList;
         public ECPoint[] StandbyValidators;
 
-        public override int Size => base.Size + Hash.Size + Name.GetVarSize() + Owner.Size + sizeof(uint) + sizeof(int)*2 + SeedList.GetVarSize() + StandbyValidators.GetVarSize();
+        public override int Size => base.Size + Hash.Size + Name.GetVarSize() + Owner.Size + sizeof(uint) + SeedList.GetVarSize() + StandbyValidators.GetVarSize();
 
         public AppChainState() { }
 
@@ -31,8 +29,6 @@ namespace Zoro.Ledger
             this.Name = "";
             this.Owner = ECCurve.Secp256r1.Infinity;
             this.Timestamp = 0;
-            this.TcpPort = 0;
-            this.WsPort = 0;
             this.SeedList = new string[0];
             this.StandbyValidators = new ECPoint[0];
         }
@@ -45,8 +41,6 @@ namespace Zoro.Ledger
                 Name = Name,
                 Owner = Owner,
                 Timestamp = Timestamp,
-                TcpPort = TcpPort,
-                WsPort = WsPort,
                 SeedList = SeedList,
                 StandbyValidators = StandbyValidators,
                 _names = _names
@@ -60,8 +54,6 @@ namespace Zoro.Ledger
             Name = reader.ReadVarString();
             Owner = ECPoint.DeserializeFrom(reader, ECCurve.Secp256r1);
             Timestamp = reader.ReadUInt32();
-            TcpPort = reader.ReadInt32();
-            WsPort = reader.ReadInt32();
             SeedList = new string[reader.ReadVarInt()];
             for (int i = 0; i < SeedList.Length; i++)
                 SeedList[i] = reader.ReadVarString();
@@ -76,8 +68,6 @@ namespace Zoro.Ledger
             Name = replica.Name;
             Owner = replica.Owner;
             Timestamp = replica.Timestamp;
-            TcpPort = replica.TcpPort;
-            WsPort = replica.WsPort;
             SeedList = replica.SeedList;
             StandbyValidators = replica.StandbyValidators;
             _names = replica._names;
@@ -126,8 +116,6 @@ namespace Zoro.Ledger
             writer.WriteVarString(Name);
             writer.Write(Owner);
             writer.Write(Timestamp);
-            writer.Write(TcpPort);
-            writer.Write(WsPort);
             writer.WriteVarStringArray(SeedList);
             writer.Write(StandbyValidators);
         }
@@ -147,8 +135,6 @@ namespace Zoro.Ledger
             json["owner"] = Owner.ToString();
             json["timestamp"] = Timestamp;
             json["port"] = new JObject();
-            json["port"]["tcp"] = TcpPort;
-            json["port"]["ws"] = WsPort;
             json["seedlist"] = new JArray(SeedList.Select(p => (JObject)p));
             json["validators"] = new JArray(StandbyValidators.Select(p => (JObject)p.ToString()));
             return json;

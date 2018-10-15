@@ -25,7 +25,7 @@ namespace Zoro
         internal IActorRef Consensus;
         private RpcServer rpcServer;
 
-        private Dictionary<UInt160, ZoroSystem> AppChainSystems = new Dictionary<UInt160, ZoroSystem>();
+        private static Dictionary<UInt160, ZoroSystem> AppChainSystems = new Dictionary<UInt160, ZoroSystem>();
 
         public ZoroSystem(UInt160 chainHash, Store store, ActorSystem actorSystem)
         {
@@ -117,7 +117,7 @@ namespace Zoro
             }
         }
 
-        public bool GetAppChainSystem(UInt160 chainHash, out ZoroSystem system)
+        public static bool GetAppChainSystem(UInt160 chainHash, out ZoroSystem system)
         {
             return AppChainSystems.TryGetValue(chainHash, out system);
         }

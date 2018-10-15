@@ -22,7 +22,9 @@ namespace Zoro.Ledger
 {
     public sealed class Blockchain : UntypedActor
     {
-        public class AskChain { public UInt160 chainHash; }
+        public class AskChain { public UInt160 ChainHash; }
+        public class ChangeValidators { public ECPoint[] Validators; }
+
         public class Register { }
         public class ApplicationExecuted { public Transaction Transaction; public ApplicationExecutionResult[] ExecutionResults; }
         public class PersistCompleted { public Block Block; }
@@ -259,7 +261,7 @@ namespace Zoro.Ledger
             bool result = false;
             while (!result)
             {
-                result = system.Blockchain.Ask<bool>(new AskChain { chainHash = chainHash }).Result;
+                result = system.Blockchain.Ask<bool>(new AskChain { ChainHash = chainHash }).Result;
                 if (result)
                     break;
                 else
@@ -511,8 +513,11 @@ namespace Zoro.Ledger
                 case Terminated terminated:
                     subscribers.Remove(terminated.ActorRef);
                     break;
-                case AskChain ask:
-                    Sender.Tell(OnAskChain(ask.chainHash));
+                case AskChain msg:
+                    Sender.Tell(OnAskChain(msg.ChainHash));
+                    break;
+                case ChangeValidators msg:
+                    OnChangeValidators(msg.Validators);
                     break;
             }
         }
@@ -783,6 +788,11 @@ namespace Zoro.Ledger
         private bool OnAskChain(UInt160 chainHash)
         {
             return GetBlockchain(chainHash, false) != null;
+        }
+
+        private void OnChangeValidators(ECPoint[] validators)
+        {
+            StandbyValidators = validators;
         }
 
         private void Log(string message, LogLevel level = LogLevel.Info)
