@@ -171,7 +171,7 @@ namespace Zoro.Network.RPC
                     }
                 case "getbestblockhash":
                     {
-                        UInt160 chain_hash = _params[0].AsString().ToScriptHash();
+                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
                         Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
                         if (blockchain == null)
                             throw new RpcException(-100, "Unknown blockchain");
@@ -180,7 +180,7 @@ namespace Zoro.Network.RPC
                 case "getblock":
                     {
                         Block block;
-                        UInt160 chain_hash = _params[0].AsString().ToScriptHash();
+                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
                         Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
                         if (blockchain == null)
                             throw new RpcException(-100, "Unknown blockchain");
@@ -210,7 +210,7 @@ namespace Zoro.Network.RPC
                     }
                 case "getblockcount":
                     {
-                        UInt160 chain_hash = _params[0].AsString().ToScriptHash();
+                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
                         Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
                         if (blockchain == null)
                             throw new RpcException(-100, "Unknown blockchain");
@@ -218,7 +218,7 @@ namespace Zoro.Network.RPC
                     }
                 case "getblockhash":
                     {
-                        UInt160 chain_hash = _params[0].AsString().ToScriptHash();
+                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
                         Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
                         if (blockchain == null)
                             throw new RpcException(-100, "Unknown blockchain");
@@ -232,7 +232,7 @@ namespace Zoro.Network.RPC
                 case "getblockheader":
                     {
                         Header header;
-                        UInt160 chain_hash = _params[0].AsString().ToScriptHash();
+                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
                         Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
                         if (blockchain == null)
                             throw new RpcException(-100, "Unknown blockchain");
@@ -264,7 +264,7 @@ namespace Zoro.Network.RPC
                     }
                 case "getblocksysfee":
                     {
-                        UInt160 chain_hash = _params[0].AsString().ToScriptHash();
+                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
                         Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
                         if (blockchain == null)
                             throw new RpcException(-100, "Unknown blockchain");
@@ -278,13 +278,13 @@ namespace Zoro.Network.RPC
                     }
                 case "getconnectioncount":
                     {
-                        UInt160 chain_hash = _params[0].AsString().ToScriptHash();
+                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
                         LocalNode localNode = LocalNode.GetLocalNode(chain_hash);
                         return localNode != null ? localNode.ConnectedCount : 0;
                     }
                 case "getcontractstate":
                     {
-                        UInt160 chain_hash = _params[0].AsString().ToScriptHash();
+                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
                         Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
                         if (blockchain == null)
                             throw new RpcException(-100, "Unknown blockchain");
@@ -331,7 +331,7 @@ namespace Zoro.Network.RPC
                     }
                 case "getrawmempool":
                     {
-                        UInt160 chain_hash = _params[0].AsString().ToScriptHash();
+                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
                         Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
                         if (blockchain == null)
                             throw new RpcException(-100, "Unknown blockchain");
@@ -340,7 +340,7 @@ namespace Zoro.Network.RPC
                     }
                 case "getrawtransaction":
                     {
-                        UInt160 chain_hash = _params[0].AsString().ToScriptHash();
+                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
                         Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
                         if (blockchain == null)
                             throw new RpcException(-100, "Unknown blockchain");
@@ -367,7 +367,7 @@ namespace Zoro.Network.RPC
                     }
                 case "getstorage":
                     {
-                        UInt160 chain_hash = _params[0].AsString().ToScriptHash();
+                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
                         Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
                         if (blockchain == null)
                             throw new RpcException(-100, "Unknown blockchain");
@@ -383,7 +383,7 @@ namespace Zoro.Network.RPC
                     }
                 case "gettxout":
                     {
-                        UInt160 chain_hash = _params[0].AsString().ToScriptHash();
+                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
                         Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
                         if (blockchain == null)
                             throw new RpcException(-100, "Unknown blockchain");
@@ -394,7 +394,7 @@ namespace Zoro.Network.RPC
                     }
                 case "getvalidators":
                     {
-                        UInt160 chain_hash = _params[0].AsString().ToScriptHash();
+                        UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
                         Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
                         if (blockchain == null)
                             throw new RpcException(-100, "Unknown blockchain");
