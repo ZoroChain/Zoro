@@ -63,8 +63,6 @@ namespace Zoro.SmartContract
                         Name = name,
                         Owner = owner,
                         Timestamp = timestamp,
-                        TcpPort = tcpPort,
-                        WsPort = wsPort,
                         SeedList = seedList,
                         StandbyValidators = validators,
                     };
