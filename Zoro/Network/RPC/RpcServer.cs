@@ -472,7 +472,7 @@ namespace Zoro.Network.RPC
                 case "sendrawtransaction":
                     {
                         UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
-                        if(system.GetAppChainSystem(chain_hash, out ZoroSystem targetSystem))
+                        if(ZoroSystem.GetAppChainSystem(chain_hash, out ZoroSystem targetSystem))
                         {
                             Transaction tx = Transaction.DeserializeFrom(_params[1].AsString().HexToBytes());
                             RelayResultReason reason = targetSystem.Blockchain.Ask<RelayResultReason>(tx).Result;
@@ -483,7 +483,7 @@ namespace Zoro.Network.RPC
                 case "submitblock":
                     {
                         UInt160 chain_hash = UInt160.Parse(_params[0].AsString());
-                        if (system.GetAppChainSystem(chain_hash, out ZoroSystem targetSystem))
+                        if (ZoroSystem.GetAppChainSystem(chain_hash, out ZoroSystem targetSystem))
                         {
                             Block block = _params[0].AsString().HexToBytes().AsSerializable<Block>();
                             RelayResultReason reason = targetSystem.Blockchain.Ask<RelayResultReason>(block).Result;
