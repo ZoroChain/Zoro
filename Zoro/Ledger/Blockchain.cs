@@ -663,7 +663,7 @@ namespace Zoro.Ledger
                             break;
 #pragma warning restore CS0612
                         case InvocationTransaction tx_invocation:
-                            using (ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, tx_invocation, snapshot.Clone(), tx_invocation.Gas))
+                            using (ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, tx_invocation, snapshot.Clone(), tx_invocation.Gas, true))
                             {
                                 engine.LoadScript(tx_invocation.Script);
                                 if (engine.Execute())
