@@ -508,54 +508,72 @@ namespace Zoro.SmartContract
             {
                 case "System.Runtime.CheckWitness":
                 case "Zoro.Runtime.CheckWitness":
+                case "Neo.Runtime.CheckWitness":
                 case "AntShares.Runtime.CheckWitness":
                     return 200;
                 case "System.Blockchain.GetHeader":
                 case "Zoro.Blockchain.GetHeader":
+                case "Neo.Blockchain.GetHeader":
                 case "AntShares.Blockchain.GetHeader":
                     return 100;
                 case "System.Blockchain.GetBlock":
                 case "Zoro.Blockchain.GetBlock":
+                case "Neo.Blockchain.GetBlock":
                 case "AntShares.Blockchain.GetBlock":
                     return 200;
                 case "System.Blockchain.GetTransaction":
                 case "Zoro.Blockchain.GetTransaction":
+                case "Neo.Blockchain.GetTransaction":
                 case "AntShares.Blockchain.GetTransaction":
                     return 100;
                 case "System.Blockchain.GetTransactionHeight":
                 case "Zoro.Blockchain.GetTransactionHeight":
+                case "Neo.Blockchain.GetTransactionHeight":
                     return 100;
+                case "Neo.Blockchain.GetAccount":
                 case "Zoro.Blockchain.GetAccount":
                 case "AntShares.Blockchain.GetAccount":
                     return 100;
+                case "Neo.Blockchain.GetValidators":
                 case "Zoro.Blockchain.GetValidators":
                 case "AntShares.Blockchain.GetValidators":
                     return 200;
+                case "Neo.Blockchain.GetAsset":
                 case "Zoro.Blockchain.GetAsset":
                 case "AntShares.Blockchain.GetAsset":
                     return 100;
                 case "System.Blockchain.GetContract":
                 case "Zoro.Blockchain.GetContract":
+                case "Neo.Blockchain.GetContract":
                 case "AntShares.Blockchain.GetContract":
                     return 100;
+                case "Neo.Transaction.GetReferences":
                 case "Zoro.Transaction.GetReferences":
                 case "AntShares.Transaction.GetReferences":
                     return 200;
+                case "Neo.Transaction.GetUnspentCoins":
                 case "Zoro.Transaction.GetUnspentCoins":
                     return 200;
+                case "Neo.Transaction.GetWitnesses":
                 case "Zoro.Transaction.GetWitnesses":
                     return 200;
+                case "Neo.Witness.GetInvocationScript":
+                case "Neo.Witness.GetVerificationScript":
                 case "Zoro.Witness.GetInvocationScript":
                 case "Zoro.Witness.GetVerificationScript":
                     return 100;
+                case "Neo.Account.IsStandard":
                 case "Zoro.Account.IsStandard":
                     return 100;
+                case "Neo.Asset.Create":
                 case "Zoro.Asset.Create":
                 case "AntShares.Asset.Create":
                     return 5000L * 100000000L / ratio;
+                case "Neo.Asset.Renew":
                 case "Zoro.Asset.Renew":
                 case "AntShares.Asset.Renew":
                     return (byte)CurrentContext.EvaluationStack.Peek(1).GetBigInteger() * 5000L * 100000000L / ratio;
+                case "Neo.Contract.Create":
                 case "Zoro.Contract.Create":
                 case "Zoro.Contract.Migrate":
                 case "AntShares.Contract.Create":
@@ -575,14 +593,17 @@ namespace Zoro.SmartContract
                     return fee * 100000000L / ratio;
                 case "System.Storage.Get":
                 case "Zoro.Storage.Get":
+                case "Neo.Storage.Get":
                 case "AntShares.Storage.Get":
                     return 100;
                 case "System.Storage.Put":
                 case "Zoro.Storage.Put":
+                case "Neo.Storage.Put":
                 case "AntShares.Storage.Put":
                     return ((CurrentContext.EvaluationStack.Peek(1).GetByteArray().Length + CurrentContext.EvaluationStack.Peek(2).GetByteArray().Length - 1) / 1024 + 1) * 1000;
                 case "System.Storage.Delete":
                 case "Zoro.Storage.Delete":
+                case "Neo.Storage.Delete":
                 case "AntShares.Storage.Delete":
                     return 100;
                 default:
