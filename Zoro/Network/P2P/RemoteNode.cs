@@ -166,6 +166,17 @@ namespace Zoro.Network.P2P
         private void OnSetVersion(VersionPayload version)
         {
             this.Version = version;
+            // 检查对方的程序名称是否和我方一致
+            if (version.UserAgent != LocalNode.UserAgent)
+            {
+                string assemblyName = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name;
+                if (!version.UserAgent.Contains(assemblyName))
+                {
+                    // 对方的系统名称和我方不一致，中断连接
+                    Disconnect(true);
+                    return;
+                }
+            }
             if (version.Nonce == LocalNode.Nonce)
             {
                 Disconnect(true);
