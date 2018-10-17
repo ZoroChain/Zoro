@@ -36,7 +36,7 @@ namespace Zoro.Network.P2P
 
         private static Dictionary<UInt160, LocalNode> appnodes = new Dictionary<UInt160, LocalNode>();
 
-        public string[] SeedList { get; set; }
+        public string[] SeedList { get; private set; }
 
         public UInt160 ChainHash { get; }
         public Blockchain Blockchain { get; }
