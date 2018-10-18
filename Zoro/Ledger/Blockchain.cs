@@ -115,7 +115,7 @@ namespace Zoro.Ledger
                                     {
                                         AssetId = GoverningToken.Hash,
                                         Value = GoverningToken.Amount,
-                                        ScriptHash = Contract.CreateMultiSigRedeemScript(Root.StandbyValidators.Length / 2 + 1, Root.StandbyValidators).ToScriptHash()
+                                        ScriptHash = Contract.CreateMultiSigRedeemScript(StandbyValidators.Length / 2 + 1, StandbyValidators).ToScriptHash()
                                     }
                                 },
                                 Witnesses = new[]
