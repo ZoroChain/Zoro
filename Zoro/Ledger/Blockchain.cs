@@ -37,6 +37,7 @@ namespace Zoro.Ledger
         public static readonly uint[] GenerationAmount = { 8, 7, 6, 5, 4, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
         public static readonly TimeSpan TimePerBlock = TimeSpan.FromSeconds(SecondsPerBlock);
         public ECPoint[] StandbyValidators { get; private set; }
+        public string Name { get; private set; }
 
 #pragma warning disable CS0612
         public static readonly RegisterTransaction GoverningToken = new RegisterTransaction
@@ -177,6 +178,7 @@ namespace Zoro.Ledger
                     throw new InvalidOperationException();
 
                 root = this;
+                Name = "Root";
                 StandbyValidators = Settings.Default.StandbyValidators.OfType<string>().Select(p => ECPoint.DecodePoint(p.HexToBytes(), ECCurve.Secp256r1)).ToArray();
             }
             else
@@ -224,6 +226,7 @@ namespace Zoro.Ledger
                 throw new InvalidOperationException();
             }
 
+            blockchain.Name = state.Name;
             blockchain.StandbyValidators = (ECPoint[])state.StandbyValidators.Clone();
 
             lock (appchains)
