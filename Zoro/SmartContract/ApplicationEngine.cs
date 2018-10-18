@@ -597,6 +597,7 @@ namespace Zoro.SmartContract
                 case "AntShares.Storage.Get":
                     return 100;
                 case "System.Storage.Put":
+                case "System.Storage.PutEx":
                 case "Zoro.Storage.Put":
                 case "Neo.Storage.Put":
                 case "AntShares.Storage.Put":
@@ -631,13 +632,13 @@ namespace Zoro.SmartContract
             return true;
         }
 
-        public static ApplicationEngine Run(byte[] script, Snapshot snapshot = null, IScriptContainer container = null, Block persisting_block = null, bool testMode = false)
+        public static ApplicationEngine Run(byte[] script, Snapshot snapshot,
+            IScriptContainer container = null, Block persistingBlock = null, bool testMode = false, Fixed8 extraGAS = default(Fixed8))
         {
-            snapshot.PersistingBlock = persisting_block ?? new Block
+            snapshot.PersistingBlock = persistingBlock ?? snapshot.PersistingBlock ?? new Block
             {
                 Version = 0,
                 PrevHash = snapshot.CurrentBlockHash,
-                ChainHash = snapshot.Blockchain.ChainHash,
                 MerkleRoot = new UInt256(),
                 Timestamp = snapshot.Blocks[snapshot.CurrentBlockHash].TrimmedBlock.Timestamp + Blockchain.SecondsPerBlock,
                 Index = snapshot.Height + 1,
@@ -650,10 +651,18 @@ namespace Zoro.SmartContract
                 },
                 Transactions = new Transaction[0]
             };
-            ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, container, snapshot, Fixed8.Zero, testMode);
+            ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, container, snapshot, extraGAS, testMode);
             engine.LoadScript(script);
             engine.Execute();
             return engine;
+        }
+
+        public static ApplicationEngine Run(byte[] script, Blockchain blockchain, IScriptContainer container = null, Block persistingBlock = null, bool testMode = false, Fixed8 extraGAS = default(Fixed8))
+        {
+            using (Snapshot snapshot = blockchain.GetSnapshot())
+            {
+                return Run(script, snapshot, container, persistingBlock, testMode, extraGAS);
+            }
         }
     }
 }

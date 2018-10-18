@@ -108,7 +108,7 @@ namespace Zoro.Wallets
                     sb.EmitAppCall(asset_id_160, "decimals");
                     script = sb.ToArray();
                 }
-                ApplicationEngine engine = ApplicationEngine.Run(script);
+                ApplicationEngine engine = ApplicationEngine.Run(script, Blockchain.Root);
                 if (engine.State.HasFlag(VMState.FAULT))
                     return new BigDecimal(0, 0);
                 byte decimals = (byte)engine.ResultStack.Pop().GetBigInteger();
@@ -310,7 +310,7 @@ namespace Zoro.Wallets
                             sb2.Emit(OpCode.DEPTH, OpCode.PACK);
                             script = sb2.ToArray();
                         }
-                        ApplicationEngine engine = ApplicationEngine.Run(script);
+                        ApplicationEngine engine = ApplicationEngine.Run(script, Blockchain.Root);
                         if (engine.State.HasFlag(VMState.FAULT)) return null;
                         var balances = ((IEnumerable<StackItem>)(VMArray)engine.ResultStack.Pop()).Reverse().Zip(accounts, (i, a) => new
                         {
@@ -366,7 +366,7 @@ namespace Zoro.Wallets
             tx.Witnesses = new Witness[0];
             if (tx is InvocationTransaction itx)
             {
-                ApplicationEngine engine = ApplicationEngine.Run(itx.Script, null, itx);
+                ApplicationEngine engine = ApplicationEngine.Run(itx.Script, Blockchain.Root, itx);
                 if (engine.State.HasFlag(VMState.FAULT)) return null;
                 tx = new InvocationTransaction
                 {

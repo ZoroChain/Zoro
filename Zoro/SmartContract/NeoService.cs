@@ -19,87 +19,6 @@ namespace Zoro.SmartContract
         public NeoService(TriggerType trigger, Snapshot snapshot)
             : base(trigger, snapshot)
         {
-            Register("Zoro.Runtime.GetTrigger", Runtime_GetTrigger);
-            Register("Zoro.Runtime.CheckWitness", Runtime_CheckWitness);
-            Register("Zoro.Runtime.Notify", Runtime_Notify);
-            Register("Zoro.Runtime.Log", Runtime_Log);
-            Register("Zoro.Runtime.GetTime", Runtime_GetTime);
-            Register("Zoro.Runtime.Serialize", Runtime_Serialize);
-            Register("Zoro.Runtime.Deserialize", Runtime_Deserialize);
-            Register("Zoro.Blockchain.GetHeight", Blockchain_GetHeight);
-            Register("Zoro.Blockchain.GetHeader", Blockchain_GetHeader);
-            Register("Zoro.Blockchain.GetBlock", Blockchain_GetBlock);
-            Register("Zoro.Blockchain.GetTransaction", Blockchain_GetTransaction);
-            Register("Zoro.Blockchain.GetTransactionHeight", Blockchain_GetTransactionHeight);
-            Register("Zoro.Blockchain.GetAccount", Blockchain_GetAccount);
-            Register("Zoro.Blockchain.GetValidators", Blockchain_GetValidators);
-            Register("Zoro.Blockchain.GetAsset", Blockchain_GetAsset);
-            Register("Zoro.Blockchain.GetContract", Blockchain_GetContract);
-            Register("Zoro.Header.GetHash", Header_GetHash);
-            Register("Zoro.Header.GetVersion", Header_GetVersion);
-            Register("Zoro.Header.GetPrevHash", Header_GetPrevHash);
-            Register("Zoro.Header.GetMerkleRoot", Header_GetMerkleRoot);
-            Register("Zoro.Header.GetTimestamp", Header_GetTimestamp);
-            Register("Zoro.Header.GetIndex", Header_GetIndex);
-            Register("Zoro.Header.GetConsensusData", Header_GetConsensusData);
-            Register("Zoro.Header.GetNextConsensus", Header_GetNextConsensus);
-            Register("Zoro.Block.GetTransactionCount", Block_GetTransactionCount);
-            Register("Zoro.Block.GetTransactions", Block_GetTransactions);
-            Register("Zoro.Block.GetTransaction", Block_GetTransaction);
-            Register("Zoro.Transaction.GetHash", Transaction_GetHash);
-            Register("Zoro.Transaction.GetType", Transaction_GetType);
-            Register("Zoro.Transaction.GetAttributes", Transaction_GetAttributes);
-            Register("Zoro.Transaction.GetInputs", Transaction_GetInputs);
-            Register("Zoro.Transaction.GetOutputs", Transaction_GetOutputs);
-            Register("Zoro.Transaction.GetReferences", Transaction_GetReferences);
-            Register("Zoro.Transaction.GetUnspentCoins", Transaction_GetUnspentCoins);
-            Register("Zoro.Transaction.GetWitnesses", Transaction_GetWitnesses);
-            Register("Zoro.InvocationTransaction.GetScript", InvocationTransaction_GetScript);
-            Register("Zoro.Witness.GetInvocationScript", Witness_GetInvocationScript);
-            Register("Zoro.Witness.GetVerificationScript", Witness_GetVerificationScript);
-            Register("Zoro.Attribute.GetUsage", Attribute_GetUsage);
-            Register("Zoro.Attribute.GetData", Attribute_GetData);
-            Register("Zoro.Input.GetHash", Input_GetHash);
-            Register("Zoro.Input.GetIndex", Input_GetIndex);
-            Register("Zoro.Output.GetAssetId", Output_GetAssetId);
-            Register("Zoro.Output.GetValue", Output_GetValue);
-            Register("Zoro.Output.GetScriptHash", Output_GetScriptHash);
-            Register("Zoro.Account.GetScriptHash", Account_GetScriptHash);
-            Register("Zoro.Account.GetVotes", Account_GetVotes);
-            Register("Zoro.Account.GetBalance", Account_GetBalance);
-            Register("Zoro.Account.IsStandard", Account_IsStandard);
-            Register("Zoro.Asset.Create", Asset_Create);
-            Register("Zoro.Asset.Renew", Asset_Renew);
-            Register("Zoro.Asset.GetAssetId", Asset_GetAssetId);
-            Register("Zoro.Asset.GetAssetType", Asset_GetAssetType);
-            Register("Zoro.Asset.GetAmount", Asset_GetAmount);
-            Register("Zoro.Asset.GetAvailable", Asset_GetAvailable);
-            Register("Zoro.Asset.GetPrecision", Asset_GetPrecision);
-            Register("Zoro.Asset.GetOwner", Asset_GetOwner);
-            Register("Zoro.Asset.GetAdmin", Asset_GetAdmin);
-            Register("Zoro.Asset.GetIssuer", Asset_GetIssuer);
-            Register("Zoro.Contract.Create", Contract_Create);
-            Register("Zoro.Contract.Migrate", Contract_Migrate);
-            Register("Zoro.Contract.Destroy", Contract_Destroy);
-            Register("Zoro.Contract.GetScript", Contract_GetScript);
-            Register("Zoro.Contract.IsPayable", Contract_IsPayable);
-            Register("Zoro.Contract.GetStorageContext", Contract_GetStorageContext);
-            Register("Zoro.Storage.GetContext", Storage_GetContext);
-            Register("Zoro.Storage.GetReadOnlyContext", Storage_GetReadOnlyContext);
-            Register("Zoro.Storage.Get", Storage_Get);
-            Register("Zoro.Storage.Put", Storage_Put);
-            Register("Zoro.Storage.Delete", Storage_Delete);
-            Register("Zoro.Storage.Find", Storage_Find);
-            Register("Zoro.StorageContext.AsReadOnly", StorageContext_AsReadOnly);
-            Register("Zoro.Enumerator.Create", Enumerator_Create);
-            Register("Zoro.Enumerator.Next", Enumerator_Next);
-            Register("Zoro.Enumerator.Value", Enumerator_Value);
-            Register("Zoro.Enumerator.Concat", Enumerator_Concat);
-            Register("Zoro.Iterator.Create", Iterator_Create);
-            Register("Zoro.Iterator.Key", Iterator_Key);
-            Register("Zoro.Iterator.Keys", Iterator_Keys);
-            Register("Zoro.Iterator.Values", Iterator_Values);
-
             Register("Neo.Runtime.GetTrigger", Runtime_GetTrigger);
             Register("Neo.Runtime.CheckWitness", Runtime_CheckWitness);
             Register("Neo.Runtime.Notify", Runtime_Notify);
@@ -182,9 +101,6 @@ namespace Zoro.SmartContract
             Register("Neo.Iterator.Values", Iterator_Values);
 
             #region Aliases
-            Register("Zoro.Iterator.Next", Enumerator_Next);
-            Register("Zoro.Iterator.Value", Enumerator_Value);
-
             Register("Neo.Iterator.Next", Enumerator_Next);
             Register("Neo.Iterator.Value", Enumerator_Value);
             #endregion
@@ -249,7 +165,7 @@ namespace Zoro.SmartContract
             #endregion
         }
 
-        private bool Blockchain_GetAccount(ExecutionEngine engine)
+        protected bool Blockchain_GetAccount(ExecutionEngine engine)
         {
             UInt160 hash = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
             AccountState account = Snapshot.Accounts.GetOrAdd(hash, () => new AccountState(hash));
@@ -257,14 +173,14 @@ namespace Zoro.SmartContract
             return true;
         }
 
-        private bool Blockchain_GetValidators(ExecutionEngine engine)
+        protected bool Blockchain_GetValidators(ExecutionEngine engine)
         {
             ECPoint[] validators = Snapshot.GetValidators();
             engine.CurrentContext.EvaluationStack.Push(validators.Select(p => (StackItem)p.EncodePoint(true)).ToArray());
             return true;
         }
 
-        private bool Blockchain_GetAsset(ExecutionEngine engine)
+        protected bool Blockchain_GetAsset(ExecutionEngine engine)
         {
             UInt256 hash = new UInt256(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
             AssetState asset = Snapshot.Assets.TryGet(hash);
@@ -273,7 +189,7 @@ namespace Zoro.SmartContract
             return true;
         }
 
-        private bool Header_GetVersion(ExecutionEngine engine)
+        protected bool Header_GetVersion(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -285,7 +201,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Header_GetMerkleRoot(ExecutionEngine engine)
+        protected bool Header_GetMerkleRoot(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -297,7 +213,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Header_GetConsensusData(ExecutionEngine engine)
+        protected bool Header_GetConsensusData(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -309,7 +225,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Header_GetNextConsensus(ExecutionEngine engine)
+        protected bool Header_GetNextConsensus(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -321,7 +237,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Transaction_GetType(ExecutionEngine engine)
+        protected bool Transaction_GetType(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -333,7 +249,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Transaction_GetAttributes(ExecutionEngine engine)
+        protected bool Transaction_GetAttributes(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -347,7 +263,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Transaction_GetInputs(ExecutionEngine engine)
+        protected bool Transaction_GetInputs(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -361,7 +277,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Transaction_GetOutputs(ExecutionEngine engine)
+        protected bool Transaction_GetOutputs(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -375,7 +291,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Transaction_GetReferences(ExecutionEngine engine)
+        protected bool Transaction_GetReferences(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -389,7 +305,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Transaction_GetUnspentCoins(ExecutionEngine engine)
+        protected bool Transaction_GetUnspentCoins(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -404,7 +320,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Transaction_GetWitnesses(ExecutionEngine engine)
+        protected bool Transaction_GetWitnesses(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -418,7 +334,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool InvocationTransaction_GetScript(ExecutionEngine engine)
+        protected bool InvocationTransaction_GetScript(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -430,7 +346,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Witness_GetInvocationScript(ExecutionEngine engine)
+        protected bool Witness_GetInvocationScript(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -442,7 +358,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Witness_GetVerificationScript(ExecutionEngine engine)
+        protected bool Witness_GetVerificationScript(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -455,7 +371,7 @@ namespace Zoro.SmartContract
         }
 
 
-        private bool Attribute_GetUsage(ExecutionEngine engine)
+        protected bool Attribute_GetUsage(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -467,7 +383,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Attribute_GetData(ExecutionEngine engine)
+        protected bool Attribute_GetData(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -479,7 +395,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Input_GetHash(ExecutionEngine engine)
+        protected bool Input_GetHash(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -491,7 +407,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Input_GetIndex(ExecutionEngine engine)
+        protected bool Input_GetIndex(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -503,7 +419,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Output_GetAssetId(ExecutionEngine engine)
+        protected bool Output_GetAssetId(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -515,7 +431,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Output_GetValue(ExecutionEngine engine)
+        protected bool Output_GetValue(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -527,7 +443,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Output_GetScriptHash(ExecutionEngine engine)
+        protected bool Output_GetScriptHash(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -539,7 +455,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Account_GetScriptHash(ExecutionEngine engine)
+        protected bool Account_GetScriptHash(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -551,7 +467,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Account_GetVotes(ExecutionEngine engine)
+        protected bool Account_GetVotes(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -563,7 +479,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Account_GetBalance(ExecutionEngine engine)
+        protected bool Account_GetBalance(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -577,7 +493,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Account_IsStandard(ExecutionEngine engine)
+        protected bool Account_IsStandard(ExecutionEngine engine)
         {
             UInt160 hash = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
             ContractState contract = Snapshot.Contracts.TryGet(hash);
@@ -586,7 +502,7 @@ namespace Zoro.SmartContract
             return true;
         }
 
-        private bool Asset_Create(ExecutionEngine engine)
+        protected bool Asset_Create(ExecutionEngine engine)
         {
             if (Trigger != TriggerType.Application) return false;
             InvocationTransaction tx = (InvocationTransaction)engine.ScriptContainer;
@@ -631,7 +547,7 @@ namespace Zoro.SmartContract
             return true;
         }
 
-        private bool Asset_Renew(ExecutionEngine engine)
+        protected bool Asset_Renew(ExecutionEngine engine)
         {
             if (Trigger != TriggerType.Application) return false;
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
@@ -656,7 +572,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Asset_GetAssetId(ExecutionEngine engine)
+        protected bool Asset_GetAssetId(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -668,7 +584,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Asset_GetAssetType(ExecutionEngine engine)
+        protected bool Asset_GetAssetType(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -680,7 +596,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Asset_GetAmount(ExecutionEngine engine)
+        protected bool Asset_GetAmount(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -692,7 +608,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Asset_GetAvailable(ExecutionEngine engine)
+        protected bool Asset_GetAvailable(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -704,7 +620,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Asset_GetPrecision(ExecutionEngine engine)
+        protected bool Asset_GetPrecision(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -716,7 +632,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Asset_GetOwner(ExecutionEngine engine)
+        protected bool Asset_GetOwner(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -728,7 +644,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Asset_GetAdmin(ExecutionEngine engine)
+        protected bool Asset_GetAdmin(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -740,7 +656,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Asset_GetIssuer(ExecutionEngine engine)
+        protected bool Asset_GetIssuer(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -752,7 +668,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Contract_Create(ExecutionEngine engine)
+        protected bool Contract_Create(ExecutionEngine engine)
         {
             if (Trigger != TriggerType.Application) return false;
             byte[] script = engine.CurrentContext.EvaluationStack.Pop().GetByteArray();
@@ -794,7 +710,7 @@ namespace Zoro.SmartContract
             return true;
         }
 
-        private bool Contract_Migrate(ExecutionEngine engine)
+        protected bool Contract_Migrate(ExecutionEngine engine)
         {
             if (Trigger != TriggerType.Application) return false;
             byte[] script = engine.CurrentContext.EvaluationStack.Pop().GetByteArray();
@@ -841,7 +757,8 @@ namespace Zoro.SmartContract
                             Key = pair.Key.Key
                         }, new StorageItem
                         {
-                            Value = pair.Value.Value
+                            Value = pair.Value.Value,
+                            IsConstant = false
                         });
                     }
                 }
@@ -850,7 +767,7 @@ namespace Zoro.SmartContract
             return Contract_Destroy(engine);
         }
 
-        private bool Contract_GetScript(ExecutionEngine engine)
+        protected bool Contract_GetScript(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -862,7 +779,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Contract_IsPayable(ExecutionEngine engine)
+        protected bool Contract_IsPayable(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -874,7 +791,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Storage_Find(ExecutionEngine engine)
+        protected bool Storage_Find(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -905,7 +822,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Enumerator_Create(ExecutionEngine engine)
+        protected bool Enumerator_Create(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is VMArray array)
             {
@@ -916,7 +833,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Enumerator_Next(ExecutionEngine engine)
+        protected bool Enumerator_Next(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -927,7 +844,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Enumerator_Value(ExecutionEngine engine)
+        protected bool Enumerator_Value(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -938,7 +855,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Enumerator_Concat(ExecutionEngine engine)
+        protected bool Enumerator_Concat(ExecutionEngine engine)
         {
             if (!(engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface1)) return false;
             if (!(engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface2)) return false;
@@ -949,7 +866,7 @@ namespace Zoro.SmartContract
             return true;
         }
 
-        private bool Iterator_Create(ExecutionEngine engine)
+        protected bool Iterator_Create(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is Map map)
             {
@@ -960,7 +877,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Iterator_Key(ExecutionEngine engine)
+        protected bool Iterator_Key(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -971,7 +888,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Iterator_Keys(ExecutionEngine engine)
+        protected bool Iterator_Keys(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
@@ -982,7 +899,7 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        private bool Iterator_Values(ExecutionEngine engine)
+        protected bool Iterator_Values(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
