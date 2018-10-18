@@ -117,9 +117,16 @@ namespace Zoro.Network.P2P
 
         private void OnAddrMessageReceived(AddrPayload payload)
         {
+            // 过滤掉已经建立了连接的地址
+            IEnumerable<IPEndPoint> Listeners = localNode.RemoteNodes.Values.Select(p => p.Listener);
+            IEnumerable<IPEndPoint> AddressList = payload.AddressList.Select(p => p.EndPoint).Where(p => !Listeners.Contains(p));
+
+            if (AddressList.Count() == 0)
+                return;
+
             system.LocalNode.Tell(new Peer.Peers
             {
-                EndPoints = payload.AddressList.Select(p => p.EndPoint)
+                EndPoints = AddressList
             });
         }
 
@@ -146,7 +153,7 @@ namespace Zoro.Network.P2P
             Random rand = new Random();
             IEnumerable<RemoteNode> peers = localNode.RemoteNodes.Values
                 .Where(p => p.ListenerPort > 0)
-                .GroupBy(p => p.Remote.Address, (k, g) => g.First())
+                //.GroupBy(p => p.Remote.Address, (k, g) => g.First()) // 考虑到一台电脑上跑多个节点的情况，这里允许存在重复的IP地址
                 .OrderBy(p => rand.Next())
                 .Take(AddrPayload.MaxCountToSend);
             NetworkAddressWithTime[] networkAddresses = peers.Select(p => NetworkAddressWithTime.Create(p.Listener, p.Version.Services, p.Version.Timestamp)).ToArray();
