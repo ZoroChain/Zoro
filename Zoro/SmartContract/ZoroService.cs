@@ -112,6 +112,10 @@ namespace Zoro.SmartContract
             if (Trigger != TriggerType.Application) return false;
             try
             {
+                // 只能在根链上执行创建应用链的指令
+                if (Snapshot.Blockchain.ChainHash != UInt160.Zero)
+                    return false;
+
                 UInt160 hash = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
 
                 if (engine.CurrentContext.EvaluationStack.Peek().GetByteArray().Length > 252) return false;
@@ -162,9 +166,13 @@ namespace Zoro.SmartContract
             return true;
         }
 
-        private bool AppChain_ChangeSeedList(ExecutionEngine engine)
+        private bool AppChain_ChangeValidators(ExecutionEngine engine)
         {
             if (Trigger != TriggerType.Application) return false;
+
+            // 只能在根链上执行更改应用链共识节点的指令
+            if (Snapshot.Blockchain.ChainHash != UInt160.Zero)
+                return false;
 
             UInt160 hash = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
 
@@ -181,6 +189,7 @@ namespace Zoro.SmartContract
 
             state.StandbyValidators = validators;
 
+            // 通知正在运行的应用链对象，更新共识节点公钥
             if (ZoroSystem.GetAppChainSystem(hash, out ZoroSystem system))
             {
                 system.Blockchain.Tell(new Blockchain.ChangeValidators { Validators = validators });
@@ -189,9 +198,13 @@ namespace Zoro.SmartContract
             return true;
         }
 
-        private bool AppChain_ChangeValidators(ExecutionEngine engine)
+        private bool AppChain_ChangeSeedList(ExecutionEngine engine)
         {
             if (Trigger != TriggerType.Application) return false;
+
+            // 只能在根链上执行更改应用链种子节点的指令
+            if (Snapshot.Blockchain.ChainHash != UInt160.Zero)
+                return false;
 
             UInt160 hash = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
 
@@ -208,6 +221,7 @@ namespace Zoro.SmartContract
 
             state.SeedList = seedList;
 
+            // 通知正在运行的应用链对象，更新种子节点地址
             if (ZoroSystem.GetAppChainSystem(hash, out ZoroSystem system))
             {
                 system.LocalNode.Tell(new LocalNode.ChangeSeedList { SeedList = seedList });
