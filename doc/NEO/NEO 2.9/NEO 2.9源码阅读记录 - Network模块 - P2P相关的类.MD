@@ -315,8 +315,8 @@
   * `Timer` 内部使用的定时器消息，每30秒触发一次
 
 * 主要成员变量
-  * `knownHashes` 记录已完成同步的数据Hash，在`OnNewTasks`里用来过滤请求同步的Hash，避免同步相同的数据
-  * `globalTasks` 记录已开始同步的数据Hash，在`RequestTasks`里被用来过滤本地已有的区块数据，避免重复请求已有的区块数据
+  * `knownHashes` 记录已完成同步的数据Hash，在`OnNewTasks`里用来过滤请求同步的Hash，避免重复请求本地已有的数据
+  * `globalTasks` 记录正在请求同步的数据Hash，在`OnNewTasks`和`RequestTasks`里被用来过滤本地已有的区块数据，避免重复请求已有的区块数据
   * `sessions` 会话列表，每个远程节点会有一个会话
   * `timer` 定时器
 
