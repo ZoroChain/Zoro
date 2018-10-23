@@ -18,8 +18,8 @@ namespace Zoro.Network.P2P
         public class RestartTasks { public InvPayload Payload; }
         private class Timer { }
 
-        private static readonly TimeSpan TimerInterval = TimeSpan.FromSeconds(10);
-        private static readonly TimeSpan TaskTimeout = TimeSpan.FromSeconds(30);
+        private static readonly TimeSpan TimerInterval = TimeSpan.FromSeconds(30);
+        private static readonly TimeSpan TaskTimeout = TimeSpan.FromMinutes(1);
 
         private readonly ZoroSystem system;
         private readonly HashSet<UInt256> knownHashes = new HashSet<UInt256>();
@@ -148,7 +148,7 @@ namespace Zoro.Network.P2P
                         session.Tasks.Remove(task.Key);
                     }
             foreach (TaskSession session in sessions.Values)
-                RequestTasks(session, true);
+                RequestTasks(session);
         }
 
         protected override void PostStop()
@@ -162,9 +162,9 @@ namespace Zoro.Network.P2P
             return Akka.Actor.Props.Create(() => new TaskManager(system, chainHash)).WithMailbox("task-manager-mailbox");
         }
 
-        private void RequestTasks(TaskSession session, bool timeout = false)
+        private void RequestTasks(TaskSession session)
         {
-            if (session.HasTask && !timeout) return;
+            if (session.HasTask) return;
             if (session.AvailableTasks.Count > 0)
             {
                 session.AvailableTasks.ExceptWith(knownHashes);
@@ -182,7 +182,6 @@ namespace Zoro.Network.P2P
                     return;
                 }
             }
-            if (session.HasTask) return;
             if (!HeaderTask && blockchain.HeaderHeight < session.Version.StartHeight)
             {
                 session.Tasks[UInt256.Zero] = DateTime.UtcNow;
