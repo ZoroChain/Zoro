@@ -193,7 +193,7 @@ namespace Zoro.Network.P2P
                 for (uint i = blockchain.Height + 1; i <= blockchain.HeaderHeight; i++)
                 {
                     hash = blockchain.GetBlockHash(i);
-                    if (!globalTasks.Contains(hash))
+                    if (!knownHashes.Contains(hash) && !globalTasks.Contains(hash))
                     {
                         hash = blockchain.GetBlockHash(i - 1);
                         break;
