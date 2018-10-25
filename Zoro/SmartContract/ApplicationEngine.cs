@@ -633,7 +633,7 @@ namespace Zoro.SmartContract
         }
 
         public static ApplicationEngine Run(byte[] script, Snapshot snapshot,
-            IScriptContainer container = null, Block persistingBlock = null, bool testMode = false, Fixed8 extraGAS = default(Fixed8))
+            IScriptContainer container = null, Block persistingBlock = null, bool testMode = false)
         {
             snapshot.PersistingBlock = persistingBlock ?? snapshot.PersistingBlock ?? new Block
             {
@@ -651,17 +651,17 @@ namespace Zoro.SmartContract
                 },
                 Transactions = new Transaction[0]
             };
-            ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, container, snapshot, extraGAS, testMode);
+            ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, container, snapshot, Fixed8.Zero, testMode);
             engine.LoadScript(script);
             engine.Execute();
             return engine;
         }
 
-        public static ApplicationEngine Run(byte[] script, Blockchain blockchain, IScriptContainer container = null, Block persistingBlock = null, bool testMode = false, Fixed8 extraGAS = default(Fixed8))
+        public static ApplicationEngine Run(byte[] script, Blockchain blockchain, IScriptContainer container = null, Block persistingBlock = null, bool testMode = false)
         {
             using (Snapshot snapshot = blockchain.GetSnapshot())
             {
-                return Run(script, snapshot, container, persistingBlock, testMode, extraGAS);
+                return Run(script, snapshot, container, persistingBlock, testMode);
             }
         }
     }

@@ -68,9 +68,9 @@ namespace Zoro
         }
 
         public void StartRpc(IPAddress bindAddress, int port, Wallet wallet = null, string sslCert = null, string password = null,
-            string[] trustedAuthorities = null, Fixed8 maxGasInvoke = default(Fixed8))
+            string[] trustedAuthorities = null)
         {
-            rpcServer = new RpcServer(this, wallet, maxGasInvoke);
+            rpcServer = new RpcServer(this, wallet);
             rpcServer.Start(bindAddress, port, sslCert, password, trustedAuthorities);
         }
 

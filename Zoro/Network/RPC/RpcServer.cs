@@ -34,13 +34,11 @@ namespace Zoro.Network.RPC
         private readonly ZoroSystem system;
         private readonly Wallet wallet;
         private IWebHost host;
-        private Fixed8 maxGasInvoke;
 
-        public RpcServer(ZoroSystem system, Wallet wallet = null, Fixed8 maxGasInvoke = default(Fixed8))
+        public RpcServer(ZoroSystem system, Wallet wallet = null)
         {
             this.system = system;
             this.wallet = wallet;
-            this.maxGasInvoke = maxGasInvoke;
         }
 
         private static JObject CreateErrorResponse(JObject id, int code, string message, JObject data = null)
@@ -77,7 +75,7 @@ namespace Zoro.Network.RPC
             if (blockchain == null)
                 throw new RpcException(-100, "Unknown blockchain");
 
-            ApplicationEngine engine = ApplicationEngine.Run(script, blockchain.GetSnapshot(), null, null, false, maxGasInvoke);
+            ApplicationEngine engine = ApplicationEngine.Run(script, blockchain.GetSnapshot(), null, null, true);
 
             JObject json = new JObject();
             json["script"] = script.ToHexString();
