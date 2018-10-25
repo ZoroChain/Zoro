@@ -32,7 +32,7 @@ namespace Zoro.Network.RPC
     public sealed class RpcServer : IDisposable
     {
         private readonly ZoroSystem system;
-        private readonly Wallet wallet;
+        private Wallet wallet;
         private IWebHost host;
 
         public RpcServer(ZoroSystem system, Wallet wallet = null)
@@ -182,6 +182,11 @@ namespace Zoro.Network.RPC
             {
                 return this.system;
             }
+        }
+
+        public void OpenWallet(Wallet wallet)
+        {
+            this.wallet = wallet;
         }
 
         private JObject Process(string method, JArray _params)

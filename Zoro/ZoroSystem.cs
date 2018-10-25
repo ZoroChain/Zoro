@@ -17,13 +17,13 @@ namespace Zoro
 {
     public class ZoroSystem : IDisposable
     {
-        public readonly PluginManager PluginMgr;
-        public readonly ActorSystem ActorSystem;
-        public readonly IActorRef Blockchain;
-        public readonly IActorRef LocalNode;
-        internal readonly IActorRef TaskManager;
-        internal IActorRef Consensus;
-        private RpcServer rpcServer;
+        public PluginManager PluginMgr { get; }
+        public ActorSystem ActorSystem { get; }
+        public IActorRef Blockchain { get; }
+        public IActorRef LocalNode { get; }
+        internal IActorRef TaskManager { get; }
+        public IActorRef Consensus { get; private set; }
+        public RpcServer RpcServer { get; private set; }
 
         private static Dictionary<UInt160, ZoroSystem> AppChainSystems = new Dictionary<UInt160, ZoroSystem>();
 
@@ -47,7 +47,7 @@ namespace Zoro
 
         public void Dispose()
         {
-            rpcServer?.Dispose();
+            RpcServer?.Dispose();
             ActorSystem.Stop(LocalNode);
             ActorSystem.Dispose();
         }
@@ -67,11 +67,10 @@ namespace Zoro
             });
         }
 
-        public void StartRpc(IPAddress bindAddress, int port, Wallet wallet = null, string sslCert = null, string password = null,
-            string[] trustedAuthorities = null)
+        public void StartRpc(IPAddress bindAddress, int port, Wallet wallet = null, string sslCert = null, string password = null, string[] trustedAuthorities = null)
         {
-            rpcServer = new RpcServer(this, wallet);
-            rpcServer.Start(bindAddress, port, sslCert, password, trustedAuthorities);
+            RpcServer = new RpcServer(this, wallet);
+            RpcServer.Start(bindAddress, port, sslCert, password, trustedAuthorities);
         }
 
         public void StartAppChains(Blockchain blockchain)
