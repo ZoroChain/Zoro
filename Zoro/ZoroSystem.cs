@@ -89,7 +89,7 @@ namespace Zoro
 
             if (state != null)
             {
-                string path = string.Format(Settings.Default.AppChains.Path, settings.Hash);
+                string path = string.Format(Settings.Default.AppChains.Path, Message.Magic.ToString("X8"), settings.Hash);
 
                 Store appStore = new LevelDBStore(Path.GetFullPath(path));
 
