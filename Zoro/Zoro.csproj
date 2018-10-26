@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Copyright>2018-2019 The ZoroChain Project</Copyright>
     <AssemblyTitle>ZoroChain</AssemblyTitle>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Authors>The ZoroChain Project</Authors>
     <TargetFrameworks>netstandard2.0;net47</TargetFrameworks>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -17,6 +17,7 @@
     <Company>The ZoroChain Project</Company>
     <Description>ZoroChain</Description>
     <Product>ZoroChain</Product>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
