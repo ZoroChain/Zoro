@@ -12,10 +12,11 @@ namespace Zoro.Network.P2P
     internal class TaskManager : UntypedActor
     {
         public class Register { public VersionPayload Version; }
-        public class NewTasks { public InvPayload Payload; }
+        public class NewTask { public InvPayload Payload; }
+        public class NewGroupTask { public InvGroupPayload Payload; }
         public class TaskCompleted { public UInt256 Hash; }
         public class HeaderTaskCompleted { }
-        public class RestartTasks { public InvPayload Payload; }
+        public class RestartTasks { public InvGroupPayload Payload; }
         private class Timer { }
 
         private static readonly TimeSpan TimerInterval = TimeSpan.FromSeconds(30);
@@ -47,7 +48,34 @@ namespace Zoro.Network.P2P
             RequestTasks(session);
         }
 
-        private void OnNewTasks(InvPayload payload)
+        private void OnNewTask(InvPayload payload)
+        {
+            if (!sessions.TryGetValue(Sender, out TaskSession session))
+                return;
+            if (payload.Type == InventoryType.TX && blockchain.Height < blockchain.HeaderHeight)
+            {
+                RequestTasks(session);
+                return;
+            }
+            UInt256 hash = payload.Hash;
+            if (knownHashes.Contains(hash))
+                return;
+
+            bool isRunningTask = globalTasks.Contains(hash);
+            if (payload.Type == InventoryType.Block && isRunningTask)
+                session.AvailableTasks.Add(hash);
+
+            if (isRunningTask)
+            {
+                RequestTasks(session);
+                return;
+            }
+            globalTasks.Add(hash);
+            session.Tasks[hash] = DateTime.UtcNow;
+            Sender.Tell(Message.Create("getdata", InvPayload.Create(payload.Type, hash)));
+        }
+
+        private void OnNewGroupTask(InvGroupPayload payload)
         {
             if (!sessions.TryGetValue(Sender, out TaskSession session))
                 return;
@@ -69,8 +97,8 @@ namespace Zoro.Network.P2P
             globalTasks.UnionWith(hashes);
             foreach (UInt256 hash in hashes)
                 session.Tasks[hash] = DateTime.UtcNow;
-            foreach (InvPayload group in InvPayload.CreateGroup(payload.Type, hashes.ToArray()))
-                Sender.Tell(Message.Create("getdata", group));
+            foreach (InvGroupPayload group in InvGroupPayload.CreateGroup(payload.Type, hashes.ToArray()))
+                Sender.Tell(Message.Create("getdatagroup", group));
         }
 
         protected override void OnReceive(object message)
@@ -80,8 +108,11 @@ namespace Zoro.Network.P2P
                 case Register register:
                     OnRegister(register.Version);
                     break;
-                case NewTasks tasks:
-                    OnNewTasks(tasks.Payload);
+                case NewTask task:
+                    OnNewTask(task.Payload);
+                    break;
+                case NewGroupTask task:
+                    OnNewGroupTask(task.Payload);
                     break;
                 case TaskCompleted completed:
                     OnTaskCompleted(completed.Hash);
@@ -109,12 +140,12 @@ namespace Zoro.Network.P2P
             RequestTasks(session);
         }
 
-        private void OnRestartTasks(InvPayload payload)
+        private void OnRestartTasks(InvGroupPayload payload)
         {
             knownHashes.ExceptWith(payload.Hashes);
             globalTasks.ExceptWith(payload.Hashes);
-            foreach (InvPayload group in InvPayload.CreateGroup(payload.Type, payload.Hashes))
-                system.LocalNode.Tell(Message.Create("getdata", group));
+            foreach (InvGroupPayload group in InvGroupPayload.CreateGroup(payload.Type, payload.Hashes))
+                system.LocalNode.Tell(Message.Create("getdatagroup", group));
         }
 
         private void OnTaskCompleted(UInt256 hash)
@@ -177,8 +208,8 @@ namespace Zoro.Network.P2P
                     globalTasks.UnionWith(hashes);
                     foreach (UInt256 hash in hashes)
                         session.Tasks[hash] = DateTime.UtcNow;
-                    foreach (InvPayload group in InvPayload.CreateGroup(InventoryType.Block, hashes.ToArray()))
-                        session.RemoteNode.Tell(Message.Create("getdata", group));
+                    foreach (InvGroupPayload group in InvGroupPayload.CreateGroup(InventoryType.Block, hashes.ToArray()))
+                        session.RemoteNode.Tell(Message.Create("getdatagroup", group));
                     return;
                 }
             }
@@ -218,7 +249,11 @@ namespace Zoro.Network.P2P
                 case TaskManager.Register _:
                 case TaskManager.RestartTasks _:
                     return true;
-                case TaskManager.NewTasks tasks:
+                case TaskManager.NewTask task:
+                    if (task.Payload.Type == InventoryType.Block || task.Payload.Type == InventoryType.Consensus)
+                        return true;
+                    return false;
+                case TaskManager.NewGroupTask tasks:
                     if (tasks.Payload.Type == InventoryType.Block || tasks.Payload.Type == InventoryType.Consensus)
                         return true;
                     return false;

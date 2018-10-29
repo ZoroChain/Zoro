@@ -273,7 +273,7 @@ namespace Zoro.Consensus
                 UInt256[] hashes = context.TransactionHashes.Where(i => !context.Transactions.ContainsKey(i)).ToArray();
                 system.TaskManager.Tell(new TaskManager.RestartTasks
                 {
-                    Payload = InvPayload.Create(InventoryType.TX, hashes)
+                    Payload = InvGroupPayload.Create(InventoryType.TX, hashes)
                 });
             }
         }
@@ -334,8 +334,8 @@ namespace Zoro.Consensus
                 SignAndRelay(context.MakePrepareRequest());
                 if (context.TransactionHashes.Length > 1)
                 {
-                    foreach (InvPayload payload in InvPayload.CreateGroup(InventoryType.TX, context.TransactionHashes.Skip(1).ToArray()))
-                        system.LocalNode.Tell(Message.Create("inv", payload));
+                    foreach (InvGroupPayload payload in InvGroupPayload.CreateGroup(InventoryType.TX, context.TransactionHashes.Skip(1).ToArray()))
+                        system.LocalNode.Tell(Message.Create("invgroup", payload));
                 }
                 ChangeTimer(TimeSpan.FromSeconds(Blockchain.SecondsPerBlock << (timer.ViewNumber + 1)));
             }

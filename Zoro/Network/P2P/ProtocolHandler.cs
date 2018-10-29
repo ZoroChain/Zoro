@@ -84,6 +84,9 @@ namespace Zoro.Network.P2P
                 case "getdata":
                     OnGetDataMessageReceived(msg.Payload.AsSerializable<InvPayload>());
                     break;
+                case "getdatagroup":
+                    OnGetDataGroupMessageReceived(msg.Payload.AsSerializable<InvGroupPayload>());
+                    break;
                 case "getheaders":
                     OnGetHeadersMessageReceived(msg.Payload.AsSerializable<GetBlocksPayload>());
                     break;
@@ -92,6 +95,9 @@ namespace Zoro.Network.P2P
                     break;
                 case "inv":
                     OnInvMessageReceived(msg.Payload.AsSerializable<InvPayload>());
+                    break;
+                case "invgroup":
+                    OnInvGroupMessageReceived(msg.Payload.AsSerializable<InvGroupPayload>());
                     break;
                 case "mempool":
                     OnMemPoolMessageReceived();
@@ -168,7 +174,7 @@ namespace Zoro.Network.P2P
             BlockState state = blockchain.Store.GetBlocks().TryGet(hash);
             if (state == null) return;
             List<UInt256> hashes = new List<UInt256>();
-            for (uint i = 1; i <= InvPayload.MaxHashesCount; i++)
+            for (uint i = 1; i <= InvGroupPayload.MaxHashesCount; i++)
             {
                 uint index = state.TrimmedBlock.Index + i;
                 if (index > blockchain.Height)
@@ -178,44 +184,54 @@ namespace Zoro.Network.P2P
                 hashes.Add(hash);
             }
             if (hashes.Count == 0) return;
-            Context.Parent.Tell(Message.Create("inv", InvPayload.Create(InventoryType.Block, hashes.ToArray())));
+            Context.Parent.Tell(Message.Create("invgroup", InvGroupPayload.Create(InventoryType.Block, hashes.ToArray())));
+        }
+
+        private void ReplyInventoryData(UInt256 hash, InventoryType type)
+        {
+            blockchain.RelayCache.TryGet(hash, out IInventory inventory);
+            switch (type)
+            {
+                case InventoryType.TX:
+                    if (inventory == null)
+                        inventory = blockchain.GetTransaction(hash);
+                    if (inventory is Transaction)
+                        Context.Parent.Tell(Message.Create("tx", inventory));
+                    break;
+                case InventoryType.Block:
+                    if (inventory == null)
+                        inventory = blockchain.GetBlock(hash);
+                    if (inventory is Block block)
+                    {
+                        if (bloom_filter == null)
+                        {
+                            Context.Parent.Tell(Message.Create("block", inventory));
+                        }
+                        else
+                        {
+                            BitArray flags = new BitArray(block.Transactions.Select(p => bloom_filter.Test(p)).ToArray());
+                            Context.Parent.Tell(Message.Create("merkleblock", MerkleBlockPayload.Create(block, flags)));
+                        }
+                    }
+                    break;
+                case InventoryType.Consensus:
+                    if (inventory != null)
+                        Context.Parent.Tell(Message.Create("consensus", inventory));
+                    break;
+            }
         }
 
         private void OnGetDataMessageReceived(InvPayload payload)
         {
+            ReplyInventoryData(payload.Hash, payload.Type);
+        }
+
+        private void OnGetDataGroupMessageReceived(InvGroupPayload payload)
+        {
             UInt256[] hashes = payload.Hashes.Where(p => sentHashes.Add(p)).ToArray();
             foreach (UInt256 hash in hashes)
             {
-                blockchain.RelayCache.TryGet(hash, out IInventory inventory);
-                switch (payload.Type)
-                {
-                    case InventoryType.TX:
-                        if (inventory == null)
-                            inventory = blockchain.GetTransaction(hash);
-                        if (inventory is Transaction)
-                            Context.Parent.Tell(Message.Create("tx", inventory));
-                        break;
-                    case InventoryType.Block:
-                        if (inventory == null)
-                            inventory = blockchain.GetBlock(hash);
-                        if (inventory is Block block)
-                        {
-                            if (bloom_filter == null)
-                            {
-                                Context.Parent.Tell(Message.Create("block", inventory));
-                            }
-                            else
-                            {
-                                BitArray flags = new BitArray(block.Transactions.Select(p => bloom_filter.Test(p)).ToArray());
-                                Context.Parent.Tell(Message.Create("merkleblock", MerkleBlockPayload.Create(block, flags)));
-                            }
-                        }
-                        break;
-                    case InventoryType.Consensus:
-                        if (inventory != null)
-                            Context.Parent.Tell(Message.Create("consensus", inventory));
-                        break;
-                }
+                ReplyInventoryData(hash, payload.Type);
             }
         }
 
@@ -255,6 +271,27 @@ namespace Zoro.Network.P2P
 
         private void OnInvMessageReceived(InvPayload payload)
         {
+            bool exists = false;
+            switch (payload.Type)
+            {
+                case InventoryType.Block:
+                    using (Snapshot snapshot = blockchain.GetSnapshot())
+                        exists = snapshot.ContainsBlock(payload.Hash);
+                    break;
+                case InventoryType.TX:
+                    using (Snapshot snapshot = blockchain.GetSnapshot())
+                        exists = snapshot.ContainsTransaction(payload.Hash);
+                    break;
+            }
+
+            if (!exists)
+            {
+                system.TaskManager.Tell(new TaskManager.NewTask { Payload = InvPayload.Create(payload.Type, payload.Hash) }, Context.Parent);
+            }
+        }
+
+        private void OnInvGroupMessageReceived(InvGroupPayload payload)
+        {
             UInt256[] hashes = payload.Hashes.Where(p => knownHashes.Add(p)).ToArray();
             if (hashes.Length == 0) return;
             switch (payload.Type)
@@ -269,13 +306,13 @@ namespace Zoro.Network.P2P
                     break;
             }
             if (hashes.Length == 0) return;
-            system.TaskManager.Tell(new TaskManager.NewTasks { Payload = InvPayload.Create(payload.Type, hashes) }, Context.Parent);
+            system.TaskManager.Tell(new TaskManager.NewGroupTask { Payload = InvGroupPayload.Create(payload.Type, hashes) }, Context.Parent);
         }
 
         private void OnMemPoolMessageReceived()
         {
-            foreach (InvPayload payload in InvPayload.CreateGroup(InventoryType.TX, blockchain.GetMemoryPool().Select(p => p.Hash).ToArray()))
-                Context.Parent.Tell(Message.Create("inv", payload));
+            foreach (InvGroupPayload payload in InvGroupPayload.CreateGroup(InventoryType.TX, blockchain.GetMemoryPool().Select(p => p.Hash).ToArray()))
+                Context.Parent.Tell(Message.Create("invgroup", payload));
         }
 
         private void OnVerackMessageReceived()
@@ -328,7 +365,7 @@ namespace Zoro.Network.P2P
             {
                 case "getaddr":
                 case "getblocks":
-                case "getdata":
+                case "getdatagroup":
                 case "getheaders":
                 case "mempool":
                     return queue.OfType<Message>().Any(p => p.Command == msg.Command);
