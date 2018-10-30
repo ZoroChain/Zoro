@@ -260,12 +260,12 @@ namespace Zoro.Ledger
             }
         }
 
-        public static Blockchain AskBlockchain(ZoroSystem system, UInt160 chainHash)
+        public static Blockchain AskBlockchain(UInt160 chainHash)
         {
             bool result = false;
             while (!result)
             {
-                result = system.Blockchain.Ask<bool>(new AskChain { ChainHash = chainHash }).Result;
+                result = ZoroSystem.Root.Blockchain.Ask<bool>(new AskChain { ChainHash = chainHash }).Result;
                 if (result)
                     break;
                 else

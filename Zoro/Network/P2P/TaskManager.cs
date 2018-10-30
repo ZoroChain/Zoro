@@ -37,7 +37,7 @@ namespace Zoro.Network.P2P
         {
             this.system = system;
             this.chainHash = chainHash;
-            this.blockchain = Blockchain.AskBlockchain(system, chainHash);
+            this.blockchain = Blockchain.AskBlockchain(chainHash);
         }
 
         private void OnHeaderTaskCompleted()

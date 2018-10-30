@@ -9,6 +9,7 @@ using Zoro.Plugins;
 using Zoro.Wallets;
 using System;
 using System.Net;
+using System.Threading;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,8 +28,26 @@ namespace Zoro
 
         private static Dictionary<UInt160, ZoroSystem> AppChainSystems = new Dictionary<UInt160, ZoroSystem>();
 
+        private static ZoroSystem root;
+
+        public static ZoroSystem Root
+        {
+            get
+            {
+                while (root == null) Thread.Sleep(10);
+                return root;
+            }
+        }
         public ZoroSystem(UInt160 chainHash, Store store, ActorSystem actorSystem)
         {
+            if (chainHash == UInt160.Zero)
+            {
+                if (root != null)
+                    throw new InvalidOperationException();
+
+                root = this;
+            }
+
             this.ActorSystem = actorSystem ?? ActorSystem.Create(nameof(ZoroSystem),
                 $"akka {{ log-dead-letters = off }}" +
                 $"blockchain-mailbox {{ mailbox-type: \"{typeof(BlockchainMailbox).AssemblyQualifiedName}\" }}" +

@@ -89,7 +89,7 @@ namespace Zoro.Network.P2P
                     RegisterAppNode(chainHash, this);
                 }
 
-                this.Blockchain = Blockchain.AskBlockchain(system, chainHash);
+                this.Blockchain = Blockchain.AskBlockchain(chainHash);
             }
         }
 
@@ -134,12 +134,12 @@ namespace Zoro.Network.P2P
             }
         }
 
-        public static LocalNode AskLocalNode(ZoroSystem system, UInt160 chainHash)
+        public static LocalNode AskLocalNode(UInt160 chainHash)
         {
             bool result = false;
             while (!result)
             {
-                result = system.LocalNode.Ask<bool>(new AskNode { ChainHash = chainHash }).Result;
+                result = ZoroSystem.Root.LocalNode.Ask<bool>(new AskNode { ChainHash = chainHash }).Result;
                 if (result)
                     break;
                 else
