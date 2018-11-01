@@ -557,7 +557,6 @@ namespace Zoro.SmartContract
                 case "Neo.Transaction.GetWitnesses":
                 case "Zoro.Transaction.GetWitnesses":
                     return 200;
-                case "Neo.Witness.GetInvocationScript":
                 case "Neo.Witness.GetVerificationScript":
                 case "Zoro.Witness.GetInvocationScript":
                 case "Zoro.Witness.GetVerificationScript":

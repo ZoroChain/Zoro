@@ -52,7 +52,6 @@ namespace Zoro.SmartContract
             Register("Zoro.Transaction.GetUnspentCoins", Transaction_GetUnspentCoins);
             Register("Zoro.Transaction.GetWitnesses", Transaction_GetWitnesses);
             Register("Zoro.InvocationTransaction.GetScript", InvocationTransaction_GetScript);
-            Register("Zoro.Witness.GetInvocationScript", Witness_GetInvocationScript);
             Register("Zoro.Witness.GetVerificationScript", Witness_GetVerificationScript);
             Register("Zoro.Attribute.GetUsage", Attribute_GetUsage);
             Register("Zoro.Attribute.GetData", Attribute_GetData);

@@ -14,6 +14,7 @@ namespace Zoro.Plugins
         private readonly List<ILogPlugin> Loggers = new List<ILogPlugin>();
         internal readonly List<IPolicyPlugin> Policies = new List<IPolicyPlugin>();
         internal readonly List<IRpcPlugin> RpcPlugins = new List<IRpcPlugin>();
+        internal static readonly List<IPersistencePlugin> PersistencePlugins = new List<IPersistencePlugin>();
 
         public PluginManager(ZoroSystem system, UInt160 chainHash)
         {
@@ -24,17 +25,21 @@ namespace Zoro.Plugins
         public void AddPlugin(Plugin plugin)
         {
             Plugins.Add(plugin);
-            if (plugin is ILogPlugin)
+            if (plugin is ILogPlugin logger)
             {
-                Loggers.Add((ILogPlugin)plugin);
+                Loggers.Add(logger);
             }
-            if (plugin is IPolicyPlugin)
+            if (plugin is IPolicyPlugin policy)
             {
-                Policies.Add((IPolicyPlugin)plugin);
+                Policies.Add(policy);
             }
-            if (plugin is IRpcPlugin)
+            if (plugin is IRpcPlugin rpc)
             {
-                RpcPlugins.Add((IRpcPlugin)plugin);
+                RpcPlugins.Add(rpc);
+            }
+            if (plugin is IPersistencePlugin persistence)
+            {
+                PersistencePlugins.Add(persistence);
             }
         }
 

@@ -51,6 +51,8 @@ namespace Zoro.Network.P2P.Payloads
 
         InventoryType IInventory.InventoryType => InventoryType.TX;
 
+        public bool IsLowPriority => Type == TransactionType.ClaimTransaction || NetworkFee < Settings.Default.LowPriorityThreshold;
+
         private Fixed8 _network_fee = -Fixed8.Satoshi;
         public virtual Fixed8 NetworkFee
         {
