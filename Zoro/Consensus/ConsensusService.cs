@@ -100,6 +100,8 @@ namespace Zoro.Consensus
                         sc.AddSignature(contract, context.Validators[i], context.Signatures[i]);
                         j++;
                     }
+
+                Log(sc.ContextItems.Count.ToString() + " " + sc.ScriptHashes.Count);
                 sc.Verifiable.Witnesses = sc.GetWitnesses();
                 block.Transactions = context.TransactionHashes.Select(p => context.Transactions[p]).ToArray();
                 Log($"relay block: {block.Hash}");
