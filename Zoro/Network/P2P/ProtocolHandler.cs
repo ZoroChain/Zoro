@@ -271,6 +271,9 @@ namespace Zoro.Network.P2P
 
         private void OnInvMessageReceived(InvPayload payload)
         {
+            if (!knownHashes.Add(payload.Hash))
+                return;
+
             bool exists = false;
             switch (payload.Type)
             {
