@@ -7,6 +7,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Zoro", "Zoro\Zoro.csproj", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Zoro-Cli", "..\Zoro-Cli\zoro-cli\Zoro-Cli.csproj", "{1579B4C0-999A-4E12-A1F1-8F90756EC948}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cowboy.Sockets", "..\CowboyLib\Cowboy.Sockets\Cowboy.Sockets.csproj", "{721C3AE6-562A-4E87-B0F5-4E73EE6A63D0}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Logrila.Logging", "..\CowboyLib\Logrila.Logging\Logrila.Logging.csproj", "{A1BC1A5B-CD35-4F50-A7E1-3F7FF018F6ED}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +25,14 @@ Global
 		{1579B4C0-999A-4E12-A1F1-8F90756EC948}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1579B4C0-999A-4E12-A1F1-8F90756EC948}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1579B4C0-999A-4E12-A1F1-8F90756EC948}.Release|Any CPU.Build.0 = Release|Any CPU
+		{721C3AE6-562A-4E87-B0F5-4E73EE6A63D0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{721C3AE6-562A-4E87-B0F5-4E73EE6A63D0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{721C3AE6-562A-4E87-B0F5-4E73EE6A63D0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{721C3AE6-562A-4E87-B0F5-4E73EE6A63D0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1BC1A5B-CD35-4F50-A7E1-3F7FF018F6ED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1BC1A5B-CD35-4F50-A7E1-3F7FF018F6ED}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1BC1A5B-CD35-4F50-A7E1-3F7FF018F6ED}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1BC1A5B-CD35-4F50-A7E1-3F7FF018F6ED}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

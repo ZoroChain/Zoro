@@ -26,7 +26,7 @@
   </PropertyGroup>
   <ItemGroup>
     <None Update="protocol.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
       <PackagePath>content</PackagePath>
       <Pack>true</Pack>
     </None>
