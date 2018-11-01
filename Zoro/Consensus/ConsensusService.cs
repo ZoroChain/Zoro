@@ -101,7 +101,6 @@ namespace Zoro.Consensus
                         j++;
                     }
 
-                Log(sc.ContextItems.Count.ToString() + " " + sc.ScriptHashes.Count);
                 sc.Verifiable.Witnesses = sc.GetWitnesses();
                 block.Transactions = context.TransactionHashes.Select(p => context.Transactions[p]).ToArray();
                 Log($"relay block: {block.Hash}");

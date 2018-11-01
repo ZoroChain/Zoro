@@ -15,7 +15,7 @@ namespace Zoro.SmartContract
 {
     public class ContractParametersContext
     {
-        public class ContextItem
+        private class ContextItem
         {
             public byte[] Script;
             public ContractParameter[] Parameters;
@@ -60,7 +60,7 @@ namespace Zoro.SmartContract
         }
 
         public readonly IVerifiable Verifiable;
-        public readonly Dictionary<UInt160, ContextItem> ContextItems;
+        private readonly Dictionary<UInt160, ContextItem> ContextItems;
         private readonly Blockchain Blockchain;
 
         public bool Completed
@@ -68,9 +68,7 @@ namespace Zoro.SmartContract
             get
             {
                 if (ContextItems.Count < ScriptHashes.Count)
-                {
                     return false;
-                }
 
                 return ContextItems.Values.All(p => p != null && p.Parameters.All(q => q.Value != null));
             }
