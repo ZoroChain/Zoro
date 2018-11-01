@@ -207,6 +207,10 @@ namespace Zoro.Consensus
                 {
                     Log($"chain sync: expected={payload.BlockIndex} current: {context.Snapshot.Height} nodes={localNode.ConnectedCount}", LogLevel.Warning);
                 }
+                if (payload.PrevHash != context.PrevHash)
+                {
+                    Log($"block hash unmatched: sender={payload.ValidatorIndex} remote={payload.PrevHash} local={context.PrevHash}", LogLevel.Error);
+                }
                 return;
             }
             if (payload.ValidatorIndex >= context.Validators.Length) return;
