@@ -2,7 +2,7 @@
   "ProtocolConfiguration": {
     "Magic": 58225482,
     "AddressVersion": 23,
-    "SecondsPerBlock": 3,
+    "SecondsPerBlock": 1,
     "StandbyValidators": [
       "02e42b7e95cd9d91d8b473a340b1c2827d50715f9e95ce003587dc29513499cb08",
       "03b8d429f0d57a8cdf93dc7faf850fef23d2a17ce669bba7640cd0bcda21eafb0b",
@@ -16,28 +16,24 @@
       "127.0.0.1:20004"
     ],
     "SystemFee": {
-      "EnrollmentTransaction": 10,
-      "IssueTransaction": 5,
-      "PublishTransaction": 5,
-      "RegisterTransaction": 100
     },
     "AppChains": {
       "Path": "AppChain/{0}_{1}",
       "Chains": [
         {
-          "Hash": "be182ced606427f72e090ac721af664e5050a535",
+          "Hash": "0db5eff8ca875a656010c3dfe68870454b47aa6c",
           "Port": 30005,
           "WsPort": 30015,
           "StartConsensus": false
         },
         {
-          "Hash": "69688904c76f09207c3ea07ac1dbeb8912656e71",
+          "Hash": "1f49d2e1751e7e5f2c7e67ee6043422d85e09b58",
           "Port": 31005,
           "WsPort": 31015,
           "StartConsensus": false
         },
         {
-          "Hash": "93a78dfa619bd601c76b4fb421bce3703eebf911",
+          "Hash": "71c3c1f38feb8c959065ee9645b10e86bf350b22",
           "Port": 32005,
           "WsPort": 32015,
           "StartConsensus": false
