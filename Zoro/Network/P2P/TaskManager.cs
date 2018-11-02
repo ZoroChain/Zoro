@@ -97,8 +97,16 @@ namespace Zoro.Network.P2P
             globalTasks.UnionWith(hashes);
             foreach (UInt256 hash in hashes)
                 session.Tasks[hash] = DateTime.UtcNow;
-            foreach (InvGroupPayload group in InvGroupPayload.CreateGroup(payload.Type, hashes.ToArray()))
-                Sender.Tell(Message.Create("getdatagroup", group));
+
+            if (hashes.Count == 1)
+            {
+                Sender.Tell(Message.Create("getdata", InvPayload.Create(payload.Type, hashes.First())));
+            }
+            else
+            {
+                foreach (InvGroupPayload group in InvGroupPayload.CreateGroup(payload.Type, hashes.ToArray()))
+                    Sender.Tell(Message.Create("getdatagroup", group));
+            }
         }
 
         protected override void OnReceive(object message)
