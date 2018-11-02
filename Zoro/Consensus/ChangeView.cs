@@ -5,7 +5,7 @@ namespace Zoro.Consensus
 {
     internal class ChangeView : ConsensusMessage
     {
-        public byte NewViewNumber;
+        public ushort NewViewNumber;
 
         public ChangeView()
             : base(ConsensusMessageType.ChangeView)
@@ -15,7 +15,7 @@ namespace Zoro.Consensus
         public override void Deserialize(BinaryReader reader)
         {
             base.Deserialize(reader);
-            NewViewNumber = reader.ReadByte();
+            NewViewNumber = reader.ReadUInt16();
             if (NewViewNumber == 0) throw new FormatException();
         }
 

@@ -13,7 +13,7 @@ namespace Zoro.Consensus
         private static ReflectionCache<byte> ReflectionCache = ReflectionCache<byte>.CreateFromEnum<ConsensusMessageType>();
 
         public readonly ConsensusMessageType Type;
-        public byte ViewNumber;
+        public ushort ViewNumber;
 
         public int Size => sizeof(ConsensusMessageType) + sizeof(byte);
 
@@ -26,7 +26,7 @@ namespace Zoro.Consensus
         {
             if (Type != (ConsensusMessageType)reader.ReadByte())
                 throw new FormatException();
-            ViewNumber = reader.ReadByte();
+            ViewNumber = reader.ReadUInt16();
         }
 
         public static ConsensusMessage DeserializeFrom(byte[] data)

@@ -19,7 +19,7 @@ namespace Zoro.Consensus
     public sealed class ConsensusService : UntypedActor
     {
         public class Start { }
-        internal class Timer { public uint Height; public byte ViewNumber; }
+        internal class Timer { public uint Height; public ushort ViewNumber; }
 
         private readonly ConsensusContext context = new ConsensusContext();
         private readonly ZoroSystem system;
@@ -78,7 +78,7 @@ namespace Zoro.Consensus
             }, ActorRefs.NoSender);
         }
 
-        private void CheckExpectedView(byte view_number)
+        private void CheckExpectedView(ushort view_number)
         {
             if (context.ViewNumber == view_number) return;
             if (context.ExpectedView.Count(p => p == view_number) >= context.M)
@@ -154,7 +154,7 @@ namespace Zoro.Consensus
             return nonce.ToUInt64(0);
         }
 
-        private void InitializeConsensus(byte view_number)
+        private void InitializeConsensus(ushort view_number)
         {
             if (view_number == 0)
                 context.Reset(wallet, blockchain);
@@ -162,7 +162,7 @@ namespace Zoro.Consensus
                 context.ChangeView(view_number);
             if (context.MyIndex < 0) return;
             if (view_number > 0)
-                Log($"changeview: view={view_number} primary={context.Validators[context.GetPrimaryIndex((byte)(view_number - 1u))]}", LogLevel.Warning);
+                Log($"changeview: view={view_number} primary={context.Validators[context.GetPrimaryIndex((ushort)(view_number - 1u))]}", LogLevel.Warning);
             Log($"initialize: height={context.BlockIndex} view={view_number} index={context.MyIndex} role={(context.MyIndex == context.PrimaryIndex ? ConsensusState.Primary : ConsensusState.Backup)}");
             if (context.MyIndex == context.PrimaryIndex)
             {
@@ -176,7 +176,7 @@ namespace Zoro.Consensus
             else
             {
                 context.State = ConsensusState.Backup;
-                ChangeTimer(TimeSpan.FromSeconds(Blockchain.SecondsPerBlock << (view_number + 1)));
+                ChangeTimer(TimeSpan.FromSeconds(GetNextTime(view_number)));
             }
         }
 
@@ -196,6 +196,7 @@ namespace Zoro.Consensus
 
         private void OnConsensusPayload(ConsensusPayload payload)
         {
+            if (context.Snapshot == null) return;
             if (context.State.HasFlag(ConsensusState.BlockSent)) return;
             if (payload.ValidatorIndex == context.MyIndex) return;
             if (payload.Version != ConsensusContext.Version)
@@ -206,7 +207,7 @@ namespace Zoro.Consensus
                 {
                     Log($"chain sync: expected={payload.BlockIndex} current: {context.Snapshot.Height} nodes={localNode.ConnectedCount}", LogLevel.Warning);
                 }
-                if (payload.PrevHash != context.PrevHash)
+                if (payload.BlockIndex == context.BlockIndex && payload.PrevHash != context.PrevHash)
                 {
                     Log($"block hash unmatched: sender={payload.ValidatorIndex} remote={payload.PrevHash} local={context.PrevHash}", LogLevel.Error);
                 }
@@ -365,7 +366,7 @@ namespace Zoro.Consensus
                     foreach (InvGroupPayload payload in InvGroupPayload.CreateGroup(InventoryType.TX, context.TransactionHashes.Skip(1).ToArray()))
                         system.LocalNode.Tell(Message.Create("invgroup", payload));
                 }
-                ChangeTimer(TimeSpan.FromSeconds(Blockchain.SecondsPerBlock << (timer.ViewNumber + 1)));
+                ChangeTimer(TimeSpan.FromSeconds(GetNextTime(timer.ViewNumber)));
             }
             else if ((context.State.HasFlag(ConsensusState.Primary) && context.State.HasFlag(ConsensusState.RequestSent)) || context.State.HasFlag(ConsensusState.Backup))
             {
@@ -395,12 +396,17 @@ namespace Zoro.Consensus
             return Akka.Actor.Props.Create(() => new ConsensusService(system, wallet, chainHash)).WithMailbox("consensus-service-mailbox");
         }
 
+        private long GetNextTime(ushort viewNumber)
+        {
+            return Blockchain.SecondsPerBlock * (viewNumber + 2);
+        }
+
         private void RequestChangeView()
         {
             context.State |= ConsensusState.ViewChanging;
             context.ExpectedView[context.MyIndex]++;
             Log($"request change view: height={context.BlockIndex} view={context.ViewNumber} nv={context.ExpectedView[context.MyIndex]} state={context.State}");
-            ChangeTimer(TimeSpan.FromSeconds(Blockchain.SecondsPerBlock << (context.ExpectedView[context.MyIndex] + 1)));
+            ChangeTimer(TimeSpan.FromSeconds(GetNextTime(context.ExpectedView[context.MyIndex])));
             SignAndRelay(context.MakeChangeView());
             CheckExpectedView(context.ExpectedView[context.MyIndex]);
         }

@@ -17,7 +17,7 @@ namespace Zoro.Consensus
         public ConsensusState State;
         public UInt256 PrevHash;
         public uint BlockIndex;
-        public byte ViewNumber;
+        public ushort ViewNumber;
         public Snapshot Snapshot;
         public ECPoint[] Validators;
         public int MyIndex;
@@ -28,13 +28,13 @@ namespace Zoro.Consensus
         public UInt256[] TransactionHashes;
         public Dictionary<UInt256, Transaction> Transactions;
         public byte[][] Signatures;
-        public byte[] ExpectedView;
+        public ushort[] ExpectedView;
         public KeyPair KeyPair;
         public UInt160 ChainHash;
 
         public int M => Validators.Length - (Validators.Length - 1) / 3;
 
-        public void ChangeView(byte view_number)
+        public void ChangeView(ushort view_number)
         {
             State &= ConsensusState.SignatureSent;
             ViewNumber = view_number;
@@ -54,7 +54,7 @@ namespace Zoro.Consensus
             Snapshot?.Dispose();
         }
 
-        public uint GetPrimaryIndex(byte view_number)
+        public uint GetPrimaryIndex(ushort view_number)
         {
             int p = ((int)BlockIndex - view_number) % Validators.Length;
             return p >= 0 ? (uint)p : (uint)(p + Validators.Length);
@@ -138,7 +138,7 @@ namespace Zoro.Consensus
             PrimaryIndex = BlockIndex % (uint)Validators.Length;
             TransactionHashes = null;
             Signatures = new byte[Validators.Length][];
-            ExpectedView = new byte[Validators.Length];
+            ExpectedView = new ushort[Validators.Length];
             KeyPair = null;
             ChainHash = blockchain.ChainHash;
             for (int i = 0; i < Validators.Length; i++)
