@@ -450,6 +450,7 @@ namespace Zoro.Ledger
 
         private RelayResultReason OnNewTransaction(Transaction transaction)
         {
+            transaction.ChainHash = ChainHash;
             if (transaction.Type == TransactionType.MinerTransaction)
                 return RelayResultReason.Invalid;
             if (ContainsTransaction(transaction.Hash))
