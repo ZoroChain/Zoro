@@ -6,7 +6,7 @@ using System.Reflection;
 
 namespace Zoro.Plugins
 {
-    public abstract class Plugin
+    public abstract class Plugin : IDisposable
     {
         private PluginManager PluginMgr;
 
@@ -20,5 +20,7 @@ namespace Zoro.Plugins
             PluginMgr = mgr;
             PluginMgr.AddPlugin(this);
         }
+
+        public virtual void Dispose() {}
     }
 }

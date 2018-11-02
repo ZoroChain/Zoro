@@ -6,7 +6,7 @@ using System.Reflection;
 
 namespace Zoro.Plugins
 {
-    public class PluginManager
+    public class PluginManager : IDisposable
     {
         public UInt160 ChainHash { get; private set; }
         public ZoroSystem System { get; private set; }
@@ -20,6 +20,11 @@ namespace Zoro.Plugins
         {
             System = system;
             ChainHash = chainHash;
+        }
+
+        public void Dispose()
+        {
+            Plugins.ForEach(p => p.Dispose());
         }
 
         public void AddPlugin(Plugin plugin)

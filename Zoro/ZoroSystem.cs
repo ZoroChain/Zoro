@@ -26,6 +26,7 @@ namespace Zoro
         public IActorRef Consensus { get; private set; }
         public RpcServer RpcServer { get; private set; }
 
+        private Store store;
         private static Dictionary<UInt160, ZoroSystem> AppChainSystems = new Dictionary<UInt160, ZoroSystem>();
 
         private static ZoroSystem root;
@@ -62,13 +63,31 @@ namespace Zoro
 
             PluginMgr = new PluginManager(this, chainHash);
             PluginMgr.LoadPlugins();
+
+            this.store = store;
         }
 
         public void Dispose()
         {
+            ZoroSystem[] appchains = AppChainSystems.Values.ToArray();
+            if (appchains.Length > 0)
+            {
+                AppChainSystems.Clear();
+                foreach (var system in appchains)
+                {
+                    system.Dispose();
+                }
+            }
+
+            PluginMgr.Dispose();
             RpcServer?.Dispose();
             ActorSystem.Stop(LocalNode);
             ActorSystem.Dispose();
+
+            if (store is LevelDBStore levelDBStore)
+            {
+                levelDBStore.Dispose();
+            }
         }
 
         public void StartConsensus(UInt160 chainHash, Wallet wallet)
