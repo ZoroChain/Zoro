@@ -10,5 +10,7 @@ namespace Zoro.Consensus
         PrepareRequest = 0x20,
         [ReflectionCache(typeof(PrepareResponse))]
         PrepareResponse = 0x21,
+        [ReflectionCache(typeof(WaitTransaction))]
+        WaitTransaction = 0x22,
     }
 }

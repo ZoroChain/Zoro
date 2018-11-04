@@ -125,6 +125,11 @@ namespace Zoro.Consensus
             });
         }
 
+        public ConsensusPayload MakeWaitTransaction()
+        {
+            return MakePayload(new WaitTransaction());
+        }
+
         public void Reset(Wallet wallet, Blockchain blockchain)
         {
             Snapshot?.Dispose();

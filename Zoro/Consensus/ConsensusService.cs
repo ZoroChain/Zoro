@@ -21,6 +21,8 @@ namespace Zoro.Consensus
         public class Start { }
         internal class Timer { public uint Height; public ushort ViewNumber; }
 
+        public static readonly TimeSpan MaxTimeSpanPerBlock = TimeSpan.FromSeconds(Settings.Default.MaxSecondsPerBlock);
+
         private readonly ConsensusContext context = new ConsensusContext();
         private readonly ZoroSystem system;
         private readonly Wallet wallet;
@@ -29,6 +31,8 @@ namespace Zoro.Consensus
         private readonly UInt160 chainHash;
         private readonly LocalNode localNode;
         private readonly Blockchain blockchain;
+
+        private ICancelable timer;
 
         public ConsensusService(ZoroSystem system, Wallet wallet, UInt160 chainHash)
         {
@@ -71,11 +75,17 @@ namespace Zoro.Consensus
 
         private void ChangeTimer(TimeSpan delay)
         {
-            Context.System.Scheduler.ScheduleTellOnce(delay, Self, new Timer
+            timer = Context.System.Scheduler.ScheduleTellOnceCancelable(delay, Self, new Timer
             {
                 Height = context.BlockIndex,
                 ViewNumber = context.ViewNumber
             }, ActorRefs.NoSender);
+        }
+
+        private void SetNextTimer(ushort viewNumber)
+        {
+            TimeSpan span = TimeSpan.FromSeconds(Blockchain.SecondsPerBlock * (viewNumber + 2));
+            ChangeTimer(span);
         }
 
         private void CheckExpectedView(ushort view_number)
@@ -176,7 +186,7 @@ namespace Zoro.Consensus
             else
             {
                 context.State = ConsensusState.Backup;
-                ChangeTimer(TimeSpan.FromSeconds(GetNextTime(view_number)));
+                SetNextTimer(view_number);
             }
         }
 
@@ -235,6 +245,9 @@ namespace Zoro.Consensus
                     break;
                 case ConsensusMessageType.PrepareResponse:
                     OnPrepareResponseReceived(payload, (PrepareResponse)message);
+                    break;
+                case ConsensusMessageType.WaitTransaction:
+                    OnWaitTransactionReceived(payload, (WaitTransaction)message);
                     break;
             }
         }
@@ -317,6 +330,16 @@ namespace Zoro.Consensus
             }
         }
 
+        private void OnWaitTransactionReceived(ConsensusPayload payload, WaitTransaction message)
+        {
+            Log($"{nameof(OnWaitTransactionReceived)}: height={payload.BlockIndex} view={message.ViewNumber} index={payload.ValidatorIndex} primary={context.PrimaryIndex}");
+            if (context.MyIndex < 0) return;
+            if (payload.ValidatorIndex != context.PrimaryIndex) return;
+            if (DateTime.UtcNow - block_received_time >= MaxTimeSpanPerBlock) return;
+            this.timer.CancelIfNotNull();
+            SetNextTimer(context.ViewNumber);
+        }
+
         protected override void OnReceive(object message)
         {
             switch (message)
@@ -352,6 +375,14 @@ namespace Zoro.Consensus
             Log($"timeout: height={timer.Height} view={timer.ViewNumber} state={context.State}");
             if (context.State.HasFlag(ConsensusState.Primary) && !context.State.HasFlag(ConsensusState.RequestSent))
             {
+                if (blockchain.GetMemoryPool().Count() == 0 && DateTime.UtcNow - block_received_time < MaxTimeSpanPerBlock)
+                {
+                    Log($"send wait transaction: height={timer.Height} view={timer.ViewNumber}");
+                    SignAndRelay(context.MakeWaitTransaction());
+                    ChangeTimer(Blockchain.TimePerBlock);
+                    return;
+                }
+
                 Log($"send prepare request: height={timer.Height} view={timer.ViewNumber}");
                 context.State |= ConsensusState.RequestSent;
                 if (!context.State.HasFlag(ConsensusState.SignatureSent))
@@ -366,7 +397,7 @@ namespace Zoro.Consensus
                     foreach (InvGroupPayload payload in InvGroupPayload.CreateGroup(InventoryType.TX, context.TransactionHashes.Skip(1).ToArray()))
                         system.LocalNode.Tell(Message.Create("invgroup", payload));
                 }
-                ChangeTimer(TimeSpan.FromSeconds(GetNextTime(timer.ViewNumber)));
+                SetNextTimer(timer.ViewNumber);
             }
             else if ((context.State.HasFlag(ConsensusState.Primary) && context.State.HasFlag(ConsensusState.RequestSent)) || context.State.HasFlag(ConsensusState.Backup))
             {
@@ -396,17 +427,12 @@ namespace Zoro.Consensus
             return Akka.Actor.Props.Create(() => new ConsensusService(system, wallet, chainHash)).WithMailbox("consensus-service-mailbox");
         }
 
-        private long GetNextTime(ushort viewNumber)
-        {
-            return Blockchain.SecondsPerBlock * (viewNumber + 2);
-        }
-
         private void RequestChangeView()
         {
             context.State |= ConsensusState.ViewChanging;
             context.ExpectedView[context.MyIndex]++;
             Log($"request change view: height={context.BlockIndex} view={context.ViewNumber} nv={context.ExpectedView[context.MyIndex]} state={context.State}");
-            ChangeTimer(TimeSpan.FromSeconds(GetNextTime(context.ExpectedView[context.MyIndex])));
+            SetNextTimer(context.ExpectedView[context.MyIndex]);
             SignAndRelay(context.MakeChangeView());
             CheckExpectedView(context.ExpectedView[context.MyIndex]);
         }
