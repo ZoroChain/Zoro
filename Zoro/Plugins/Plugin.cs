@@ -1,8 +1,5 @@
-﻿using Zoro.Network.P2P.Payloads;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Reflection;
+﻿using System;
+using Zoro.Wallets;
 
 namespace Zoro.Plugins
 {
@@ -21,6 +18,8 @@ namespace Zoro.Plugins
             PluginMgr.AddPlugin(this);
         }
 
-        public virtual void Dispose() {}
+        public virtual void Dispose() { }
+
+        public virtual void SetWallet(Wallet wallet) { }
     }
 }

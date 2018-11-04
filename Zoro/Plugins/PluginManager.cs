@@ -1,8 +1,9 @@
-﻿using Zoro.Network.P2P.Payloads;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using Zoro.Network.P2P.Payloads;
+using Zoro.Wallets;
 
 namespace Zoro.Plugins
 {
@@ -86,6 +87,12 @@ namespace Zoro.Plugins
                 if (plugin.OnMessage(message))
                     return true;
             return false;
+        }
+
+        public void SetWallet(Wallet wallet)
+        {
+            foreach (Plugin plugin in Plugins)
+                plugin.SetWallet(wallet);
         }
     }
 }
