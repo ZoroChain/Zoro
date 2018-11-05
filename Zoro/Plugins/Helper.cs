@@ -9,7 +9,7 @@ namespace Zoro.Plugins
         public static IConfigurationSection GetConfiguration(this Assembly assembly)
         {
             string path = Path.Combine("Plugins", assembly.GetName().Name, "config.json");
-            return new ConfigurationBuilder().AddJsonFile(path).Build().GetSection("PluginConfiguration");
+            return new ConfigurationBuilder().AddJsonFile(path, optional: true).Build().GetSection("PluginConfiguration");
         }
     }
 }

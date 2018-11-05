@@ -54,6 +54,7 @@ namespace Zoro.Network.P2P.Payloads
             base.Deserialize(reader);
             Transactions = new Transaction[reader.ReadVarInt(0x10000)];
             if (Transactions.Length == 0) throw new FormatException();
+            HashSet<UInt256> hashes = new HashSet<UInt256>();
             for (int i = 0; i < Transactions.Length; i++)
             {
                 Transactions[i] = Transaction.DeserializeFrom(reader);
@@ -67,6 +68,8 @@ namespace Zoro.Network.P2P.Payloads
                     if (Transactions[i].Type == TransactionType.MinerTransaction)
                         throw new FormatException();
                 }
+                if (!hashes.Add(Transactions[i].Hash))
+                    throw new FormatException();
             }
             if (MerkleTree.ComputeRoot(Transactions.Select(p => p.Hash).ToArray()) != MerkleRoot)
                 throw new FormatException();

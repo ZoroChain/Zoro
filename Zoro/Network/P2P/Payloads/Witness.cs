@@ -1,12 +1,12 @@
 ﻿using Zoro.IO;
-using Neo.VM;
 using Zoro.IO.Json;
 using Zoro.SmartContract;
+using Neo.VM;
 using System.IO;
 
 namespace Zoro.Network.P2P.Payloads
 {
-    public class Witness : ISerializable, IInteropInterface
+    public class Witness : ISerializable
     {
         public byte[] InvocationScript;
         public byte[] VerificationScript;

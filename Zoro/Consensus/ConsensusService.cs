@@ -19,6 +19,7 @@ namespace Zoro.Consensus
     public sealed class ConsensusService : UntypedActor
     {
         public class Start { }
+        public class SetViewNumber { public byte ViewNumber; }
         internal class Timer { public uint Height; public ushort ViewNumber; }
 
         public static readonly TimeSpan MaxTimeSpanPerBlock = TimeSpan.FromSeconds(Settings.Default.MaxSecondsPerBlock);
@@ -347,6 +348,9 @@ namespace Zoro.Consensus
                 case Start _:
                     OnStart();
                     break;
+                case SetViewNumber setView:
+                    InitializeConsensus(setView.ViewNumber);
+                    break;
                 case Timer timer:
                     OnTimer(timer);
                     break;
@@ -466,6 +470,7 @@ namespace Zoro.Consensus
             switch (message)
             {
                 case ConsensusPayload _:
+                case ConsensusService.SetViewNumber _:
                 case ConsensusService.Timer _:
                 case Blockchain.PersistCompleted _:
                     return true;
