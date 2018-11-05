@@ -17,8 +17,8 @@ namespace Zoro.Plugins
         internal readonly List<IRpcPlugin> RpcPlugins = new List<IRpcPlugin>();
         internal static readonly List<IPersistencePlugin> PersistencePlugins = new List<IPersistencePlugin>();
 
-        private bool enableLogAll = true;
-        private List<string> enabledLogSources = new List<string>();
+        static private bool enableLogAll = true;
+        static private List<string> enabledLogSources = new List<string>();
 
         public PluginManager(ZoroSystem system, UInt160 chainHash)
         {
@@ -69,12 +69,18 @@ namespace Zoro.Plugins
             }
         }
 
-        public void EnableLogAll(bool enabled)
+        public static void EnableLogAll()
         {
-            enableLogAll = enabled;
+            enableLogAll = true;
         }
 
-        public void EnableLogSource(string source)
+        public static void DisableLog()
+        {
+            enableLogAll = false;
+            enabledLogSources.Clear();
+        }
+
+        public static void EnableLogSource(string source)
         {
             if (!enabledLogSources.Contains(source))
             {
@@ -82,7 +88,7 @@ namespace Zoro.Plugins
             }
         }
 
-        public void DisableLogSource(string source)
+        public static void DisableLogSource(string source)
         {
             enabledLogSources.Remove(source);
         }
