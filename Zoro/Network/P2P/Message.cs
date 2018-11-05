@@ -36,7 +36,7 @@ namespace Zoro.Network.P2P
         {
             if (reader.ReadUInt32() != Magic)
                 throw new FormatException();
-            this.Command = reader.ReadVarString();
+            this.Command = reader.ReadFixedString(12);
             uint length = reader.ReadUInt32();
             if (length > PayloadMaxSize)
                 throw new FormatException();
@@ -54,7 +54,7 @@ namespace Zoro.Network.P2P
         void ISerializable.Serialize(BinaryWriter writer)
         {
             writer.Write(Magic);
-            writer.WriteVarString(Command);
+            writer.WriteFixedString(Command, 12);
             writer.Write(Payload.Length);
             writer.Write(Checksum);
             writer.Write(Payload);
