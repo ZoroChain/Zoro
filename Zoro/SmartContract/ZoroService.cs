@@ -179,6 +179,10 @@ namespace Zoro.SmartContract
             if (state == null)
                 return false;
 
+            // 只有应用链的所有者有权限更换共识节点
+            if (!CheckWitness(engine, state.Owner))
+                return false;
+
             int validatorCount = (int)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
             ECPoint[] validators = new ECPoint[validatorCount];
             for (int i = 0; i < validatorCount; i++)
@@ -209,6 +213,10 @@ namespace Zoro.SmartContract
 
             AppChainState state = Snapshot.AppChains.TryGet(hash);
             if (state == null)
+                return false;
+
+            // 只有应用链的所有者有权限更换种子节点
+            if (!CheckWitness(engine, state.Owner))
                 return false;
 
             int seedCount = (int)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
