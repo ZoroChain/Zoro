@@ -545,6 +545,22 @@ namespace Zoro.Network.RPC
                         json["isvalid"] = scriptHash != null;
                         return json;
                     }
+                case "getappchainhashlist":
+                    {
+                        JObject json = new JObject();
+
+                        IEnumerable<AppChainState> appchains = Blockchain.Root.Store.GetAppChains().Find().OrderBy(p => p.Value.Timestamp).Select(p => p.Value);
+
+                        json["hashlist"] = new JArray(appchains.Select(p => (JObject)p.Hash.ToString()));
+
+                        return json;
+                    }
+                case "getappchainstate":
+                    {
+                        UInt160 script_hash = UInt160.Parse(_params[0].AsString());
+                        AppChainState account = Blockchain.Root.Store.GetAppChains().TryGet(script_hash) ?? new AppChainState(script_hash);
+                        return account.ToJson();
+                    }
                 default:
                     throw new RpcException(-32601, "Method not found");
             }
