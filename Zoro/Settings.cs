@@ -16,6 +16,7 @@ namespace Zoro
         public Fixed8 LowPriorityThreshold { get; private set; }
         public uint SecondsPerBlock { get; private set; }
         public uint MaxSecondsPerBlock { get; private set; }
+        public bool EnableLogAll { get; private set; }
 
         public static Settings Default { get; private set; }
 
@@ -35,49 +36,13 @@ namespace Zoro
             this.SecondsPerBlock = GetValueOrDefault(section.GetSection("SecondsPerBlock"), 15u, p => uint.Parse(p));
             this.MaxSecondsPerBlock = GetValueOrDefault(section.GetSection("MaxSecondsPerBlock"), 15u, p => uint.Parse(p));
             this.LowPriorityThreshold = GetValueOrDefault(section.GetSection("LowPriorityThreshold"), Fixed8.FromDecimal(0.001m), p => Fixed8.Parse(p));
+            this.EnableLogAll = GetValueOrDefault(section.GetSection("EnableLogAll"), true, p => bool.Parse(p));
         }
 
         public T GetValueOrDefault<T>(IConfigurationSection section, T defaultValue, Func<string, T> selector)
         {
             if (section.Value == null) return defaultValue;
             return selector(section.Value);
-        }
-    }
-
-    internal class AppChainsSettings
-    {
-        public string Path { get; }
-        public IReadOnlyDictionary<string, AppChainSettings> Chains { get; private set; }
-
-        public static AppChainsSettings Default { get; private set; }
-
-        static AppChainsSettings()
-        {
-            IConfigurationSection section = new ConfigurationBuilder().AddJsonFile("appchain.json").Build().GetSection("ProtocolConfiguration");
-            Default = new AppChainsSettings(section);
-        }
-
-        public AppChainsSettings(IConfigurationSection section)
-        {
-            this.Path = section.GetSection("Path").Value;
-
-            this.Chains = section.GetSection("Chains").GetChildren().Select(p => new AppChainSettings(p)).ToDictionary(p => p.Hash);
-        }
-    }
-
-    internal class AppChainSettings
-    {
-        public string Hash { get; }
-        public ushort Port { get; }
-        public ushort WsPort { get; }
-        public bool StartConsensus { get; }
-
-        public AppChainSettings(IConfigurationSection section)
-        {
-            this.Hash = section.GetSection("Hash").Value;
-            this.Port = ushort.Parse(section.GetSection("Port").Value);
-            this.WsPort = ushort.Parse(section.GetSection("WsPort").Value);
-            this.StartConsensus = bool.Parse(section.GetSection("StartConsensus").Value);
         }
     }
 }
