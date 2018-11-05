@@ -113,7 +113,7 @@ namespace Zoro
 
         public void StartAppChains(Blockchain blockchain)
         {
-            foreach (var settings in Settings.Default.AppChains.Chains.Values)
+            foreach (var settings in AppChainsSettings.Default.Chains.Values)
             {
                 FollowAppChain(blockchain, settings);
             }
@@ -127,7 +127,7 @@ namespace Zoro
 
             if (state != null)
             {
-                string path = string.Format(Settings.Default.AppChains.Path, Message.Magic.ToString("X8"), settings.Hash);
+                string path = string.Format(AppChainsSettings.Default.Path, Message.Magic.ToString("X8"), settings.Hash);
 
                 Store appStore = new LevelDBStore(Path.GetFullPath(path));
 
@@ -141,7 +141,7 @@ namespace Zoro
 
         public void StartAppChainsConsensus(Wallet wallet)
         {
-            foreach (var settings in Settings.Default.AppChains.Chains.Values)
+            foreach (var settings in AppChainsSettings.Default.Chains.Values)
             {
                 if (settings.StartConsensus)
                 {

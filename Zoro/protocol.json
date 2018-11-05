@@ -17,29 +17,6 @@
       "127.0.0.1:20004"
     ],
     "SystemFee": {
-    },
-    "AppChains": {
-      "Path": "AppChain/{0}_{1}",
-      "Chains": [
-        {
-          "Hash": "0db5eff8ca875a656010c3dfe68870454b47aa6c",
-          "Port": 30005,
-          "WsPort": 30015,
-          "StartConsensus": false
-        },
-        {
-          "Hash": "1f49d2e1751e7e5f2c7e67ee6043422d85e09b58",
-          "Port": 31005,
-          "WsPort": 31015,
-          "StartConsensus": false
-        },
-        {
-          "Hash": "71c3c1f38feb8c959065ee9645b10e86bf350b22",
-          "Port": 32005,
-          "WsPort": 32015,
-          "StartConsensus": false
-        }
-      ]
     }
   }
 }

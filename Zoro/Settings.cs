@@ -16,7 +16,6 @@ namespace Zoro
         public Fixed8 LowPriorityThreshold { get; private set; }
         public uint SecondsPerBlock { get; private set; }
         public uint MaxSecondsPerBlock { get; private set; }
-        public AppChainsSettings AppChains { get; }
 
         public static Settings Default { get; private set; }
 
@@ -36,7 +35,6 @@ namespace Zoro
             this.SecondsPerBlock = GetValueOrDefault(section.GetSection("SecondsPerBlock"), 15u, p => uint.Parse(p));
             this.MaxSecondsPerBlock = GetValueOrDefault(section.GetSection("MaxSecondsPerBlock"), 15u, p => uint.Parse(p));
             this.LowPriorityThreshold = GetValueOrDefault(section.GetSection("LowPriorityThreshold"), Fixed8.FromDecimal(0.001m), p => Fixed8.Parse(p));
-            this.AppChains = new AppChainsSettings(section.GetSection("AppChains"));
         }
 
         public T GetValueOrDefault<T>(IConfigurationSection section, T defaultValue, Func<string, T> selector)
@@ -50,6 +48,14 @@ namespace Zoro
     {
         public string Path { get; }
         public IReadOnlyDictionary<string, AppChainSettings> Chains { get; private set; }
+
+        public static AppChainsSettings Default { get; private set; }
+
+        static AppChainsSettings()
+        {
+            IConfigurationSection section = new ConfigurationBuilder().AddJsonFile("appchain.json").Build().GetSection("ProtocolConfiguration");
+            Default = new AppChainsSettings(section);
+        }
 
         public AppChainsSettings(IConfigurationSection section)
         {
