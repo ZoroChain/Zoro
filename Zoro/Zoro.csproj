@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Copyright>2018-2019 The ZoroChain Project</Copyright>
     <AssemblyTitle>ZoroChain</AssemblyTitle>
-    <Version>0.1.4</Version>
+    <Version>0.1.5</Version>
     <Authors>The ZoroChain Project</Authors>
     <TargetFramework>netstandard2.0</TargetFramework>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
