@@ -799,7 +799,7 @@ namespace Zoro.Ledger
 
         private void Log(string message, LogLevel level = LogLevel.Info)
         {
-            system.PluginMgr.Log(nameof(Blockchain), level, message);
+            system.PluginMgr?.Log(nameof(Blockchain), level, message);
         }
     }
 
