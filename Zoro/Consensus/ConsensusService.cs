@@ -417,8 +417,12 @@ namespace Zoro.Consensus
 
         private void RequestChangeView()
         {
-            context.State |= ConsensusState.ViewChanging;
-            context.ExpectedView[context.MyIndex]++;
+            if (!context.State.HasFlag(ConsensusState.ViewChanging))
+            {
+                context.State |= ConsensusState.ViewChanging;
+                context.ExpectedView[context.MyIndex]++;
+            }
+
             Log($"request change view: height={context.BlockIndex} view={context.ViewNumber} nv={context.ExpectedView[context.MyIndex]} state={context.State}");
             SetNextTimer(context.ExpectedView[context.MyIndex]);
             SignAndRelay(context.MakeChangeView());
