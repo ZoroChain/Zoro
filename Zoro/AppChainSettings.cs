@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
 using System.Linq;
+using System;
 using Zoro.IO.Json;
 
 namespace Zoro
@@ -14,15 +15,21 @@ namespace Zoro
 
         static AppChainsSettings()
         {
-            IConfigurationSection section = new ConfigurationBuilder().AddJsonFile("appchain.json").Build().GetSection("ProtocolConfiguration");
+            IConfigurationSection section = new ConfigurationBuilder().AddJsonFile("appchain.json", optional: true).Build().GetSection("ProtocolConfiguration");
             Default = new AppChainsSettings(section);
         }
 
         public AppChainsSettings(IConfigurationSection section)
         {
-            this.Path = section.GetSection("Path").Value;
+            this.Path = GetValueOrDefault(section.GetSection("Path"), "AppChain/{0}_{1}", p => p);
 
             this.Chains = section.GetSection("Chains").GetChildren().Select(p => new AppChainSettings(p)).ToDictionary(p => p.Hash);
+        }
+
+        public T GetValueOrDefault<T>(IConfigurationSection section, T defaultValue, Func<string, T> selector)
+        {
+            if (section.Value == null) return defaultValue;
+            return selector(section.Value);
         }
 
         public JObject ToJson()
