@@ -33,8 +33,6 @@ namespace Zoro.Consensus
         private readonly LocalNode localNode;
         private readonly Blockchain blockchain;
 
-        private ICancelable timer;
-
         public ConsensusService(ZoroSystem system, Wallet wallet, UInt160 chainHash)
         {
             this.system = system;
@@ -76,7 +74,7 @@ namespace Zoro.Consensus
 
         private void ChangeTimer(TimeSpan delay)
         {
-            timer = Context.System.Scheduler.ScheduleTellOnceCancelable(delay, Self, new Timer
+            Context.System.Scheduler.ScheduleTellOnce(delay, Self, new Timer
             {
                 Height = context.BlockIndex,
                 ViewNumber = context.ViewNumber
@@ -187,7 +185,7 @@ namespace Zoro.Consensus
             else
             {
                 context.State = ConsensusState.Backup;
-                SetNextTimer(view_number);
+                ChangeTimer(TimeSpan.FromSeconds(Settings.Default.MaxSecondsPerBlock * 2));
             }
         }
 
@@ -246,9 +244,6 @@ namespace Zoro.Consensus
                     break;
                 case ConsensusMessageType.PrepareResponse:
                     OnPrepareResponseReceived(payload, (PrepareResponse)message);
-                    break;
-                case ConsensusMessageType.WaitTransaction:
-                    OnWaitTransactionReceived(payload, (WaitTransaction)message);
                     break;
             }
         }
@@ -331,16 +326,6 @@ namespace Zoro.Consensus
             }
         }
 
-        private void OnWaitTransactionReceived(ConsensusPayload payload, WaitTransaction message)
-        {
-            Log($"{nameof(OnWaitTransactionReceived)}: height={payload.BlockIndex} view={message.ViewNumber} index={payload.ValidatorIndex} primary={context.PrimaryIndex}");
-            if (context.MyIndex < 0) return;
-            if (payload.ValidatorIndex != context.PrimaryIndex) return;
-            if (DateTime.UtcNow - block_received_time >= MaxTimeSpanPerBlock) return;
-            this.timer.CancelIfNotNull();
-            SetNextTimer(context.ViewNumber);
-        }
-
         protected override void OnReceive(object message)
         {
             switch (message)
@@ -381,8 +366,7 @@ namespace Zoro.Consensus
             {
                 if (blockchain.GetMemoryPool().Count() == 0 && DateTime.UtcNow - block_received_time < MaxTimeSpanPerBlock)
                 {
-                    Log($"send wait transaction: height={timer.Height} view={timer.ViewNumber}");
-                    SignAndRelay(context.MakeWaitTransaction());
+                    Log($"waiting for transaction: height={timer.Height} view={timer.ViewNumber}");
                     ChangeTimer(Blockchain.TimePerBlock);
                     return;
                 }
