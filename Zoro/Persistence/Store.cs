@@ -2,10 +2,11 @@
 using Zoro.IO.Caching;
 using Zoro.IO.Wrappers;
 using Zoro.Ledger;
+using System;
 
 namespace Zoro.Persistence
 {
-    public abstract class Store : IPersistence
+    public abstract class Store : IDisposable, IPersistence
     {
         DataCache<UInt256, BlockState> IPersistence.Blocks => GetBlocks();
         DataCache<UInt256, TransactionState> IPersistence.Transactions => GetTransactions();
@@ -38,6 +39,7 @@ namespace Zoro.Persistence
         public abstract MetaDataCache<HashIndexState> GetHeaderHashIndex();
 
         public abstract Snapshot GetSnapshot();
+        public abstract void Dispose();
 
         public Blockchain Blockchain { get; set; }
     }

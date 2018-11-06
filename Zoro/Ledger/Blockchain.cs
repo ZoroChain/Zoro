@@ -708,6 +708,7 @@ namespace Zoro.Ledger
         {
             base.PostStop();
             currentSnapshot?.Dispose();
+            Store?.Dispose();
         }
 
         internal static void ProcessAccountStateDescriptor(StateDescriptor descriptor, Snapshot snapshot)

@@ -83,11 +83,6 @@ namespace Zoro
             RpcServer?.Dispose();
             ActorSystem.Stop(LocalNode);
             ActorSystem.Dispose();
-
-            if (store is LevelDBStore levelDBStore)
-            {
-                levelDBStore.Dispose();
-            }
         }
 
         public void StartConsensus(UInt160 chainHash, Wallet wallet)

@@ -30,7 +30,7 @@ namespace Zoro.Persistence.LevelDB
             db.Write(WriteOptions.Default, batch);
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
             db.Dispose();
         }
