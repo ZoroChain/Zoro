@@ -1,12 +1,7 @@
-﻿using Akka.Actor;
-using Zoro.Cryptography.ECC;
+﻿using Zoro.Cryptography.ECC;
 using Zoro.Ledger;
-using Zoro.Network.P2P;
 using Zoro.Persistence;
 using Neo.VM;
-using System;
-using System.IO;
-using System.Linq;
 using System.Text;
 
 namespace Zoro.SmartContract
@@ -141,10 +136,10 @@ namespace Zoro.SmartContract
                     validators[i] = ECPoint.DecodePoint(Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray()).HexToBytes(), ECCurve.Secp256r1);
                 }
 
-                AppChainState appchain = Snapshot.AppChains.TryGet(hash);
-                if (appchain == null)
+                AppChainState state = Snapshot.AppChains.TryGet(hash);
+                if (state == null)
                 {
-                    appchain = new AppChainState
+                    state = new AppChainState
                     {
                         Hash = hash,
                         Name = name,
@@ -153,10 +148,12 @@ namespace Zoro.SmartContract
                         SeedList = seedList,
                         StandbyValidators = validators,
                     };
-                    Snapshot.AppChains.Add(hash, appchain);
+                    Snapshot.AppChains.Add(hash, state);
+
+                    Snapshot.Blockchain.AddAppChainNotification("Create", state);
                 }
 
-                engine.CurrentContext.EvaluationStack.Push(StackItem.FromInterface(appchain));
+                engine.CurrentContext.EvaluationStack.Push(StackItem.FromInterface(state));
             }
             catch
             {
@@ -192,11 +189,7 @@ namespace Zoro.SmartContract
 
             state.StandbyValidators = validators;
 
-            // 通知正在运行的应用链对象，更新共识节点公钥
-            if (ZoroSystem.GetAppChainSystem(hash, out ZoroSystem system))
-            {
-                system.Blockchain.Tell(new Blockchain.ChangeValidators { Validators = validators });
-            }
+            Snapshot.Blockchain.AddAppChainNotification("ChangeValidators", state);
 
             return true;
         }
@@ -228,11 +221,7 @@ namespace Zoro.SmartContract
 
             state.SeedList = seedList;
 
-            // 通知正在运行的应用链对象，更新种子节点地址
-            if (ZoroSystem.GetAppChainSystem(hash, out ZoroSystem system))
-            {
-                system.LocalNode.Tell(new LocalNode.ChangeSeedList { SeedList = seedList });
-            }
+            Snapshot.Blockchain.AddAppChainNotification("ChangeSeedList", state);
 
             return true;
         }

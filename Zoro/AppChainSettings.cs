@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System;
+using System.IO;
+using System.Text;
 using Zoro.IO.Json;
 
 namespace Zoro
@@ -40,6 +42,17 @@ namespace Zoro
             json["ProtocolConfiguration"]["Chains"] = new JArray(this.Chains.Select(p => p.Value.ToJson()));
 
             return json;
+        }
+
+        public void SaveJsonFile()
+        {
+            using (FileStream fs = new FileStream("appchain.json", FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                using (StreamWriter writer = new StreamWriter(fs, Encoding.UTF8))
+                {
+                    writer.Write(ToJson().ToString());
+                }
+            }
         }
     }
 

@@ -153,6 +153,8 @@ namespace Zoro.Ledger
         public UInt256 CurrentHeaderHash => header_index[header_index.Count - 1];
 
         private static Dictionary<UInt160, Blockchain> appchains = new Dictionary<UInt160, Blockchain>();
+        private readonly List<AppChainEventArgs> appchainNotifications = new List<AppChainEventArgs>();
+        public static event EventHandler<AppChainEventArgs> AppChainNofity;
 
         public UInt160 ChainHash { get; }
 
@@ -485,6 +487,7 @@ namespace Zoro.Ledger
             PersistCompleted completed = new PersistCompleted { Block = block };
             system.Consensus?.Tell(completed);
             Distribute(completed);
+            InvokeAppChainNotifications();
             Log("Block Persisted:" + block.Index + ", ChainHash:" + this.ChainHash.ToString());
         }
 
@@ -801,6 +804,21 @@ namespace Zoro.Ledger
         private void Log(string message, LogLevel level = LogLevel.Info)
         {
             system.PluginMgr?.Log(nameof(Blockchain), level, message);
+        }
+
+        public void AddAppChainNotification(string method, AppChainState state)
+        {
+            appchainNotifications.Add(new AppChainEventArgs(method, state));
+        }
+
+        private void InvokeAppChainNotifications()
+        {
+            appchainNotifications.ForEach(p =>
+            {
+                AppChainNofity?.Invoke(this, p);
+            });
+
+            appchainNotifications.Clear();
         }
     }
 

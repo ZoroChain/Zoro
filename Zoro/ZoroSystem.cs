@@ -47,6 +47,8 @@ namespace Zoro
                     throw new InvalidOperationException();
 
                 root = this;
+
+                Ledger.Blockchain.AppChainNofity += HandleAppChainEvent;
             }
 
             this.ActorSystem = actorSystem ?? ActorSystem.Create(nameof(ZoroSystem),
@@ -110,11 +112,11 @@ namespace Zoro
         {
             foreach (var settings in AppChainsSettings.Default.Chains.Values)
             {
-                FollowAppChain(settings.Hash, settings.Port, settings.WsPort);
+                StartAppChain(settings.Hash, settings.Port, settings.WsPort);
             }
         }
 
-        public bool FollowAppChain(string hashString, int port, int wsport)
+        public bool StartAppChain(string hashString, int port, int wsport)
         {
             UInt160 chainHash = UInt160.Parse(hashString);
 
@@ -124,7 +126,11 @@ namespace Zoro
             {
                 string path = string.Format(AppChainsSettings.Default.Path, Message.Magic.ToString("X8"), hashString);
 
-                Store appStore = new LevelDBStore(Path.GetFullPath(path));
+                string fullPath = Path.GetFullPath(path);
+
+                Directory.CreateDirectory(fullPath);
+
+                Store appStore = new LevelDBStore(fullPath);
 
                 ZoroSystem appSystem = new ZoroSystem(chainHash, appStore, ActorSystem);
 
@@ -156,6 +162,26 @@ namespace Zoro
             if (GetAppChainSystem(chainHash, out ZoroSystem system))
             {
                 system.StartConsensus(chainHash, wallet);
+            }
+        }
+
+        private void HandleAppChainEvent(object sender, AppChainEventArgs args)
+        {
+            if (args.Method == "ChangeValidators")
+            {
+                // 通知正在运行的应用链对象，更新共识节点公钥
+                if (ZoroSystem.GetAppChainSystem(args.State.Hash, out ZoroSystem system))
+                {
+                    system.Blockchain.Tell(new Blockchain.ChangeValidators { Validators = args.State.StandbyValidators });
+                }
+            }
+            else if (args.Method == "ChangeSeedList")
+            {
+                // 通知正在运行的应用链对象，更新种子节点地址
+                if (ZoroSystem.GetAppChainSystem(args.State.Hash, out ZoroSystem system))
+                {
+                    system.LocalNode.Tell(new LocalNode.ChangeSeedList { SeedList = args.State.SeedList });
+                }
             }
         }
 
