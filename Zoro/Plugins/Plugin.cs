@@ -5,7 +5,7 @@ namespace Zoro.Plugins
 {
     public abstract class Plugin : IDisposable
     {
-        private PluginManager PluginMgr;
+        public PluginManager PluginMgr { get; private set; }
 
         public virtual string Name => GetType().Name;
         public virtual Version Version => GetType().Assembly.GetName().Version;

@@ -18,6 +18,8 @@ namespace Zoro
 {
     public class ZoroSystem : IDisposable
     {
+        public class AppChainStarted { public UInt160 ChainHash; public int Port; public int WsPort; }
+
         public PluginManager PluginMgr { get; }
         public ActorSystem ActorSystem { get; }
         public IActorRef Blockchain { get; }
@@ -47,8 +49,6 @@ namespace Zoro
                     throw new InvalidOperationException();
 
                 root = this;
-
-                Ledger.Blockchain.AppChainNofity += HandleAppChainEvent;
             }
 
             this.ActorSystem = actorSystem ?? ActorSystem.Create(nameof(ZoroSystem),
@@ -138,6 +138,13 @@ namespace Zoro
 
                 appSystem.StartNode(port, wsport);
 
+                PluginMgr.SendMessage(new AppChainStarted
+                {
+                    ChainHash = chainHash,
+                    Port = port,
+                    WsPort = wsport,
+                });
+
                 return true;
             }
 
@@ -162,26 +169,6 @@ namespace Zoro
             if (GetAppChainSystem(chainHash, out ZoroSystem system))
             {
                 system.StartConsensus(chainHash, wallet);
-            }
-        }
-
-        private void HandleAppChainEvent(object sender, AppChainEventArgs args)
-        {
-            if (args.Method == "ChangeValidators")
-            {
-                // 通知正在运行的应用链对象，更新共识节点公钥
-                if (ZoroSystem.GetAppChainSystem(args.State.Hash, out ZoroSystem system))
-                {
-                    system.Blockchain.Tell(new Blockchain.ChangeValidators { Validators = args.State.StandbyValidators });
-                }
-            }
-            else if (args.Method == "ChangeSeedList")
-            {
-                // 通知正在运行的应用链对象，更新种子节点地址
-                if (ZoroSystem.GetAppChainSystem(args.State.Hash, out ZoroSystem system))
-                {
-                    system.LocalNode.Tell(new LocalNode.ChangeSeedList { SeedList = args.State.SeedList });
-                }
             }
         }
 
