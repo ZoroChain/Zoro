@@ -11,7 +11,7 @@ using System;
 using System.Net;
 using System.Threading;
 using System.IO;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
 
 namespace Zoro
@@ -29,7 +29,7 @@ namespace Zoro
         public RpcServer RpcServer { get; private set; }
 
         private Store store;
-        private static Dictionary<UInt160, ZoroSystem> AppChainSystems = new Dictionary<UInt160, ZoroSystem>();
+        private static ConcurrentDictionary<UInt160, ZoroSystem> AppChainSystems = new ConcurrentDictionary<UInt160, ZoroSystem>();
 
         private static ZoroSystem root;
 
@@ -175,6 +175,14 @@ namespace Zoro
         public static bool GetAppChainSystem(UInt160 chainHash, out ZoroSystem system)
         {
             return AppChainSystems.TryGetValue(chainHash, out system);
+        }
+
+        public static void StopAppChainSystem(UInt160 chainHash)
+        {
+            if (AppChainSystems.TryRemove(chainHash, out ZoroSystem appchainSystem))
+            {
+                appchainSystem.Dispose();
+            }
         }
     }
 }
