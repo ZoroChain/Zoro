@@ -39,7 +39,7 @@ namespace Zoro.Network.P2P
             this.localNode = localNode;
             this.protocol = Context.ActorOf(ProtocolHandler.Props(system, localNode, localNode.Blockchain));
             localNode.RemoteNodes.TryAdd(Self, this);
-            SendMessage(Message.Create("version", VersionPayload.Create(localNode.ListenerPort, LocalNode.Nonce, LocalNode.UserAgent, localNode.Blockchain.Height)));
+            SendMessage(Message.Create("version", VersionPayload.Create(localNode.ChainHash, localNode.ListenerPort, LocalNode.Nonce, LocalNode.UserAgent, localNode.Blockchain.Height)));
         }
 
         private void CheckMessageQueue()
@@ -166,16 +166,21 @@ namespace Zoro.Network.P2P
         private void OnSetVersion(VersionPayload version)
         {
             this.Version = version;
-            // 检查对方的程序名称是否和我方一致
+            // 检查程序名称是否一致
             if (version.UserAgent != LocalNode.UserAgent)
             {
                 string assemblyName = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name;
                 if (!version.UserAgent.Contains(assemblyName))
                 {
-                    // 对方的系统名称和我方不一致，中断连接
                     Disconnect(true);
                     return;
                 }
+            }
+            // 检查ChainHash是否一致
+            if (version.ChainHash != localNode.ChainHash)
+            {
+                Disconnect(true);
+                return;
             }
             if (version.Nonce == LocalNode.Nonce)
             {
