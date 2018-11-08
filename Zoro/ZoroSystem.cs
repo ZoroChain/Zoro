@@ -162,14 +162,18 @@ namespace Zoro
             }
         }
 
-        public void StartAppChainConsensus(string hashString, Wallet wallet)
+        public bool StartAppChainConsensus(string hashString, Wallet wallet)
         {
             UInt160 chainHash = UInt160.Parse(hashString);
 
             if (GetAppChainSystem(chainHash, out ZoroSystem system))
             {
                 system.StartConsensus(chainHash, wallet);
+
+                return true;
             }
+
+            return false;
         }
 
         public static bool GetAppChainSystem(UInt160 chainHash, out ZoroSystem system)
@@ -177,12 +181,16 @@ namespace Zoro
             return AppChainSystems.TryGetValue(chainHash, out system);
         }
 
-        public static void StopAppChainSystem(UInt160 chainHash)
+        public static bool StopAppChainSystem(UInt160 chainHash)
         {
             if (AppChainSystems.TryRemove(chainHash, out ZoroSystem appchainSystem))
             {
                 appchainSystem.Dispose();
+
+                return true;
             }
+
+            return false;
         }
     }
 }
