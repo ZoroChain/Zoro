@@ -17,8 +17,8 @@ namespace Zoro.Plugins
         internal readonly List<IRpcPlugin> RpcPlugins = new List<IRpcPlugin>();
         internal static readonly List<IPersistencePlugin> PersistencePlugins = new List<IPersistencePlugin>();
 
-        static private bool enableLogAll = true;
-        static private List<string> enabledLogSources = new List<string>();
+        static private bool enableLog = true;
+        static private List<string> disabledLogSources = new List<string>();
 
         public PluginManager(ZoroSystem system, UInt160 chainHash)
         {
@@ -62,35 +62,34 @@ namespace Zoro.Plugins
 
         public void Log(string source, LogLevel level, string message)
         {
-            if (enableLogAll || enabledLogSources.Contains(source))
+            if (enableLog && !disabledLogSources.Contains(source))
             {
                 foreach (ILogPlugin plugin in Loggers)
                     plugin.Log(source, level, message);
             }
         }
 
-        public static void EnableLogAll()
+        public static void EnableLog(bool enabled)
         {
-            enableLogAll = true;
-        }
-
-        public static void DisableLog()
-        {
-            enableLogAll = false;
-            enabledLogSources.Clear();
-        }
-
-        public static void EnableLogSource(string source)
-        {
-            if (!enabledLogSources.Contains(source))
-            {
-                enabledLogSources.Add(source);
-            }
+            enableLog = enabled;
         }
 
         public static void DisableLogSource(string source)
         {
-            enabledLogSources.Remove(source);
+            if (!disabledLogSources.Contains(source))
+            {
+                disabledLogSources.Add(source);
+            }
+        }
+
+        public static void EnableLogSource(string source)
+        {
+            disabledLogSources.Remove(source);
+        }
+
+        public static void EnableAllLogSources()
+        {
+            disabledLogSources.Clear();
         }
 
         public void LoadPlugins()
