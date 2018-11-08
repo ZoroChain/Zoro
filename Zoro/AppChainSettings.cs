@@ -44,6 +44,25 @@ namespace Zoro
             return json;
         }
 
+        public bool AddSettings(string hashString, ushort port, ushort wsport, bool startConsensus)
+        {
+            if (this.Chains.TryGetValue(hashString, out AppChainSettings settings))
+            {
+                if (settings.Port == port && settings.WsPort == wsport && settings.StartConsensus == startConsensus)
+                {
+                    return false;
+                }
+                else
+                {
+                    this.Chains.Remove(hashString);
+                }
+            }
+
+            this.Chains.Add(hashString, new AppChainSettings(hashString, port, wsport, startConsensus));
+
+            return true;
+        }
+
         public void SaveJsonFile()
         {
             using (FileStream fs = new FileStream("appchain.json", FileMode.Create, FileAccess.Write, FileShare.None))
