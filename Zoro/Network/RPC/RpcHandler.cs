@@ -482,7 +482,7 @@ namespace Zoro.Network.RPC
             if (hashString.Length == 40 || (hashString.StartsWith("0x") && hashString.Length == 42))
             {
                 UInt160 chain_hash = UInt160.Parse(param.AsString());
-                Blockchain blockchain = Blockchain.GetBlockchain(chain_hash);
+                Blockchain blockchain = ZoroSystem.GetBlockchain(chain_hash);
                 return blockchain;
             }
             else
@@ -497,7 +497,7 @@ namespace Zoro.Network.RPC
             if (hashString.Length == 40 || (hashString.StartsWith("0x") && hashString.Length == 42))
             {
                 UInt160 chain_hash = UInt160.Parse(param.AsString());
-                LocalNode localNode = LocalNode.GetLocalNode(chain_hash);
+                LocalNode localNode = ZoroSystem.GetLocalNode(chain_hash);
                 return localNode;
             }
             else

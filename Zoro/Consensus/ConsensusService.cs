@@ -38,8 +38,8 @@ namespace Zoro.Consensus
             this.system = system;
             this.wallet = wallet;
             this.chainHash = chainHash;
-            this.blockchain = Blockchain.AskBlockchain(chainHash);
-            this.localNode = LocalNode.AskLocalNode(chainHash);
+            this.blockchain = ZoroSystem.AskBlockchain(chainHash);
+            this.localNode = ZoroSystem.AskLocalNode(chainHash);
         }
 
         private bool AddTransaction(Transaction tx, bool verify)

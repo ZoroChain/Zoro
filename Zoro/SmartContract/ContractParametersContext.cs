@@ -194,7 +194,7 @@ namespace Zoro.SmartContract
                 verifiable.DeserializeUnsigned(reader);
             }
             UInt160 chainHash = UInt160.Parse(json["chainhash"].AsString());
-            Blockchain blockchain = Blockchain.GetBlockchain(chainHash);
+            Blockchain blockchain = ZoroSystem.GetBlockchain(chainHash);
             if (blockchain == null) throw new FormatException();
             ContractParametersContext context = new ContractParametersContext(verifiable, blockchain);
             foreach (var property in json["items"].Properties)

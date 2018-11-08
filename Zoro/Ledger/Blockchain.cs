@@ -152,7 +152,6 @@ namespace Zoro.Ledger
         public UInt256 CurrentBlockHash => currentSnapshot.CurrentBlockHash;
         public UInt256 CurrentHeaderHash => header_index[header_index.Count - 1];
 
-        private static Dictionary<UInt160, Blockchain> appchains = new Dictionary<UInt160, Blockchain>();
         private readonly List<AppChainEventArgs> appchainNotifications = new List<AppChainEventArgs>();
         public static event EventHandler<AppChainEventArgs> AppChainNofity;
 
@@ -186,7 +185,10 @@ namespace Zoro.Ledger
             }
             else
             {
-                RegisterAppChain(chainHash, this);
+                AppChainState state = ZoroSystem.RegisterAppChain(chainHash, this);
+
+                this.Name = state.Name;
+                this.StandbyValidators = (ECPoint[])state.StandbyValidators.Clone();
             }
 
             GenesisBlock.RebuildMerkleRoot();
@@ -220,62 +222,7 @@ namespace Zoro.Ledger
             }
         }
 
-        private static void RegisterAppChain(UInt160 chainHash, Blockchain blockchain)
-        {
-            AppChainState state = Root.Store.GetAppChains().TryGet(chainHash);
-
-            if (state == null)
-            {
-                throw new InvalidOperationException();
-            }
-
-            blockchain.Name = state.Name;
-            blockchain.StandbyValidators = (ECPoint[])state.StandbyValidators.Clone();
-
-            lock (appchains)
-            {
-                appchains[chainHash] = blockchain;
-            }
-        }
-
-        public static Blockchain GetBlockchain(UInt160 chainHash, bool throwException = true)
-        {
-            if (!chainHash.Equals(UInt160.Zero))
-            {
-                lock (appchains)
-                {
-                    if (appchains.TryGetValue(chainHash, out Blockchain blockchain))
-                    {
-                        return blockchain;
-                    }
-                    else if (throwException)
-                    {
-                        throw new InvalidOperationException();
-                    }
-
-                    return null;
-                }
-            }
-            else
-            {
-                return Root;
-            }
-        }
-
-        public static Blockchain AskBlockchain(UInt160 chainHash)
-        {
-            bool result = false;
-            while (!result)
-            {
-                result = ZoroSystem.Root.Blockchain.Ask<bool>(new AskChain { ChainHash = chainHash }).Result;
-                if (result)
-                    break;
-                else
-                    Thread.Sleep(10);
-            }
-
-            return GetBlockchain(chainHash);
-        }
+        
 
         public bool ContainsBlock(UInt256 hash)
         {
@@ -793,7 +740,7 @@ namespace Zoro.Ledger
 
         private bool OnAskChain(UInt160 chainHash)
         {
-            return GetBlockchain(chainHash, false) != null;
+            return ZoroSystem.GetBlockchain(chainHash, false) != null;
         }
 
         private void OnChangeValidators(ECPoint[] validators)

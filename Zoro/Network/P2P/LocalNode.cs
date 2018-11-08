@@ -34,8 +34,6 @@ namespace Zoro.Network.P2P
         public static readonly uint Nonce;
         public static string UserAgent { get; set; }
 
-        private static Dictionary<UInt160, LocalNode> appnodes = new Dictionary<UInt160, LocalNode>();
-
         public string[] SeedList { get; private set; }
 
         public UInt160 ChainHash { get; }
@@ -48,16 +46,6 @@ namespace Zoro.Network.P2P
             {
                 while (root == null) Thread.Sleep(10);
                 return root;
-            }
-        }
-
-        public static LocalNode[] AppChainNodes()
-        {
-            lock (appnodes)
-            {
-                LocalNode[] array = appnodes.Values.ToArray();
-
-                return array;
             }
         }
 
@@ -86,67 +74,13 @@ namespace Zoro.Network.P2P
                 }
                 else
                 {
-                    RegisterAppNode(chainHash, this);
+                    AppChainState state = ZoroSystem.RegisterAppChainLocalNode(chainHash, this);
+
+                    this.SeedList = state.SeedList;
                 }
 
-                this.Blockchain = Blockchain.AskBlockchain(chainHash);
+                this.Blockchain = ZoroSystem.AskBlockchain(chainHash);
             }
-        }
-
-        private static void RegisterAppNode(UInt160 chainHash, LocalNode localNode)
-        {
-            AppChainState state = Blockchain.Root.Store.GetAppChains().TryGet(chainHash);
-
-            if (state == null)
-            {
-                throw new InvalidOperationException();
-            }
-
-            localNode.SeedList = (string[])state.SeedList.Clone();
-
-            lock (appnodes)
-            {
-                appnodes[chainHash] = localNode;
-            }
-        }
-
-        public static LocalNode GetLocalNode(UInt160 chainHash, bool throwException = true)
-        {
-            if (!chainHash.Equals(UInt160.Zero))
-            {
-                lock (appnodes)
-                {
-                    if (appnodes.TryGetValue(chainHash, out LocalNode localNode))
-                    {
-                        return localNode;
-                    }
-                    else if (throwException)
-                    {
-                        throw new InvalidOperationException();
-                    }
-
-                    return null;
-                }
-            }
-            else
-            {
-                return Root;
-            }
-        }
-
-        public static LocalNode AskLocalNode(UInt160 chainHash)
-        {
-            bool result = false;
-            while (!result)
-            {
-                result = ZoroSystem.Root.LocalNode.Ask<bool>(new AskNode { ChainHash = chainHash }).Result;
-                if (result)
-                    break;
-                else
-                    Thread.Sleep(10);
-            }
-
-            return GetLocalNode(chainHash);
         }
 
         private void BroadcastMessage(string command, ISerializable payload = null)
@@ -283,7 +217,7 @@ namespace Zoro.Network.P2P
 
         private bool OnAskNode(UInt160 chainHash)
         {
-            return GetLocalNode(chainHash, false) != null;
+            return ZoroSystem.GetLocalNode(chainHash, false) != null;
         }
 
         private void OnChangeSeedList(string[] seedList)

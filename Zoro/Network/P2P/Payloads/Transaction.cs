@@ -76,7 +76,7 @@ namespace Zoro.Network.P2P.Payloads
                 if (_references == null)
                 {
                     Dictionary<CoinReference, TransactionOutput> dictionary = new Dictionary<CoinReference, TransactionOutput>();
-                    Blockchain blockchain = Blockchain.GetBlockchain(this.ChainHash);
+                    Blockchain blockchain = ZoroSystem.GetBlockchain(this.ChainHash);
                     if (blockchain != null)
                     {
                         foreach (var group in Inputs.GroupBy(p => p.PrevHash))

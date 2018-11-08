@@ -29,7 +29,10 @@ namespace Zoro
         public RpcServer RpcServer { get; private set; }
 
         private Store store;
+
         private static ConcurrentDictionary<UInt160, ZoroSystem> AppChainSystems = new ConcurrentDictionary<UInt160, ZoroSystem>();
+        private static ConcurrentDictionary<UInt160, Blockchain> AppBlockChains = new ConcurrentDictionary<UInt160, Blockchain>();
+        private static ConcurrentDictionary<UInt160, LocalNode> AppLocalNodes = new ConcurrentDictionary<UInt160, LocalNode>();
 
         private static ZoroSystem root;
 
@@ -71,20 +74,21 @@ namespace Zoro
 
         public void Dispose()
         {
-            ZoroSystem[] appchains = AppChainSystems.Values.ToArray();
-            if (appchains.Length > 0)
-            {
-                AppChainSystems.Clear();
-                foreach (var system in appchains)
-                {
-                    system.Dispose();
-                }
-            }
-
             PluginMgr.Dispose();
             RpcServer?.Dispose();
+
+            if (Consensus != null)
+            {
+                ActorSystem.Stop(Consensus);
+            }
+            ActorSystem.Stop(TaskManager);
             ActorSystem.Stop(LocalNode);
-            ActorSystem.Dispose();
+            ActorSystem.Stop(Blockchain);
+
+            if (this == root)
+            {
+                ActorSystem.Dispose();
+            }
         }
 
         public void StartConsensus(UInt160 chainHash, Wallet wallet)
@@ -181,11 +185,133 @@ namespace Zoro
             return AppChainSystems.TryGetValue(chainHash, out system);
         }
 
+        public static AppChainState RegisterAppChain(UInt160 chainHash, Blockchain blockchain)
+        {
+            AppChainState state = Ledger.Blockchain.Root.Store.GetAppChains().TryGet(chainHash);
+
+            if (state == null)
+            {
+                throw new InvalidOperationException();
+            }
+
+            AppBlockChains[chainHash] = blockchain;
+
+            return state;
+        }
+
+        public static Blockchain GetBlockchain(UInt160 chainHash, bool throwException = true)
+        {
+            if (!chainHash.Equals(UInt160.Zero))
+            {
+                if (AppBlockChains.TryGetValue(chainHash, out Blockchain blockchain))
+                {
+                    return blockchain;
+                }
+                else if (throwException)
+                {
+                    throw new InvalidOperationException();
+                }
+
+                return null;
+            }
+            else
+            {
+                return Ledger.Blockchain.Root;
+            }
+        }
+
+        public static Blockchain AskBlockchain(UInt160 chainHash)
+        {
+            bool result = false;
+            while (!result)
+            {
+                result = Root.Blockchain.Ask<bool>(new Ledger.Blockchain.AskChain { ChainHash = chainHash }).Result;
+                if (result)
+                    break;
+                else
+                    Thread.Sleep(10);
+            }
+
+            return GetBlockchain(chainHash);
+        }
+
+        public static LocalNode[] GetAppChainLocalNodes()
+        {
+            LocalNode[] array = AppLocalNodes.Values.ToArray();
+
+            return array;
+        }
+
+        public static AppChainState RegisterAppChainLocalNode(UInt160 chainHash, LocalNode localNode)
+        {
+            AppChainState state = Ledger.Blockchain.Root.Store.GetAppChains().TryGet(chainHash);
+
+            if (state == null)
+            {
+                throw new InvalidOperationException();
+            }
+
+            AppLocalNodes[chainHash] = localNode;
+
+            return state;
+        }
+
+        public static LocalNode GetLocalNode(UInt160 chainHash, bool throwException = true)
+        {
+            if (!chainHash.Equals(UInt160.Zero))
+            {
+                if (AppLocalNodes.TryGetValue(chainHash, out LocalNode localNode))
+                {
+                    return localNode;
+                }
+                else if (throwException)
+                {
+                    throw new InvalidOperationException();
+                }
+
+                return null;
+            }
+            else
+            {
+                return Network.P2P.LocalNode.Root;
+            }
+        }
+
+        public static LocalNode AskLocalNode(UInt160 chainHash)
+        {
+            bool result = false;
+            while (!result)
+            {
+                result = ZoroSystem.Root.LocalNode.Ask<bool>(new LocalNode.AskNode { ChainHash = chainHash }).Result;
+                if (result)
+                    break;
+                else
+                    Thread.Sleep(10);
+            }
+
+            return GetLocalNode(chainHash);
+        }
+
+        public void StopAllAppChains()
+        {
+            ZoroSystem[] appchains = AppChainSystems.Values.ToArray();
+            if (appchains.Length > 0)
+            {
+                AppChainSystems.Clear();
+                foreach (var system in appchains)
+                {
+                    system.Dispose();
+                }
+            }
+        }
+
         public static bool StopAppChainSystem(UInt160 chainHash)
         {
             if (AppChainSystems.TryRemove(chainHash, out ZoroSystem appchainSystem))
             {
                 appchainSystem.Dispose();
+
+                AppLocalNodes.TryRemove(chainHash, out LocalNode localNode);
 
                 return true;
             }
