@@ -44,8 +44,10 @@ namespace Zoro
             return json;
         }
 
-        public bool AddSettings(string hashString, ushort port, ushort wsport, bool startConsensus)
+        public bool AddSettings(UInt160 chainHash, ushort port, ushort wsport, bool startConsensus)
         {
+            string hashString = chainHash.ToString();
+
             if (this.Chains.TryGetValue(hashString, out AppChainSettings settings))
             {
                 if (settings.Port == port && settings.WsPort == wsport && settings.StartConsensus == startConsensus)
