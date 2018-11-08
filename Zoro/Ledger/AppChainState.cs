@@ -134,7 +134,6 @@ namespace Zoro.Ledger
             }
             json["owner"] = Owner.ToString();
             json["timestamp"] = Timestamp;
-            json["port"] = new JObject();
             json["seedlist"] = new JArray(SeedList.Select(p => (JObject)p));
             json["validators"] = new JArray(StandbyValidators.Select(p => (JObject)p.ToString()));
             return json;
