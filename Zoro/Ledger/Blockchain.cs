@@ -147,9 +147,9 @@ namespace Zoro.Ledger
         private Snapshot currentSnapshot;
 
         public Store Store { get; }
-        public uint Height => currentSnapshot.Height;
+        public uint Height => currentSnapshot?.Height ?? 0;
         public uint HeaderHeight => (uint)header_index.Count - 1;
-        public UInt256 CurrentBlockHash => currentSnapshot.CurrentBlockHash;
+        public UInt256 CurrentBlockHash => currentSnapshot?.CurrentBlockHash ?? UInt256.Zero;
         public UInt256 CurrentHeaderHash => header_index[header_index.Count - 1];
 
         private readonly List<AppChainEventArgs> appchainNotifications = new List<AppChainEventArgs>();
@@ -221,8 +221,6 @@ namespace Zoro.Ledger
                     UpdateCurrentSnapshot();
             }
         }
-
-        
 
         public bool ContainsBlock(UInt256 hash)
         {
