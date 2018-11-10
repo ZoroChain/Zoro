@@ -782,6 +782,7 @@ namespace Zoro.Ledger
                 case Block _:
                 case ConsensusPayload _:
                 case Terminated _:
+                case Blockchain.AskChain _:
                     return true;
                 default:
                     return false;
