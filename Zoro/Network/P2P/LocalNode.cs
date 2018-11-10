@@ -58,7 +58,7 @@ namespace Zoro.Network.P2P
 
         public LocalNode(ZoroSystem system, UInt160 chainHash)
         {
-            lock (GetType())
+            //lock (GetType())
             {
                 this.system = system;
                 this.ChainHash = chainHash;                

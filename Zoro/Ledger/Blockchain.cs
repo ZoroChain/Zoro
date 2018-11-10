@@ -193,7 +193,7 @@ namespace Zoro.Ledger
 
             GenesisBlock.RebuildMerkleRoot();
 
-            lock (GetType())
+            //lock (GetType())
             {
                 header_index.AddRange(store.GetHeaderHashList().Find().OrderBy(p => (uint)p.Key).SelectMany(p => p.Value.Hashes));
                 stored_header_count += (uint)header_index.Count;
