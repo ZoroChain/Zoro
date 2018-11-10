@@ -18,8 +18,9 @@ namespace Zoro
 {
     public class ZoroSystem : IDisposable
     {
-        public class AppChainStarted { public UInt160 ChainHash; public int Port; public int WsPort; }
+        public class ChainStarted { public UInt160 ChainHash; public int Port; public int WsPort; }
 
+        public UInt160 ChainHash { get; private set; }
         public PluginManager PluginMgr { get; }
         public ActorSystem ActorSystem { get; }
         public IActorRef Blockchain { get; }
@@ -46,6 +47,8 @@ namespace Zoro
         }
         public ZoroSystem(UInt160 chainHash, Store store, ActorSystem actorSystem)
         {
+            ChainHash = chainHash;
+
             if (chainHash == UInt160.Zero)
             {
                 if (root != null)
@@ -104,6 +107,13 @@ namespace Zoro
                 Port = port,
                 WsPort = ws_port
             });
+
+            PluginMgr.SendMessage(new ChainStarted
+            {
+                ChainHash = ChainHash,
+                Port = port,
+                WsPort = ws_port,
+            });
         }
 
         public void StartRpc(IPAddress bindAddress, int port, Wallet wallet = null, string sslCert = null, string password = null, string[] trustedAuthorities = null)
@@ -141,13 +151,6 @@ namespace Zoro
                 AppChainSystems[chainHash] = appSystem;
 
                 appSystem.StartNode(port, wsport);
-
-                PluginMgr.SendMessage(new AppChainStarted
-                {
-                    ChainHash = chainHash,
-                    Port = port,
-                    WsPort = wsport,
-                });
 
                 return true;
             }
