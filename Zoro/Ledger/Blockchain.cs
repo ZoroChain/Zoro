@@ -409,8 +409,7 @@ namespace Zoro.Ledger
 
             if (!mem_pool.TryAdd(transaction.Hash, transaction))
                 return RelayResultReason.OutOfMemory;
-
-            system.LocalNode.Tell(new LocalNode.RelayDirectly { Inventory = transaction });
+            
             return RelayResultReason.Succeed;
         }
 
@@ -454,6 +453,7 @@ namespace Zoro.Ledger
                     break;
                 case Transaction transaction:
                     Sender.Tell(OnNewTransaction(transaction));
+                    system.LocalNode.Tell(new LocalNode.RelayDirectly { Inventory = transaction });
                     break;
                 case ConsensusPayload payload:
                     Sender.Tell(OnNewConsensus(payload));
