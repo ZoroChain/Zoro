@@ -9,7 +9,6 @@ namespace Zoro.Plugins
 {
     public class PluginManager : IDisposable
     {
-        public UInt160 ChainHash { get; private set; }
         public ZoroSystem System { get; private set; }
         private readonly List<Plugin> Plugins = new List<Plugin>();
         private readonly List<ILogPlugin> Loggers = new List<ILogPlugin>();
@@ -20,10 +19,13 @@ namespace Zoro.Plugins
         static private bool enableLog = true;
         static private List<string> disabledLogSources = new List<string>();
 
-        public PluginManager(ZoroSystem system, UInt160 chainHash)
+        public static PluginManager Instance { get; private set; }
+
+        public PluginManager(ZoroSystem system)
         {
+            Instance = this;
+
             System = system;
-            ChainHash = chainHash;
         }
 
         public void Dispose()
@@ -60,12 +62,12 @@ namespace Zoro.Plugins
             return true;
         }
 
-        public void Log(string source, LogLevel level, string message)
+        public void Log(string source, LogLevel level, string message, UInt160 chainHash = null)
         {
             if (enableLog && !disabledLogSources.Contains(source))
             {
                 foreach (ILogPlugin plugin in Loggers)
-                    plugin.Log(source, level, message);
+                    plugin.Log(source, level, message, chainHash);
             }
         }
 

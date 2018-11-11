@@ -69,15 +69,18 @@ namespace Zoro
             this.LocalNode = ActorSystem.ActorOf(Network.P2P.LocalNode.Props(this, chainHash));
             this.TaskManager = ActorSystem.ActorOf(Network.P2P.TaskManager.Props(this, chainHash));
 
-            PluginMgr = new PluginManager(this, chainHash);
-            PluginMgr.LoadPlugins();
+            if (chainHash == UInt160.Zero)
+            {
+                PluginMgr = new PluginManager(this);
+                PluginMgr.LoadPlugins();
+            }
 
             this.store = store;
         }
 
         public void Dispose()
         {
-            PluginMgr.Dispose();
+            PluginMgr?.Dispose();
             RpcServer?.Dispose();
 
             if (Consensus != null)
@@ -108,7 +111,7 @@ namespace Zoro
                 WsPort = ws_port
             });
 
-            PluginMgr.SendMessage(new ChainStarted
+            PluginManager.Instance.SendMessage(new ChainStarted
             {
                 ChainHash = ChainHash,
                 Port = port,
@@ -122,14 +125,6 @@ namespace Zoro
             RpcServer.Start(bindAddress, port, sslCert, password, trustedAuthorities);
         }
 
-        public void StartAppChains()
-        {
-            foreach (var settings in AppChainsSettings.Default.Chains.Values)
-            {
-                StartAppChain(settings.Hash, settings.Port, settings.WsPort);
-            }
-        }
-
         public bool StartAppChain(string hashString, int port, int wsport)
         {
             UInt160 chainHash = UInt160.Parse(hashString);
@@ -138,7 +133,7 @@ namespace Zoro
 
             if (state != null)
             {
-                string path = string.Format(AppChainsSettings.Default.Path, Message.Magic.ToString("X8"), hashString);
+                string path = string.Format("AppChain/{0}_{1}", Message.Magic.ToString("X8"), hashString);
 
                 string fullPath = Path.GetFullPath(path);
 
@@ -156,17 +151,6 @@ namespace Zoro
             }
 
             return false;
-        }
-
-        public void StartAppChainsConsensus(Wallet wallet)
-        {
-            foreach (var settings in AppChainsSettings.Default.Chains.Values)
-            {
-                if (settings.StartConsensus)
-                {
-                    StartAppChainConsensus(settings.Hash, wallet);
-                }
-            }
         }
 
         public bool StartAppChainConsensus(string hashString, Wallet wallet)

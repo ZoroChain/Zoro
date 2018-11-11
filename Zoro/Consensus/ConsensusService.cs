@@ -46,7 +46,7 @@ namespace Zoro.Consensus
         {
             if (context.Snapshot.ContainsTransaction(tx.Hash) ||
                 (verify && !tx.Verify(context.Snapshot, context.Transactions.Values)) ||
-                !system.PluginMgr.CheckPolicy(tx))
+                !PluginManager.Instance.CheckPolicy(tx))
             {
                 Log($"reject tx: {tx.Hash}{Environment.NewLine}{tx.ToArray().ToHexString()}", LogLevel.Warning);
                 RequestChangeView();
@@ -121,7 +121,7 @@ namespace Zoro.Consensus
         private void FillContext()
         {            
             IEnumerable<Transaction> mem_pool = blockchain.GetMemoryPool();
-            foreach (IPolicyPlugin plugin in system.PluginMgr.Policies)
+            foreach (IPolicyPlugin plugin in PluginManager.Instance.Policies)
                 mem_pool = plugin.FilterForBlock(mem_pool);
             List<Transaction> transactions = mem_pool.ToList();
             Fixed8 amount_netfee = Block.CalculateNetFee(transactions);
@@ -191,7 +191,7 @@ namespace Zoro.Consensus
 
         private void Log(string message, LogLevel level = LogLevel.Info)
         {
-            system.PluginMgr.Log(nameof(ConsensusService), level, message);
+            PluginManager.Instance.Log(nameof(ConsensusService), level, message, chainHash);
         }
 
         private void OnChangeViewReceived(ConsensusPayload payload, ChangeView message)
