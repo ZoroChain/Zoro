@@ -28,7 +28,7 @@
     <None Update="appchain.json">
       <PackagePath>content</PackagePath>
       <Pack>true</Pack>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
     <None Update="protocol.json">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>

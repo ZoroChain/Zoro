@@ -82,7 +82,7 @@ namespace Zoro.AppChain
 
                 foreach (var state in appchains)
                 {
-                    if (CheckAppChainName(state.Name.ToLower()))
+                    if (CheckAppChainName(state.Name.ToLower()) || CheckAppChainHash(state.Hash))
                     {
                         StartAppChain(state);
                     }
@@ -204,21 +204,24 @@ namespace Zoro.AppChain
             foreach (var hostAndPort in seedList)
             {
                 string[] p = hostAndPort.Split(':');
-                IPEndPoint seed;
-                try
+                if (p.Length == 2 && p[0] != "127.0.0.1")
                 {
-                    seed = GetIPEndpointFromHostPort(p[0], int.Parse(p[1]));
-                }
-                catch (AggregateException)
-                {
-                    continue;
-                }
+                    IPEndPoint seed;
+                    try
+                    {
+                        seed = GetIPEndpointFromHostPort(p[0], int.Parse(p[1]));
+                    }
+                    catch (AggregateException)
+                    {
+                        continue;
+                    }
 
-                if (localAddresses.Contains(seed.Address))
-                {
-                    listenPort = seed.Port;
+                    if (localAddresses.Contains(seed.Address))
+                    {
+                        listenPort = seed.Port;
 
-                    break;
+                        break;
+                    }
                 }
             }
 
