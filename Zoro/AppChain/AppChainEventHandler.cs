@@ -82,6 +82,7 @@ namespace Zoro.AppChain
 
             if (chainHash == UInt160.Zero && CheckAppChainPort())
             {
+                Log($"NetworkType:{ networkType }");
                 myIPAddress = GetMyIPAddress();
                 if (myIPAddress != null)
                     Log($"MyIPAddress:{ myIPAddress }");
