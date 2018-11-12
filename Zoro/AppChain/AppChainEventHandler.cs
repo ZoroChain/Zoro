@@ -82,10 +82,11 @@ namespace Zoro.AppChain
 
             if (chainHash == UInt160.Zero && CheckAppChainPort())
             {
-                Log($"NetworkType:{ networkType }");
                 myIPAddress = GetMyIPAddress();
-                if (myIPAddress != null)
-                    Log($"MyIPAddress:{ myIPAddress }");
+
+                string str = "NetworkType:" + networkType + " MyIPAddress:";
+                str += myIPAddress?.ToString() ?? "null";
+                Log(str);
 
                 IEnumerable<AppChainState> appchains = Blockchain.Root.Store.GetAppChains().Find().OrderBy(p => p.Value.Timestamp).Select(p => p.Value);
 
@@ -226,11 +227,8 @@ namespace Zoro.AppChain
                         {
                             continue;
                         }
-
-                        if (myIPAddress == seed.Address)
+                        if (myIPAddress.Equals(seed.Address))
                         {
-                            Log($"Find Address in seed list {seed.Address}:{seed.Port}");
-
                             listenPort = seed.Port;
 
                             break;
