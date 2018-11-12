@@ -1,0 +1,8 @@
+﻿{
+  "AppChainConfiguration": {
+    "Port": 25001,
+    "WsPort": 0,
+    "KeyNames": [ "Test", "Demo", "Game" ],
+    "KeyHashes": []
+  }
+}

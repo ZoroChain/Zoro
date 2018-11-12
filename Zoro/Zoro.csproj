@@ -25,6 +25,11 @@
     <DebugSymbols>False</DebugSymbols>
   </PropertyGroup>
   <ItemGroup>
+    <None Update="appchain.json">
+      <PackagePath>content</PackagePath>
+      <Pack>true</Pack>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="protocol.json">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
       <PackagePath>content</PackagePath>

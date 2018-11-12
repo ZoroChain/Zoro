@@ -404,7 +404,7 @@ namespace Zoro.Ledger
                 return RelayResultReason.AlreadyExists;
             if (!transaction.Verify(currentSnapshot, GetMemoryPool()))
                 return RelayResultReason.Invalid;
-            if (!PluginManager.Instance.CheckPolicy(transaction))
+            if (!PluginManager.Singleton.CheckPolicy(transaction))
                 return RelayResultReason.Unknown;
 
             if (!mem_pool.TryAdd(transaction.Hash, transaction))
@@ -748,7 +748,7 @@ namespace Zoro.Ledger
 
         private void Log(string message, LogLevel level = LogLevel.Info)
         {
-            PluginManager.Instance?.Log(nameof(Blockchain), level, message, ChainHash);
+            PluginManager.Singleton?.Log(nameof(Blockchain), level, message, ChainHash);
         }
 
         public void AddAppChainNotification(string method, AppChainState state)

@@ -7,6 +7,7 @@ using Zoro.Persistence;
 using Zoro.Persistence.LevelDB;
 using Zoro.Plugins;
 using Zoro.Wallets;
+using Zoro.AppChain;
 using System;
 using System.Net;
 using System.Threading;
@@ -28,8 +29,9 @@ namespace Zoro
         internal IActorRef TaskManager { get; }
         public IActorRef Consensus { get; private set; }
         public RpcServer RpcServer { get; private set; }
-
+        
         private Store store;
+        private AppChainManager appchainMgr;
 
         private static ConcurrentDictionary<UInt160, ZoroSystem> AppChainSystems = new ConcurrentDictionary<UInt160, ZoroSystem>();
         private static ConcurrentDictionary<UInt160, Blockchain> AppBlockChains = new ConcurrentDictionary<UInt160, Blockchain>();
@@ -73,6 +75,8 @@ namespace Zoro
             {
                 PluginMgr = new PluginManager(this);
                 PluginMgr.LoadPlugins();
+
+                appchainMgr = new AppChainManager();
             }
 
             this.store = store;
@@ -111,12 +115,14 @@ namespace Zoro
                 WsPort = ws_port
             });
 
-            PluginManager.Instance.SendMessage(new ChainStarted
+            PluginManager.Singleton.SendMessage(new ChainStarted
             {
                 ChainHash = ChainHash,
                 Port = port,
                 WsPort = ws_port,
             });
+
+            AppChainManager.Singleton.OnBlockChainStarted(ChainHash, port, ws_port);
         }
 
         public void StartRpc(IPAddress bindAddress, int port, Wallet wallet = null, string sslCert = null, string password = null, string[] trustedAuthorities = null)

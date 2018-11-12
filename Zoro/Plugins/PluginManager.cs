@@ -19,11 +19,11 @@ namespace Zoro.Plugins
         static private bool enableLog = true;
         static private List<string> disabledLogSources = new List<string>();
 
-        public static PluginManager Instance { get; private set; }
+        public static PluginManager Singleton { get; private set; }
 
         public PluginManager(ZoroSystem system)
         {
-            Instance = this;
+            Singleton = this;
 
             System = system;
         }
