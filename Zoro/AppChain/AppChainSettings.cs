@@ -26,7 +26,7 @@ namespace Zoro.AppChain
             this.WsPort = ushort.Parse(section.GetSection("WsPort").Value);
             this.KeyNames = section.GetSection("KeyNames").GetChildren().Select(p => p.Value.ToLower()).ToArray();
             this.KeyHashes = section.GetSection("KeyHashes").GetChildren().Select(p => UInt160.Parse(p.Value.ToLower())).ToArray();
-            this.NetworkType = GetValueOrDefault(section.GetSection("NetworkType"), "Internet", p => p);
+            this.NetworkType = GetValueOrDefault(section.GetSection("NetworkType"), "", p => p);
         }
 
         public T GetValueOrDefault<T>(IConfigurationSection section, T defaultValue, Func<string, T> selector)
