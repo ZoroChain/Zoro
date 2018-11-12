@@ -83,6 +83,8 @@ namespace Zoro.AppChain
             if (chainHash == UInt160.Zero && CheckAppChainPort())
             {
                 myIPAddress = GetMyIPAddress();
+                if (myIPAddress != null)
+                    Log($"MyIPAddress:{ myIPAddress }");
 
                 IEnumerable<AppChainState> appchains = Blockchain.Root.Store.GetAppChains().Find().OrderBy(p => p.Value.Timestamp).Select(p => p.Value);
 
