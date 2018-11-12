@@ -3,6 +3,8 @@ using System.Net;
 using System.Net.Sockets;
 using System.Net.NetworkInformation;
 using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using Zoro.Ledger;
 using Zoro.Wallets;
@@ -22,10 +24,13 @@ namespace Zoro.AppChain
         private int wsport = AppChainSettings.Default.WsPort;
         private string[] keyNames = AppChainSettings.Default.KeyNames;
         private UInt160[] keyHashes = AppChainSettings.Default.KeyHashes;
+        private string networkType = AppChainSettings.Default.NetworkType;
 
         private readonly HashSet<int> listeningPorts = new HashSet<int>();
         private readonly HashSet<int> listeningWsPorts = new HashSet<int>();
         private readonly HashSet<IPAddress> localAddresses = new HashSet<IPAddress>();
+
+        private IPAddress myIPAddress;
 
         public AppChainEventHandler(AppChainManager mgr)
         {
@@ -77,6 +82,8 @@ namespace Zoro.AppChain
 
             if (chainHash == UInt160.Zero && CheckAppChainPort())
             {
+                myIPAddress = GetMyIPAddress();
+
                 IEnumerable<AppChainState> appchains = Blockchain.Root.Store.GetAppChains().Find().OrderBy(p => p.Value.Timestamp).Select(p => p.Value);
 
                 foreach (var state in appchains)
@@ -198,37 +205,33 @@ namespace Zoro.AppChain
 
         private int GetListenPortBySeedList(string[] seedList)
         {
-            foreach (var address in localAddresses)
-            {
-                var str = address.ToString();
-                Log($"LocalAddresses {str}");
-            }
-
             int listenPort = 0;
 
-            foreach (var hostAndPort in seedList)
+            if (myIPAddress != null)
             {
-                string[] p = hostAndPort.Split(':');
-                if (p.Length == 2 && p[0] != "127.0.0.1")
+                foreach (var hostAndPort in seedList)
                 {
-                    IPEndPoint seed;
-                    try
+                    string[] p = hostAndPort.Split(':');
+                    if (p.Length == 2 && p[0] != "127.0.0.1")
                     {
-                        Log($"GetListenPortBySeedList {p[0]}:{p[1]}");
-                        seed = GetIPEndpointFromHostPort(p[0], int.Parse(p[1]));
-                    }
-                    catch (AggregateException)
-                    {
-                        continue;
-                    }
+                        IPEndPoint seed;
+                        try
+                        {
+                            seed = GetIPEndpointFromHostPort(p[0], int.Parse(p[1]));
+                        }
+                        catch (AggregateException)
+                        {
+                            continue;
+                        }
 
-                    if (localAddresses.Contains(seed.Address))
-                    {
-                        Log($"Find Address in seed list {seed.Address}:{seed.Port}");
+                        if (myIPAddress == seed.Address)
+                        {
+                            Log($"Find Address in seed list {seed.Address}:{seed.Port}");
 
-                        listenPort = seed.Port;
+                            listenPort = seed.Port;
 
-                        break;
+                            break;
+                        }
                     }
                 }
             }
@@ -289,6 +292,60 @@ namespace Zoro.AppChain
             }
 
             return false;
+        }
+
+        private IPAddress GetMyIPAddress()
+        {
+            if (networkType == "Internet")
+            {
+                return GetPublicIPAddress();
+            }
+            else if (networkType == "LAN")
+            {
+                return GetLanIPAddress();
+            }
+
+            return null;
+        }
+
+        private IPAddress GetLanIPAddress()
+        {
+            IPHostEntry entry;
+            try
+            {
+                entry = Dns.GetHostEntry(Dns.GetHostName());
+            }
+            catch (SocketException)
+            {
+                return null;
+            }
+            IPAddress address = entry.AddressList.FirstOrDefault(p => p.AddressFamily == AddressFamily.InterNetwork || p.IsIPv6Teredo);
+            return address;
+        }
+
+        private IPAddress GetPublicIPAddress()
+        {
+            using (var webClient = new WebClient())
+            {
+                try
+                {
+                    webClient.Credentials = CredentialCache.DefaultCredentials;
+                    byte[] data = webClient.DownloadData("http://pv.sohu.com/cityjson?ie=utf-8");
+                    string str = Encoding.UTF8.GetString(data);
+                    webClient.Dispose();
+
+                    Match rebool = Regex.Match(str, @"\d{2,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}");
+
+                    if (IPAddress.TryParse(rebool.Value, out IPAddress address))
+                        return address;
+                }
+                catch (Exception)
+                {
+                    
+                }
+
+                return null;
+            }
         }
     }
 }
