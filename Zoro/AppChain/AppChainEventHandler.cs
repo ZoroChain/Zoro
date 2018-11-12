@@ -198,6 +198,12 @@ namespace Zoro.AppChain
 
         private int GetListenPortBySeedList(string[] seedList)
         {
+            foreach (var address in localAddresses)
+            {
+                var str = address.ToString();
+                Log($"LocalAddresses {str}");
+            }
+
             int listenPort = 0;
 
             foreach (var hostAndPort in seedList)
@@ -208,6 +214,7 @@ namespace Zoro.AppChain
                     IPEndPoint seed;
                     try
                     {
+                        Log($"GetListenPortBySeedList {p[0]}:{p[1]}");
                         seed = GetIPEndpointFromHostPort(p[0], int.Parse(p[1]));
                     }
                     catch (AggregateException)
@@ -217,6 +224,8 @@ namespace Zoro.AppChain
 
                     if (localAddresses.Contains(seed.Address))
                     {
+                        Log($"Find Address in seed list {seed.Address}:{seed.Port}");
+
                         listenPort = seed.Port;
 
                         break;
