@@ -3,6 +3,7 @@ using Zoro.IO.Json;
 using Zoro.Ledger;
 using Zoro.Network.P2P.Payloads;
 using Zoro.Persistence;
+using Zoro.AppChain;
 using Neo.VM;
 using System;
 using System.Collections.Generic;
@@ -194,7 +195,7 @@ namespace Zoro.SmartContract
                 verifiable.DeserializeUnsigned(reader);
             }
             UInt160 chainHash = UInt160.Parse(json["chainhash"].AsString());
-            Blockchain blockchain = ZoroSystem.GetBlockchain(chainHash);
+            Blockchain blockchain = AppChainManager.Singleton.GetBlockchain(chainHash);
             if (blockchain == null) throw new FormatException();
             ContractParametersContext context = new ContractParametersContext(verifiable, blockchain);
             foreach (var property in json["items"].Properties)

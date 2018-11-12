@@ -9,6 +9,7 @@ using Zoro.Network.P2P;
 using Zoro.Network.P2P.Payloads;
 using Zoro.Persistence;
 using Zoro.Plugins;
+using Zoro.AppChain;
 using Zoro.SmartContract;
 using Neo.VM;
 using System;
@@ -185,7 +186,7 @@ namespace Zoro.Ledger
             }
             else
             {
-                AppChainState state = ZoroSystem.RegisterAppChain(chainHash, this);
+                AppChainState state = AppChainManager.Singleton.RegisterAppChain(chainHash, this);
 
                 this.Name = state.Name;
                 this.StandbyValidators = (ECPoint[])state.StandbyValidators.Clone();
@@ -738,7 +739,7 @@ namespace Zoro.Ledger
 
         private bool OnAskChain(UInt160 chainHash)
         {
-            return ZoroSystem.GetBlockchain(chainHash, false) != null;
+            return AppChainManager.Singleton.GetBlockchain(chainHash, false) != null;
         }
 
         private void OnChangeValidators(ECPoint[] validators)

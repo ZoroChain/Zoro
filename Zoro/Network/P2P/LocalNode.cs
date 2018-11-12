@@ -1,6 +1,7 @@
 ﻿using Akka.Actor;
 using Zoro.IO;
 using Zoro.Ledger;
+using Zoro.AppChain;
 using Zoro.Network.P2P.Payloads;
 using System;
 using System.Collections.Concurrent;
@@ -74,12 +75,12 @@ namespace Zoro.Network.P2P
                 }
                 else
                 {
-                    AppChainState state = ZoroSystem.RegisterAppChainLocalNode(chainHash, this);
+                    AppChainState state = AppChainManager.Singleton.RegisterAppChainLocalNode(chainHash, this);
 
                     this.SeedList = state.SeedList;
                 }
 
-                this.Blockchain = ZoroSystem.AskBlockchain(chainHash);
+                this.Blockchain = AppChainManager.Singleton.AskBlockchain(chainHash);
             }
         }
 
@@ -217,7 +218,7 @@ namespace Zoro.Network.P2P
 
         private bool OnAskNode(UInt160 chainHash)
         {
-            return ZoroSystem.GetLocalNode(chainHash, false) != null;
+            return AppChainManager.Singleton.GetLocalNode(chainHash, false) != null;
         }
 
         private void OnChangeSeedList(string[] seedList)

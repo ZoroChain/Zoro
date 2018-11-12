@@ -6,6 +6,7 @@ using Zoro.IO;
 using Zoro.IO.Json;
 using Zoro.Network.P2P;
 using Zoro.Network.P2P.Payloads;
+using Zoro.AppChain;
 using Zoro.Persistence;
 using Zoro.SmartContract;
 using Zoro.Wallets;
@@ -482,7 +483,7 @@ namespace Zoro.Network.RPC
             if (hashString.Length == 40 || (hashString.StartsWith("0x") && hashString.Length == 42))
             {
                 UInt160 chain_hash = UInt160.Parse(param.AsString());
-                Blockchain blockchain = ZoroSystem.GetBlockchain(chain_hash);
+                Blockchain blockchain = AppChainManager.Singleton.GetBlockchain(chain_hash);
                 return blockchain;
             }
             else
@@ -497,7 +498,7 @@ namespace Zoro.Network.RPC
             if (hashString.Length == 40 || (hashString.StartsWith("0x") && hashString.Length == 42))
             {
                 UInt160 chain_hash = UInt160.Parse(param.AsString());
-                LocalNode localNode = ZoroSystem.GetLocalNode(chain_hash);
+                LocalNode localNode = AppChainManager.Singleton.GetLocalNode(chain_hash);
                 return localNode;
             }
             else
@@ -512,7 +513,7 @@ namespace Zoro.Network.RPC
             if (hashString.Length == 40 || (hashString.StartsWith("0x") && hashString.Length == 42))
             {
                 UInt160 chain_hash = UInt160.Parse(param.AsString());
-                if (ZoroSystem.GetAppChainSystem(chain_hash, out ZoroSystem app_system))
+                if (AppChainManager.Singleton.GetAppChainSystem(chain_hash, out ZoroSystem app_system))
                 {
                     return app_system;
                 }

@@ -3,6 +3,7 @@ using Zoro.IO;
 using Zoro.IO.Caching;
 using Zoro.IO.Json;
 using Zoro.Ledger;
+using Zoro.AppChain;
 using Zoro.Persistence;
 using Zoro.SmartContract;
 using Neo.VM;
@@ -76,7 +77,7 @@ namespace Zoro.Network.P2P.Payloads
                 if (_references == null)
                 {
                     Dictionary<CoinReference, TransactionOutput> dictionary = new Dictionary<CoinReference, TransactionOutput>();
-                    Blockchain blockchain = ZoroSystem.GetBlockchain(this.ChainHash);
+                    Blockchain blockchain = AppChainManager.Singleton.GetBlockchain(this.ChainHash);
                     if (blockchain != null)
                     {
                         foreach (var group in Inputs.GroupBy(p => p.PrevHash))

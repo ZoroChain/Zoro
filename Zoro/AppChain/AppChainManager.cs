@@ -1,30 +1,24 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
-using System.Net;
-using System.Net.Sockets;
-using System.Net.NetworkInformation;
-using System.Collections.Generic;
+using System.Threading;
+using System.Collections.Concurrent;
 using Zoro.Ledger;
 using Zoro.Wallets;
-using Zoro.Plugins;
 using Zoro.Network.P2P;
-using Zoro.Cryptography.ECC;
+using Zoro.Persistence;
+using Zoro.Persistence.LevelDB;
 using Akka.Actor;
 
 namespace Zoro.AppChain
 {
-    public class AppChainManager
+    public class AppChainManager : IDisposable
     {
-        private Wallet wallet;
-        private int port = AppChainSettings.Default.Port;
-        private int wsport = AppChainSettings.Default.WsPort;
-        private string[] keyNames = AppChainSettings.Default.KeyNames;
-        private UInt160[] keyHashes = AppChainSettings.Default.KeyHashes;
+        AppChainEventHandler eventHandler;
 
-        private readonly HashSet<int> listeningPorts = new HashSet<int>();
-        private readonly HashSet<int> listeningWsPorts = new HashSet<int>();
-
-        private readonly HashSet<IPAddress> localAddresses = new HashSet<IPAddress>();
+        private static ConcurrentDictionary<UInt160, ZoroSystem> AppChainSystems = new ConcurrentDictionary<UInt160, ZoroSystem>();
+        private static ConcurrentDictionary<UInt160, Blockchain> AppBlockChains = new ConcurrentDictionary<UInt160, Blockchain>();
+        private static ConcurrentDictionary<UInt160, LocalNode> AppLocalNodes = new ConcurrentDictionary<UInt160, LocalNode>();
 
         public static AppChainManager Singleton { get; private set; }
 
@@ -32,252 +26,200 @@ namespace Zoro.AppChain
         {
             Singleton = this;
 
-            Blockchain.AppChainNofity += OnAppChainEvent;
+            eventHandler = new AppChainEventHandler(this);
+        }
 
-            localAddresses.UnionWith(NetworkInterface.GetAllNetworkInterfaces().SelectMany(p => p.GetIPProperties().UnicastAddresses).Select(p => Unmap(p.Address)));
+        public void Dispose()
+        {
+            StopAllAppChains();
         }
 
         public void SetWallet(Wallet wallet)
         {
-            this.wallet = wallet;
-        }
-
-        private void Log(string message, LogLevel level = LogLevel.Info)
-        {
-            PluginManager.Singleton.Log(nameof(AppChainManager), level, message, UInt160.Zero);
-        }
-
-        private void OnAppChainEvent(object sender, AppChainEventArgs args)
-        {
-            if (args.Method == "Create")
-            {
-                OnAppChainCreated(args);
-            }
-            else if (args.Method == "ChangeValidators")
-            {
-                // 通知正在运行的应用链对象，更新共识节点公钥
-                if (ZoroSystem.GetAppChainSystem(args.State.Hash, out ZoroSystem system))
-                {
-                    system.Blockchain.Tell(new Blockchain.ChangeValidators { Validators = args.State.StandbyValidators });
-                }
-            }
-            else if (args.Method == "ChangeSeedList")
-            {
-                // 通知正在运行的应用链对象，更新种子节点地址
-                if (ZoroSystem.GetAppChainSystem(args.State.Hash, out ZoroSystem system))
-                {
-                    system.LocalNode.Tell(new LocalNode.ChangeSeedList { SeedList = args.State.SeedList });
-                }
-            }
+            eventHandler.SetWallet(wallet);
         }
 
         public void OnBlockChainStarted(UInt160 chainHash, int port, int wsport)
         {
-            listeningPorts.Add(port);
-            listeningWsPorts.Add(wsport);
-
-            if (chainHash == UInt160.Zero && CheckAppChainPort())
-            {
-                IEnumerable<AppChainState> appchains = Blockchain.Root.Store.GetAppChains().Find().OrderBy(p => p.Value.Timestamp).Select(p => p.Value);
-
-                foreach (var state in appchains)
-                {
-                    if (CheckAppChainName(state.Name.ToLower()) || CheckAppChainHash(state.Hash))
-                    {
-                        StartAppChain(state);
-                    }
-                }
-            }
+            eventHandler.OnBlockChainStarted(chainHash, port, wsport);
         }
 
-        private void OnAppChainCreated(AppChainEventArgs args)
+        public bool StartAppChain(string hashString, int port, int wsport)
         {
-            if (!CheckAppChainPort())
+            UInt160 chainHash = UInt160.Parse(hashString);
+
+            AppChainState state = Zoro.Ledger.Blockchain.Root.Store.GetAppChains().TryGet(chainHash);
+
+            if (state != null)
             {
-                Log($"No appchain will be started because all listen ports are zero, name={args.State.Name} hash={args.State.Hash}");
-                return;
-            }
+                string path = string.Format("AppChain/{0}_{1}", Message.Magic.ToString("X8"), hashString);
 
-            if (!CheckAppChainName(args.State.Name.ToLower()) && !CheckAppChainHash(args.State.Hash))
-            {
-                Log($"The appchain is not in the key name list, name={args.State.Name} hash={args.State.Hash}");
-                return;
-            }
+                string fullPath = Path.GetFullPath(path);
 
-            StartAppChain(args.State);
-        }
+                Directory.CreateDirectory(fullPath);
 
-        private void StartAppChain(AppChainState state)
-        {
-            string name = state.Name;
-            string hashString = state.Hash.ToString();
+                Store appStore = new LevelDBStore(fullPath);
 
-            if (!GetAppChainListenPort(state.SeedList, out int listenPort, out int listenWsPort))
-            {
-                Log($"The specified listen port is already in used, name={name} hash={hashString}, port={listenPort}");
-                return;
-            }
+                ZoroSystem appSystem = new ZoroSystem(chainHash, appStore);
 
-            bool succeed = ZoroSystem.Root.StartAppChain(hashString, listenPort, listenWsPort);
+                AppChainSystems[chainHash] = appSystem;
 
-            if (succeed)
-            {
-                Log($"Starting appchain, name={name} hash={hashString} port={listenPort} wsport={listenWsPort}");
-            }
-            else
-            {
-                Log($"Failed to start appchain, name={name} hash={hashString}");
-            }
+                appSystem.StartNode(port, wsport);
 
-            bool startConsensus = false;
-
-            if (wallet != null)
-            {
-                startConsensus = CheckStartConsensus(state.StandbyValidators);
-
-                if (startConsensus)
-                {
-                    ZoroSystem.Root.StartAppChainConsensus(hashString, wallet);
-
-                    Log($"Starting consensus service, name={name} hash={hashString}");
-                }
-            }
-        }
-
-        private static IPAddress Unmap(IPAddress address)
-        {
-            if (address.IsIPv4MappedToIPv6)
-                address = address.MapToIPv4();
-            return address;
-        }
-
-        private bool GetAppChainListenPort(string[] seedList, out int listenPort, out int listenWsPort)
-        {
-            listenWsPort = GetFreeWsPort();
-            listenPort = GetListenPortBySeedList(seedList);
-
-            if (listenPort > 0)
-            {
-                if (listeningPorts.Contains(listenPort))
-                {
-                    return false;
-                }
-            }
-            else
-            {
-                listenPort = GetFreePort();
-            }
-
-            return true;
-        }
-
-        private int GetFreePort()
-        {
-            if (port > 0)
-            {
-                while (listeningPorts.Contains(port))
-                {
-                    port++;
-                }
-            }
-
-            return port;
-        }
-
-        private int GetFreeWsPort()
-        {
-            if (wsport > 0)
-            {
-                while (listeningWsPorts.Contains(wsport))
-                {
-                    wsport++;
-                }
-            }
-
-            return wsport;
-        }
-
-        private int GetListenPortBySeedList(string[] seedList)
-        {
-            int listenPort = 0;
-
-            foreach (var hostAndPort in seedList)
-            {
-                string[] p = hostAndPort.Split(':');
-                if (p.Length == 2 && p[0] != "127.0.0.1")
-                {
-                    IPEndPoint seed;
-                    try
-                    {
-                        seed = GetIPEndpointFromHostPort(p[0], int.Parse(p[1]));
-                    }
-                    catch (AggregateException)
-                    {
-                        continue;
-                    }
-
-                    if (localAddresses.Contains(seed.Address))
-                    {
-                        listenPort = seed.Port;
-
-                        break;
-                    }
-                }
-            }
-
-            return listenPort;
-        }
-
-        private IPEndPoint GetIPEndpointFromHostPort(string hostNameOrAddress, int port)
-        {
-            if (IPAddress.TryParse(hostNameOrAddress, out IPAddress ipAddress))
-                return new IPEndPoint(ipAddress, port);
-            IPHostEntry entry;
-            try
-            {
-                entry = Dns.GetHostEntry(hostNameOrAddress);
-            }
-            catch (SocketException)
-            {
-                return null;
-            }
-            ipAddress = entry.AddressList.FirstOrDefault(p => p.AddressFamily == AddressFamily.InterNetwork || p.IsIPv6Teredo);
-            if (ipAddress == null) return null;
-            return new IPEndPoint(ipAddress, port);
-        }
-
-        private bool CheckAppChainPort()
-        {
-            return AppChainSettings.Default.Port != 0 || AppChainSettings.Default.WsPort != 0;
-        }
-
-        private bool CheckAppChainName(string name)
-        {
-            foreach (string key in keyNames)
-            {
-                if (name.Contains(key))
-                {
-                    return true;
-                }
+                return true;
             }
 
             return false;
         }
 
-        private bool CheckAppChainHash(UInt160 chainHash)
+        public bool StartAppChainConsensus(string hashString, Wallet wallet)
         {
-            return keyHashes.Contains(chainHash);
+            UInt160 chainHash = UInt160.Parse(hashString);
+
+            if (GetAppChainSystem(chainHash, out ZoroSystem system))
+            {
+                system.StartConsensus(chainHash, wallet);
+
+                return true;
+            }
+
+            return false;
         }
 
-        private bool CheckStartConsensus(ECPoint[] Validators)
+        public AppChainState RegisterAppChain(UInt160 chainHash, Blockchain blockchain)
         {
-            for (int i = 0; i < Validators.Length; i++)
+            AppChainState state = Blockchain.Root.Store.GetAppChains().TryGet(chainHash);
+
+            if (state == null)
             {
-                WalletAccount account = wallet.GetAccount(Validators[i]);
-                if (account?.HasKey == true)
+                throw new InvalidOperationException();
+            }
+
+            AppBlockChains[chainHash] = blockchain;
+
+            return state;
+        }
+
+        public Blockchain GetBlockchain(UInt160 chainHash, bool throwException = true)
+        {
+            if (!chainHash.Equals(UInt160.Zero))
+            {
+                if (AppBlockChains.TryGetValue(chainHash, out Blockchain blockchain))
                 {
-                    return true;
+                    return blockchain;
                 }
+                else if (throwException)
+                {
+                    throw new InvalidOperationException();
+                }
+
+                return null;
+            }
+            else
+            {
+                return Blockchain.Root;
+            }
+        }
+
+        public Blockchain AskBlockchain(UInt160 chainHash)
+        {
+            bool result = false;
+            while (!result)
+            {
+                result = ZoroSystem.Root.Blockchain.Ask<bool>(new Blockchain.AskChain { ChainHash = chainHash }).Result;
+                if (result)
+                    break;
+                else
+                    Thread.Sleep(10);
+            }
+
+            return GetBlockchain(chainHash);
+        }
+
+        public LocalNode[] GetAppChainLocalNodes()
+        {
+            LocalNode[] array = AppLocalNodes.Values.ToArray();
+
+            return array;
+        }
+
+        public AppChainState RegisterAppChainLocalNode(UInt160 chainHash, LocalNode localNode)
+        {
+            AppChainState state = Blockchain.Root.Store.GetAppChains().TryGet(chainHash);
+
+            if (state == null)
+            {
+                throw new InvalidOperationException();
+            }
+
+            AppLocalNodes[chainHash] = localNode;
+
+            return state;
+        }
+
+        public LocalNode GetLocalNode(UInt160 chainHash, bool throwException = true)
+        {
+            if (!chainHash.Equals(UInt160.Zero))
+            {
+                if (AppLocalNodes.TryGetValue(chainHash, out LocalNode localNode))
+                {
+                    return localNode;
+                }
+                else if (throwException)
+                {
+                    throw new InvalidOperationException();
+                }
+
+                return null;
+            }
+            else
+            {
+                return LocalNode.Root;
+            }
+        }
+
+        public LocalNode AskLocalNode(UInt160 chainHash)
+        {
+            bool result = false;
+            while (!result)
+            {
+                result = ZoroSystem.Root.LocalNode.Ask<bool>(new LocalNode.AskNode { ChainHash = chainHash }).Result;
+                if (result)
+                    break;
+                else
+                    Thread.Sleep(10);
+            }
+
+            return GetLocalNode(chainHash);
+        }
+
+        public bool GetAppChainSystem(UInt160 chainHash, out ZoroSystem system)
+        {
+            return AppChainSystems.TryGetValue(chainHash, out system);
+        }
+
+        public void StopAllAppChains()
+        {
+            ZoroSystem[] appchains = AppChainSystems.Values.ToArray();
+            if (appchains.Length > 0)
+            {
+                AppChainSystems.Clear();
+                foreach (var system in appchains)
+                {
+                    system.Dispose();
+                }
+            }
+        }
+
+        public bool StopAppChainSystem(UInt160 chainHash)
+        {
+            if (AppChainSystems.TryRemove(chainHash, out ZoroSystem appchainSystem))
+            {
+                appchainSystem.Dispose();
+
+                AppLocalNodes.TryRemove(chainHash, out LocalNode localNode);
+
+                return true;
             }
 
             return false;

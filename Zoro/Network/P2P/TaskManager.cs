@@ -2,6 +2,7 @@
 using Akka.Configuration;
 using Zoro.IO.Actors;
 using Zoro.Ledger;
+using Zoro.AppChain;
 using Zoro.Network.P2P.Payloads;
 using System;
 using System.Collections.Generic;
@@ -37,7 +38,7 @@ namespace Zoro.Network.P2P
         {
             this.system = system;
             this.chainHash = chainHash;
-            this.blockchain = ZoroSystem.AskBlockchain(chainHash);
+            this.blockchain = AppChainManager.Singleton.AskBlockchain(chainHash);
         }
 
         private void OnHeaderTaskCompleted()

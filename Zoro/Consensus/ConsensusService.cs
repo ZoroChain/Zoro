@@ -4,6 +4,7 @@ using Zoro.Cryptography;
 using Zoro.IO;
 using Zoro.IO.Actors;
 using Zoro.Ledger;
+using Zoro.AppChain;
 using Zoro.Network.P2P;
 using Zoro.Network.P2P.Payloads;
 using Zoro.Persistence;
@@ -38,8 +39,8 @@ namespace Zoro.Consensus
             this.system = system;
             this.wallet = wallet;
             this.chainHash = chainHash;
-            this.blockchain = ZoroSystem.AskBlockchain(chainHash);
-            this.localNode = ZoroSystem.AskLocalNode(chainHash);
+            this.blockchain = AppChainManager.Singleton.AskBlockchain(chainHash);
+            this.localNode = AppChainManager.Singleton.AskLocalNode(chainHash);
         }
 
         private bool AddTransaction(Transaction tx, bool verify)
