@@ -127,20 +127,16 @@ namespace Zoro.AppChain
             }
         }
 
-        // 在初始化时，询问某个区块链对象是否已经被实例化了
+        // 在初始化时，等待某个Blockchain对象被实例化，并返回该对象
         public Blockchain AskBlockchain(UInt160 chainHash)
         {
-            bool result = false;
-            while (!result)
+            Blockchain blockchain = null;
+            while ((blockchain = GetBlockchain(chainHash, false)) == null)
             {
-                result = ZoroSystem.Root.Blockchain.Ask<bool>(new Blockchain.AskChain { ChainHash = chainHash }).Result;
-                if (result)
-                    break;
-                else
-                    Thread.Sleep(10);
+                Thread.Sleep(10);
             }
 
-            return GetBlockchain(chainHash);
+            return blockchain;
         }
 
         public LocalNode[] GetAppChainLocalNodes()
@@ -187,20 +183,16 @@ namespace Zoro.AppChain
             }
         }
 
-        // 在初始化时，询问某个LocalNode对象是否已经被实例化了
+        // 在初始化时，等待某个LocalNode对象被实例化，并返回该对象
         public LocalNode AskLocalNode(UInt160 chainHash)
         {
-            bool result = false;
-            while (!result)
+            LocalNode localNode = null;
+            while ((localNode = GetLocalNode(chainHash, false)) == null)
             {
-                result = ZoroSystem.Root.LocalNode.Ask<bool>(new LocalNode.AskNode { ChainHash = chainHash }).Result;
-                if (result)
-                    break;
-                else
-                    Thread.Sleep(10);
+                Thread.Sleep(10);
             }
 
-            return GetLocalNode(chainHash);
+            return localNode;
         }
 
         // 根据应用链的Hash，获取应用链的ZoroSystem对象

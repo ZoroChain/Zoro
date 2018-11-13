@@ -62,7 +62,7 @@ namespace Zoro.Plugins
             return true;
         }
 
-        public void Log(string source, LogLevel level, string message, UInt160 chainHash = null)
+        public void Log(string source, LogLevel level, string message, UInt160 chainHash)
         {
             if (enableLog && !disabledLogSources.Contains(source))
             {

@@ -16,7 +16,6 @@ namespace Zoro.Network.P2P
 {
     public class LocalNode : Peer
     {
-        public class AskNode { public UInt160 ChainHash; }
         public class ChangeSeedList { public string[] SeedList; }
 
         public class Relay { public IInventory Inventory; }
@@ -179,9 +178,6 @@ namespace Zoro.Network.P2P
                     break;
                 case RelayResultReason _:
                     break;
-                case AskNode ask:
-                    Sender.Tell(OnAskNode(ask.ChainHash));
-                    break;
                 case ChangeSeedList msg:
                     OnChangeSeedList(msg.SeedList);
                     break;
@@ -214,11 +210,6 @@ namespace Zoro.Network.P2P
         protected override Props ProtocolProps(object connection, IPEndPoint remote, IPEndPoint local)
         {
             return RemoteNode.Props(system, connection, remote, local, this);
-        }
-
-        private bool OnAskNode(UInt160 chainHash)
-        {
-            return AppChainManager.Singleton.GetLocalNode(chainHash, false) != null;
         }
 
         private void OnChangeSeedList(string[] seedList)

@@ -17,6 +17,7 @@ namespace Zoro
     public class ZoroSystem : IDisposable
     {
         public class ChainStarted { public UInt160 ChainHash; public int Port; public int WsPort; }
+        public class ChainStopped { public UInt160 ChainHash; }
 
         public UInt160 ChainHash { get; private set; }
         public PluginManager PluginMgr { get; }
@@ -98,6 +99,14 @@ namespace Zoro
             if (this == root)
             {
                 ActorSystem.Dispose();
+            }
+            else
+            {
+                // 向插件发送消息通知
+                PluginManager.Singleton.SendMessage(new ChainStopped
+                {
+                    ChainHash = ChainHash
+                });
             }
         }
 
