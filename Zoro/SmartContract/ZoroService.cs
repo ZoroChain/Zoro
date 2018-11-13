@@ -187,7 +187,7 @@ namespace Zoro.SmartContract
                 validators[i] = ECPoint.DecodePoint(Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray()).HexToBytes(), ECCurve.Secp256r1);
             }
 
-            state.StandbyValidators = validators;
+            Snapshot.AppChains.GetAndChange(hash).StandbyValidators = validators;
 
             Snapshot.Blockchain.AddAppChainNotification("ChangeValidators", state);
 
@@ -219,7 +219,7 @@ namespace Zoro.SmartContract
                 seedList[i] = Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
             }
 
-            state.SeedList = seedList;
+            Snapshot.AppChains.GetAndChange(hash).SeedList = seedList;
 
             Snapshot.Blockchain.AddAppChainNotification("ChangeSeedList", state);
 
