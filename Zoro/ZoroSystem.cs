@@ -26,6 +26,8 @@ namespace Zoro
         internal IActorRef TaskManager { get; }
         public IActorRef Consensus { get; private set; }
         public RpcServer RpcServer { get; private set; }
+
+        public bool HasConsensusService => Consensus != null;
         
         private Store store;
 
@@ -43,6 +45,7 @@ namespace Zoro
         {
             ChainHash = chainHash;
 
+            // 只有在创建根链的ZoroSystem对象时，才创建ActorSystem
             if (chainHash == UInt160.Zero)
             {
                 if (root != null)
@@ -60,6 +63,7 @@ namespace Zoro
             }
             else
             {
+                // 创建应用链的ZoroSystem时，使用根链的ActorSystem
                 this.ActorSystem = Root.ActorSystem;
             }
 
@@ -67,6 +71,7 @@ namespace Zoro
             this.LocalNode = ActorSystem.ActorOf(Network.P2P.LocalNode.Props(this, chainHash));
             this.TaskManager = ActorSystem.ActorOf(Network.P2P.TaskManager.Props(this, chainHash));
 
+            // 只有在创建根链的ZoroSystem对象时，才创建PluginManager，确保所有插件对象只实例化一次
             if (chainHash == UInt160.Zero)
             {
                 PluginMgr = new PluginManager(this);
@@ -89,6 +94,7 @@ namespace Zoro
             ActorSystem.Stop(LocalNode);
             ActorSystem.Stop(Blockchain);
 
+            // 只有在停止根链时才停止ActorSystem
             if (this == root)
             {
                 ActorSystem.Dispose();
@@ -97,8 +103,20 @@ namespace Zoro
 
         public void StartConsensus(UInt160 chainHash, Wallet wallet)
         {
-            Consensus = ActorSystem.ActorOf(ConsensusService.Props(this, wallet, chainHash));
-            Consensus.Tell(new ConsensusService.Start());
+            if (Consensus == null)
+            {
+                Consensus = ActorSystem.ActorOf(ConsensusService.Props(this, wallet, chainHash));
+                Consensus.Tell(new ConsensusService.Start());
+            }
+        }
+
+        public void StopConsensus()
+        {
+            if (Consensus != null)
+            {
+                ActorSystem.Stop(Consensus);
+                Consensus = null;
+            }
         }
 
         public void StartNode(int port = 0, int ws_port = 0)
@@ -109,6 +127,7 @@ namespace Zoro
                 WsPort = ws_port
             });
 
+            // 向插件发送消息通知
             PluginManager.Singleton.SendMessage(new ChainStarted
             {
                 ChainHash = ChainHash,
@@ -116,13 +135,18 @@ namespace Zoro
                 WsPort = ws_port,
             });
 
+            // 向应用链管理器发送事件通知
             AppChainManager.Singleton.OnBlockChainStarted(ChainHash, port, ws_port);
         }
 
         public void StartRpc(IPAddress bindAddress, int port, Wallet wallet = null, string sslCert = null, string password = null, string[] trustedAuthorities = null)
         {
-            RpcServer = new RpcServer(this, wallet);
-            RpcServer.Start(bindAddress, port, sslCert, password, trustedAuthorities);
+            // 确保只启动一次RpcServer
+            if (ChainHash == UInt160.Zero)
+            {
+                RpcServer = new RpcServer(this, wallet);
+                RpcServer.Start(bindAddress, port, sslCert, password, trustedAuthorities);
+            }
         }
     }
 }

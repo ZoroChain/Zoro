@@ -150,6 +150,7 @@ namespace Zoro.SmartContract
                     };
                     Snapshot.AppChains.Add(hash, state);
 
+                    // 添加创建应用链的事件通知
                     Snapshot.Blockchain.AddAppChainNotification("Create", state);
                 }
 
@@ -187,8 +188,12 @@ namespace Zoro.SmartContract
                 validators[i] = ECPoint.DecodePoint(Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray()).HexToBytes(), ECCurve.Secp256r1);
             }
 
-            Snapshot.AppChains.GetAndChange(hash).StandbyValidators = validators;
+            // 把变更保存到数据库
+            state = Snapshot.AppChains.GetAndChange(hash);
 
+            state.StandbyValidators = validators;
+
+            // 添加通知事件，等待上链后处理
             Snapshot.Blockchain.AddAppChainNotification("ChangeValidators", state);
 
             return true;
@@ -219,8 +224,12 @@ namespace Zoro.SmartContract
                 seedList[i] = Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
             }
 
-            Snapshot.AppChains.GetAndChange(hash).SeedList = seedList;
+            // 把变更保存到数据库
+            state = Snapshot.AppChains.GetAndChange(hash);
 
+            state.SeedList = seedList;
+
+            // 添加通知事件，等待上链后处理
             Snapshot.Blockchain.AddAppChainNotification("ChangeSeedList", state);
 
             return true;

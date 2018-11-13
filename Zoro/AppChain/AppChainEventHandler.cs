@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Net;
 using System.Net.Sockets;
-using System.Net.NetworkInformation;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -28,7 +27,6 @@ namespace Zoro.AppChain
 
         private readonly HashSet<int> listeningPorts = new HashSet<int>();
         private readonly HashSet<int> listeningWsPorts = new HashSet<int>();
-        private readonly HashSet<IPAddress> localAddresses = new HashSet<IPAddress>();
 
         private IPAddress myIPAddress;
 
@@ -37,61 +35,123 @@ namespace Zoro.AppChain
             appchainMgr = mgr;
 
             Blockchain.AppChainNofity += OnAppChainEvent;
-
-            localAddresses.UnionWith(NetworkInterface.GetAllNetworkInterfaces().SelectMany(p => p.GetIPProperties().UnicastAddresses).Select(p => Unmap(p.Address)));
         }
     
+        // 设置钱包
         public void SetWallet(Wallet wallet)
         {
             this.wallet = wallet;
         }
 
+        // 输出日志
         private void Log(string message, LogLevel level = LogLevel.Info)
         {
             PluginManager.Singleton.Log(nameof(AppChainManager), level, message, UInt160.Zero);
         }
 
+        // 处理应用链相关的通知事件
         private void OnAppChainEvent(object sender, AppChainEventArgs args)
         {
             if (args.Method == "Create")
             {
-                OnAppChainCreated(args);
+                OnAppChainCreated(args.State);
             }
             else if (args.Method == "ChangeValidators")
             {
-                // 通知正在运行的应用链对象，更新共识节点公钥
-                if (appchainMgr.GetAppChainSystem(args.State.Hash, out ZoroSystem system))
-                {
-                    system.Blockchain.Tell(new Blockchain.ChangeValidators { Validators = args.State.StandbyValidators });
-                }
+                OnChangeValidators(args.State);
             }
             else if (args.Method == "ChangeSeedList")
             {
-                // 通知正在运行的应用链对象，更新种子节点地址
-                if (appchainMgr.GetAppChainSystem(args.State.Hash, out ZoroSystem system))
+                OnChangeSeedList(args.State);
+            }
+        }
+
+        // 有新的应用链被创建
+        private void OnAppChainCreated(AppChainState state)
+        {
+            // 检查本地节点是否设置了应用链的端口
+            if (!CheckAppChainPort())
+            {
+                Log($"No appchain will be started because all listen ports are zero, name={state.Name} hash={state.Hash}");
+                return;
+            }
+
+            // 检查新创建的应用链是否在关注列表中
+            if (!CheckAppChainName(state.Name.ToLower()) && !CheckAppChainHash(state.Hash))
+            {
+                Log($"The appchain is not in the key name list, name={state.Name} hash={state.Hash}");
+                return;
+            }
+
+            StartAppChain(state);
+        }
+
+        // 变更应用链的共识节点
+        private void OnChangeValidators(AppChainState state)
+        {
+            // 通知正在运行的应用链对象，更新共识节点公钥
+            if (appchainMgr.GetAppChainSystem(state.Hash, out ZoroSystem system))
+            {
+                system.Blockchain.Tell(new Blockchain.ChangeValidators { Validators = state.StandbyValidators });
+
+                // 要启动共识服务，必须打开钱包
+                if (wallet != null)
                 {
-                    system.LocalNode.Tell(new LocalNode.ChangeSeedList { SeedList = args.State.SeedList });
+                    // 判断本地节点是否是应用链的共识节点
+                    bool startConsensus = CheckStartConsensus(state.StandbyValidators);
+
+                    if (startConsensus)
+                    {
+                        string name = state.Name;
+                        string hashString = state.Hash.ToString();
+
+                        Log($"Starting consensus service, name={name} hash={hashString}");
+
+                        // 启动共识服务
+                        appchainMgr.StartAppChainConsensus(hashString, wallet);
+                    }
+                    else
+                    {
+                        // 停止共识服务
+                        StopAppChainConsensus(state);
+                    }
                 }
             }
         }
 
+        // 变更应用链的种子节点
+        private void OnChangeSeedList(AppChainState state)
+        {
+            // 通知正在运行的应用链对象，更新种子节点地址
+            if (appchainMgr.GetAppChainSystem(state.Hash, out ZoroSystem system))
+            {
+                system.LocalNode.Tell(new LocalNode.ChangeSeedList { SeedList = state.SeedList });
+            }
+        }
+
+        // 根链或者应用链被启动
         public void OnBlockChainStarted(UInt160 chainHash, int port, int wsport)
         {
             listeningPorts.Add(port);
             listeningWsPorts.Add(wsport);
 
+            // 在根链启动后，获取应用链列表，启动应用链
             if (chainHash == UInt160.Zero && CheckAppChainPort())
             {
+                // 获取本地IP地址
                 myIPAddress = GetMyIPAddress();
 
+                // 打印调试信息
                 string str = "NetworkType:" + networkType + " MyIPAddress:";
                 str += myIPAddress?.ToString() ?? "null";
                 Log(str);
 
+                // 获取应用链列表
                 IEnumerable<AppChainState> appchains = Blockchain.Root.Store.GetAppChains().Find().OrderBy(p => p.Value.Timestamp).Select(p => p.Value);
 
                 foreach (var state in appchains)
                 {
+                    // 判断是否是关注的应用链
                     if (CheckAppChainName(state.Name.ToLower()) || CheckAppChainHash(state.Hash))
                     {
                         StartAppChain(state);
@@ -100,74 +160,87 @@ namespace Zoro.AppChain
             }
         }
 
-        private void OnAppChainCreated(AppChainEventArgs args)
-        {
-            if (!CheckAppChainPort())
-            {
-                Log($"No appchain will be started because all listen ports are zero, name={args.State.Name} hash={args.State.Hash}");
-                return;
-            }
-
-            if (!CheckAppChainName(args.State.Name.ToLower()) && !CheckAppChainHash(args.State.Hash))
-            {
-                Log($"The appchain is not in the key name list, name={args.State.Name} hash={args.State.Hash}");
-                return;
-            }
-
-            StartAppChain(args.State);
-        }
-
         private void StartAppChain(AppChainState state)
         {
             string name = state.Name;
             string hashString = state.Hash.ToString();
 
+            // 获取应用链的侦听端口
             if (!GetAppChainListenPort(state.SeedList, out int listenPort, out int listenWsPort))
             {
                 Log($"The specified listen port is already in used, name={name} hash={hashString}, port={listenPort}");
                 return;
             }
 
+            // 启动应用链
             bool succeed = appchainMgr.StartAppChain(hashString, listenPort, listenWsPort);
 
             if (succeed)
             {
                 Log($"Starting appchain, name={name} hash={hashString} port={listenPort} wsport={listenWsPort}");
+
+                // 启动应用链的共识服务
+                StartAppChainConsensus(state);
             }
             else
             {
                 Log($"Failed to start appchain, name={name} hash={hashString}");
             }
+        }
 
+        private void StartAppChainConsensus(AppChainState state)
+        { 
             bool startConsensus = false;
 
+            // 要启动共识服务，必须打开钱包
             if (wallet != null)
             {
+                // 判断本地节点是否是应用链的共识节点
                 startConsensus = CheckStartConsensus(state.StandbyValidators);
 
                 if (startConsensus)
                 {
-                    appchainMgr.StartAppChainConsensus(hashString, wallet);
+                    string name = state.Name;
+                    string hashString = state.Hash.ToString();
 
                     Log($"Starting consensus service, name={name} hash={hashString}");
+
+                    // 启动共识服务
+                    appchainMgr.StartAppChainConsensus(hashString, wallet);
                 }
             }
         }
 
-        private static IPAddress Unmap(IPAddress address)
+        private void StopAppChainConsensus(AppChainState state)
         {
-            if (address.IsIPv4MappedToIPv6)
-                address = address.MapToIPv4();
-            return address;
+            if (wallet != null)
+            {
+                // 获取应用链的ZoroSytem
+                if (appchainMgr.GetAppChainSystem(state.Hash, out ZoroSystem appchainSystem))
+                {
+                    // 判断是否已经开启了共识服务
+                    if (appchainSystem.HasConsensusService)
+                    {
+                        Log($"Stopping consensus service, name={state.Name} hash={state.Hash}");
+
+                        // 停止共识服务
+                        appchainSystem.StopConsensus();
+                    }
+                }
+            }
         }
 
+        // 获取应用链的侦听端口
         private bool GetAppChainListenPort(string[] seedList, out int listenPort, out int listenWsPort)
         {
             listenWsPort = GetFreeWsPort();
+
+            // 如果本地节点是应用链的种子节点，则使用该种子节点的端口
             listenPort = GetListenPortBySeedList(seedList);
 
             if (listenPort > 0)
             {
+                // 如果该端口已被占用，返回错误
                 if (listeningPorts.Contains(listenPort))
                 {
                     return false;
@@ -175,12 +248,14 @@ namespace Zoro.AppChain
             }
             else
             {
+                // 如果本地节点不是种子节点，则使用空闲的TCP端口
                 listenPort = GetFreePort();
             }
 
             return true;
         }
 
+        // 返回未使用的TCP端口
         private int GetFreePort()
         {
             if (port > 0)
@@ -194,6 +269,7 @@ namespace Zoro.AppChain
             return port;
         }
 
+        // 返回未使用的WebSocket湍口
         private int GetFreeWsPort()
         {
             if (wsport > 0)
@@ -207,12 +283,14 @@ namespace Zoro.AppChain
             return wsport;
         }
 
+        // 如果本地节点是应用链的种子节点，则返回该种子节点的端口号
         private int GetListenPortBySeedList(string[] seedList)
         {
             int listenPort = 0;
 
             if (myIPAddress != null)
             {
+                // 依次判断本地节点是否是应用链的种子节点
                 foreach (var hostAndPort in seedList)
                 {
                     string[] p = hostAndPort.Split(':');
@@ -227,6 +305,7 @@ namespace Zoro.AppChain
                         {
                             continue;
                         }
+                        // 判断节点的IP地址是否和种子节点的IP地址相同
                         if (myIPAddress.Equals(seed.Address))
                         {
                             listenPort = seed.Port;
@@ -240,6 +319,7 @@ namespace Zoro.AppChain
             return listenPort;
         }
 
+        // 将域名或地址，转换为IP和端口
         private IPEndPoint GetIPEndpointFromHostPort(string hostNameOrAddress, int port)
         {
             if (IPAddress.TryParse(hostNameOrAddress, out IPAddress ipAddress))
@@ -258,11 +338,14 @@ namespace Zoro.AppChain
             return new IPEndPoint(ipAddress, port);
         }
 
+        // 判断是否配置了应用链的侦听端口
         private bool CheckAppChainPort()
         {
+            // 如果两个端口号都为零，表示未配置侦听端口，将不会启动任何应用链
             return AppChainSettings.Default.Port != 0 || AppChainSettings.Default.WsPort != 0;
         }
 
+        // 判断应用链的名字是否在关注列表中
         private bool CheckAppChainName(string name)
         {
             foreach (string key in keyNames)
@@ -276,11 +359,13 @@ namespace Zoro.AppChain
             return false;
         }
 
+        // 判断应用链的Hash是否在关注列表中
         private bool CheckAppChainHash(UInt160 chainHash)
         {
             return keyHashes.Contains(chainHash);
         }
 
+        // 判断本地节点是否在共识节点列表中
         private bool CheckStartConsensus(ECPoint[] Validators)
         {
             for (int i = 0; i < Validators.Length; i++)
@@ -295,20 +380,24 @@ namespace Zoro.AppChain
             return false;
         }
 
+        // 根据配置，返回本地节点的IP地址
         private IPAddress GetMyIPAddress()
         {
             if (networkType == "Internet")
             {
-                return GetPublicIPAddress();
+                // 获取公网IP地址
+                return GetInternetIPAddress();
             }
             else if (networkType == "LAN")
             {
+                // 获取局域网IP地址
                 return GetLanIPAddress();
             }
 
             return null;
         }
 
+        // 获取局域网IP地址
         private IPAddress GetLanIPAddress()
         {
             IPHostEntry entry;
@@ -324,7 +413,8 @@ namespace Zoro.AppChain
             return address;
         }
 
-        private IPAddress GetPublicIPAddress()
+        // 获取公网IP地址
+        private IPAddress GetInternetIPAddress()
         {
             using (var webClient = new WebClient())
             {

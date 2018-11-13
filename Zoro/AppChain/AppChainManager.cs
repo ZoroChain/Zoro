@@ -34,21 +34,24 @@ namespace Zoro.AppChain
             StopAllAppChains();
         }
 
+        // 设置钱包
         public void SetWallet(Wallet wallet)
         {
             eventHandler.SetWallet(wallet);
         }
 
+        // 事件通知函数：根链或者应用链被启动
         public void OnBlockChainStarted(UInt160 chainHash, int port, int wsport)
         {
             eventHandler.OnBlockChainStarted(chainHash, port, wsport);
         }
 
+        // 启动应用链
         public bool StartAppChain(string hashString, int port, int wsport)
         {
             UInt160 chainHash = UInt160.Parse(hashString);
 
-            AppChainState state = Zoro.Ledger.Blockchain.Root.Store.GetAppChains().TryGet(chainHash);
+            AppChainState state = Blockchain.Root.Store.GetAppChains().TryGet(chainHash);
 
             if (state != null)
             {
@@ -72,6 +75,7 @@ namespace Zoro.AppChain
             return false;
         }
 
+        // 启动应用链的共识服务
         public bool StartAppChainConsensus(string hashString, Wallet wallet)
         {
             UInt160 chainHash = UInt160.Parse(hashString);
@@ -86,6 +90,7 @@ namespace Zoro.AppChain
             return false;
         }
 
+        // 注册应用链对象
         public AppChainState RegisterAppChain(UInt160 chainHash, Blockchain blockchain)
         {
             AppChainState state = Blockchain.Root.Store.GetAppChains().TryGet(chainHash);
@@ -100,6 +105,7 @@ namespace Zoro.AppChain
             return state;
         }
 
+        // 根据链的Hash，获取区块链对象
         public Blockchain GetBlockchain(UInt160 chainHash, bool throwException = true)
         {
             if (!chainHash.Equals(UInt160.Zero))
@@ -121,6 +127,7 @@ namespace Zoro.AppChain
             }
         }
 
+        // 在初始化时，询问某个区块链对象是否已经被实例化了
         public Blockchain AskBlockchain(UInt160 chainHash)
         {
             bool result = false;
@@ -143,6 +150,7 @@ namespace Zoro.AppChain
             return array;
         }
 
+        // 注册应用链的LocalNode对象
         public AppChainState RegisterAppChainLocalNode(UInt160 chainHash, LocalNode localNode)
         {
             AppChainState state = Blockchain.Root.Store.GetAppChains().TryGet(chainHash);
@@ -157,6 +165,7 @@ namespace Zoro.AppChain
             return state;
         }
 
+        // 根据链的Hash，获取LocalNode对象
         public LocalNode GetLocalNode(UInt160 chainHash, bool throwException = true)
         {
             if (!chainHash.Equals(UInt160.Zero))
@@ -178,6 +187,7 @@ namespace Zoro.AppChain
             }
         }
 
+        // 在初始化时，询问某个LocalNode对象是否已经被实例化了
         public LocalNode AskLocalNode(UInt160 chainHash)
         {
             bool result = false;
@@ -193,11 +203,13 @@ namespace Zoro.AppChain
             return GetLocalNode(chainHash);
         }
 
+        // 根据应用链的Hash，获取应用链的ZoroSystem对象
         public bool GetAppChainSystem(UInt160 chainHash, out ZoroSystem system)
         {
             return AppChainSystems.TryGetValue(chainHash, out system);
         }
 
+        // 停止所有的应用链
         public void StopAllAppChains()
         {
             ZoroSystem[] appchains = AppChainSystems.Values.ToArray();
@@ -211,6 +223,7 @@ namespace Zoro.AppChain
             }
         }
 
+        // 停止某个应用链
         public bool StopAppChainSystem(UInt160 chainHash)
         {
             if (AppChainSystems.TryRemove(chainHash, out ZoroSystem appchainSystem))

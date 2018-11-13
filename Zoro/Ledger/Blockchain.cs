@@ -429,11 +429,11 @@ namespace Zoro.Ledger
                 Self.Tell(tx, ActorRefs.NoSender);
             }
             mem_pool.Clear();
+            InvokeAppChainNotifications();
             PersistCompleted completed = new PersistCompleted { Block = block };
             system.Consensus?.Tell(completed);
             Distribute(completed);
-            InvokeAppChainNotifications();
-            Log("Block Persisted:" + block.Index + ", ChainHash:" + this.ChainHash.ToString());
+            Log($"Block Persisted:{block.Index}, ChainHash:{ChainHash.ToString()}");
         }
 
         protected override void OnReceive(object message)
