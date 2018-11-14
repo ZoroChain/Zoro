@@ -182,6 +182,11 @@ namespace Zoro.SmartContract
                 return false;
 
             int validatorCount = (int)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
+
+            // 共识节点的数量不能小于四个
+            if (validatorCount < 4)
+                return false;
+
             ECPoint[] validators = new ECPoint[validatorCount];
             for (int i = 0; i < validatorCount; i++)
             {
@@ -218,6 +223,11 @@ namespace Zoro.SmartContract
                 return false;
 
             int seedCount = (int)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
+
+            // 种子节点的数量不能为零
+            if (seedCount <= 0)
+                return false;
+
             string[] seedList = new string[seedCount];
             for (int i = 0; i < seedCount; i++)
             {

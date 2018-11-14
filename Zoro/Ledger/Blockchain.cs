@@ -462,7 +462,7 @@ namespace Zoro.Ledger
                     subscribers.Remove(terminated.ActorRef);
                     break;
                 case ChangeValidators msg:
-                    OnChangeValidators(msg.Validators);
+                    Sender.Tell(OnChangeValidators(msg.Validators));
                     break;
             }
         }
@@ -733,9 +733,15 @@ namespace Zoro.Ledger
             Interlocked.Exchange(ref currentSnapshot, GetSnapshot())?.Dispose();
         }
 
-        private void OnChangeValidators(ECPoint[] validators)
+        private bool OnChangeValidators(ECPoint[] validators)
         {
+            if (validators.Length < 4)
+            {
+                Log($"The number of validators is less then the minimum number:{validators.Length}");
+                return false;
+            }
             StandbyValidators = validators;
+            return true;
         }
 
         private void Log(string message, LogLevel level = LogLevel.Info)

@@ -92,10 +92,11 @@ namespace Zoro.AppChain
             // 通知正在运行的应用链对象，更新共识节点公钥
             if (appchainMgr.GetAppChainSystem(state.Hash, out ZoroSystem system))
             {
-                system.Blockchain.Tell(new Blockchain.ChangeValidators { Validators = state.StandbyValidators });
+                // 这里必须要等Blockchain更改了StandbyValidators以后才能开启共识服务
+                bool success = system.Blockchain.Ask<bool>(new Blockchain.ChangeValidators { Validators = state.StandbyValidators }).Result;
 
                 // 要启动共识服务，必须打开钱包
-                if (wallet != null)
+                if (success && wallet != null)
                 {
                     // 判断本地节点是否是应用链的共识节点
                     bool startConsensus = CheckStartConsensus(state.StandbyValidators);
