@@ -68,9 +68,11 @@ namespace Zoro
                 this.ActorSystem = Root.ActorSystem;
             }
 
-            this.Blockchain = ActorSystem.ActorOf(Ledger.Blockchain.Props(this, store, chainHash));
-            this.LocalNode = ActorSystem.ActorOf(Network.P2P.LocalNode.Props(this, chainHash));
-            this.TaskManager = ActorSystem.ActorOf(Network.P2P.TaskManager.Props(this, chainHash));
+            string hashString = chainHash.ToString();
+
+            this.Blockchain = ActorSystem.ActorOf(Ledger.Blockchain.Props(this, store, chainHash), $"Blockchain_{hashString}");
+            this.LocalNode = ActorSystem.ActorOf(Network.P2P.LocalNode.Props(this, chainHash), $"LocalNode_{hashString}");
+            this.TaskManager = ActorSystem.ActorOf(Network.P2P.TaskManager.Props(this, chainHash), $"TaskManager_{hashString}");
 
             // 只有在创建根链的ZoroSystem对象时，才创建PluginManager，确保所有插件对象只实例化一次
             if (chainHash == UInt160.Zero)
@@ -114,7 +116,7 @@ namespace Zoro
         {
             if (Consensus == null)
             {
-                Consensus = ActorSystem.ActorOf(ConsensusService.Props(this, wallet, chainHash));
+                Consensus = ActorSystem.ActorOf(ConsensusService.Props(this, wallet, chainHash), $"ConsensusService_{chainHash.ToString()}");
                 Consensus.Tell(new ConsensusService.Start());
             }
         }

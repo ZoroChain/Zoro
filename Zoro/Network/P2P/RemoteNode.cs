@@ -37,7 +37,7 @@ namespace Zoro.Network.P2P
         {
             this.system = system;
             this.localNode = localNode;
-            this.protocol = Context.ActorOf(ProtocolHandler.Props(system, localNode, localNode.Blockchain));
+            this.protocol = Context.ActorOf(ProtocolHandler.Props(system, localNode, localNode.Blockchain), "RemoteNode_" + localNode.ChainHash.ToString());
             localNode.RemoteNodes.TryAdd(Self, this);
             SendMessage(Message.Create("version", VersionPayload.Create(localNode.ChainHash, localNode.ListenerPort, LocalNode.Nonce, LocalNode.UserAgent, localNode.Blockchain.Height)));
         }
