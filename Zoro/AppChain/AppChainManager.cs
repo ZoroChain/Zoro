@@ -106,32 +106,28 @@ namespace Zoro.AppChain
         }
 
         // 根据链的Hash，获取区块链对象
-        public Blockchain GetBlockchain(UInt160 chainHash, bool throwException = true)
+        public Blockchain GetBlockchain(UInt160 chainHash)
         {
-            if (!chainHash.Equals(UInt160.Zero))
+            if (chainHash.Equals(UInt160.Zero))
+            {
+                return Blockchain.Root;
+            }
+            else
             {
                 if (AppBlockChains.TryGetValue(chainHash, out Blockchain blockchain))
                 {
                     return blockchain;
                 }
-                else if (throwException)
-                {
-                    throw new InvalidOperationException();
-                }
+            }
 
-                return null;
-            }
-            else
-            {
-                return Blockchain.Root;
-            }
+            return null;
         }
 
         // 在初始化时，等待某个Blockchain对象被实例化，并返回该对象
         public Blockchain AskBlockchain(UInt160 chainHash)
         {
             Blockchain blockchain = null;
-            while ((blockchain = GetBlockchain(chainHash, false)) == null)
+            while ((blockchain = GetBlockchain(chainHash)) == null)
             {
                 Thread.Sleep(10);
             }
@@ -162,32 +158,28 @@ namespace Zoro.AppChain
         }
 
         // 根据链的Hash，获取LocalNode对象
-        public LocalNode GetLocalNode(UInt160 chainHash, bool throwException = true)
+        public LocalNode GetLocalNode(UInt160 chainHash)
         {
-            if (!chainHash.Equals(UInt160.Zero))
+            if (chainHash.Equals(UInt160.Zero))
+            {
+                return LocalNode.Root;
+            }
+            else
             {
                 if (AppLocalNodes.TryGetValue(chainHash, out LocalNode localNode))
                 {
                     return localNode;
                 }
-                else if (throwException)
-                {
-                    throw new InvalidOperationException();
-                }
+            }
 
-                return null;
-            }
-            else
-            {
-                return LocalNode.Root;
-            }
+            return null;
         }
 
         // 在初始化时，等待某个LocalNode对象被实例化，并返回该对象
         public LocalNode AskLocalNode(UInt160 chainHash)
         {
             LocalNode localNode = null;
-            while ((localNode = GetLocalNode(chainHash, false)) == null)
+            while ((localNode = GetLocalNode(chainHash)) == null)
             {
                 Thread.Sleep(10);
             }
@@ -199,6 +191,24 @@ namespace Zoro.AppChain
         public bool GetAppChainSystem(UInt160 chainHash, out ZoroSystem system)
         {
             return AppChainSystems.TryGetValue(chainHash, out system);
+        }
+
+        // 根据链的Hash，获取ZoroSystem对象
+        public ZoroSystem GetZoroSystem(UInt160 chainHash)
+        {
+            if (chainHash.Equals(UInt160.Zero))
+            {
+                return ZoroSystem.Root;
+            }
+            else
+            {
+                if (AppChainSystems.TryGetValue(chainHash, out ZoroSystem system))
+                {
+                    return system;
+                }
+            }
+
+            return null;
         }
 
         // 停止所有的应用链
@@ -230,20 +240,6 @@ namespace Zoro.AppChain
             return false;
         }
 
-        // 根据Hash字符串，获取对应的Blockchain对象
-        public Blockchain GetBlockchain(string hashString)
-        {
-            if (TryParseChainHash(hashString, out UInt160 chainHash))
-            {
-                Blockchain blockchain = GetBlockchain(chainHash);
-                return blockchain;
-            }
-            else
-            {
-                return Blockchain.Root;
-            }
-        }
-
         // 将Hash字符串转换成UInt160
         public bool TryParseChainHash(string hashString, out UInt160 chainHash)
         {
@@ -261,6 +257,17 @@ namespace Zoro.AppChain
             return false;
         }
 
+        // 根据Hash字符串，获取对应的Blockchain对象
+        public Blockchain GetBlockchain(string hashString)
+        {
+            if (TryParseChainHash(hashString, out UInt160 chainHash))
+            {
+                Blockchain blockchain = GetBlockchain(chainHash);
+                return blockchain;
+            }
+            return null;
+        }
+
         // 根据Hash字符串，获取对应的LocalNode对象
         public LocalNode GetLocalNode(string hashString)
         {
@@ -269,10 +276,18 @@ namespace Zoro.AppChain
                 LocalNode localNode = GetLocalNode(chainHash);
                 return localNode;
             }
-            else
+            return null;
+        }
+
+        // 根据Hash字符串，获取对应的ZoroSystem对象
+        public ZoroSystem GetZoroSystem(string hashString)
+        {
+            if (TryParseChainHash(hashString, out UInt160 chainHash))
             {
-                return LocalNode.Root;
+                ZoroSystem system = GetZoroSystem(chainHash);
+                return system;
             }
+            return null;
         }
     }
 }
