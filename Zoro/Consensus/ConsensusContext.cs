@@ -5,6 +5,7 @@ using Zoro.Ledger;
 using Zoro.Network.P2P.Payloads;
 using Zoro.Persistence;
 using Zoro.Wallets;
+using Zoro.Plugins;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -152,6 +153,63 @@ namespace Zoro.Consensus
                 }
             }
             _header = null;
+        }
+
+        public void Fill(Wallet wallet)
+        {
+            IEnumerable<Transaction> mem_pool = Snapshot.Blockchain.GetMemoryPool();
+            foreach (IPolicyPlugin plugin in PluginManager.Singleton.Policies)
+                mem_pool = plugin.FilterForBlock(mem_pool);
+            List<Transaction> transactions = mem_pool.ToList();
+            Fixed8 amount_netfee = Block.CalculateNetFee(transactions);
+            TransactionOutput[] outputs = amount_netfee == Fixed8.Zero ? new TransactionOutput[0] : new[] { new TransactionOutput
+            {
+                AssetId = Blockchain.UtilityToken.Hash,
+                Value = amount_netfee,
+                ScriptHash = wallet.GetChangeAddress()
+            } };
+            while (true)
+            {
+                ulong nonce = GetNonce();
+                MinerTransaction tx = new MinerTransaction
+                {
+                    ChainHash = Snapshot.Blockchain.ChainHash,
+                    Nonce = (uint)(nonce % (uint.MaxValue + 1ul)),
+                    Attributes = new TransactionAttribute[0],
+                    Inputs = new CoinReference[0],
+                    Outputs = outputs,
+                    Witnesses = new Witness[0]
+                };
+                if (!Snapshot.ContainsTransaction(tx.Hash))
+                {
+                    Nonce = nonce;
+                    transactions.Insert(0, tx);
+                    break;
+                }
+            }
+            TransactionHashes = transactions.Select(p => p.Hash).ToArray();
+            Transactions = transactions.ToDictionary(p => p.Hash);
+            NextConsensus = Blockchain.GetConsensusAddress(Snapshot.GetValidators(transactions).ToArray());
+        }
+
+        private static ulong GetNonce()
+        {
+            byte[] nonce = new byte[sizeof(ulong)];
+            Random rand = new Random();
+            rand.NextBytes(nonce);
+            return nonce.ToUInt64(0);
+        }
+
+        public bool VerifyRequest()
+        {
+            if (!State.HasFlag(ConsensusState.RequestReceived))
+                return false;
+            if (!Blockchain.GetConsensusAddress(Snapshot.GetValidators(Transactions.Values).ToArray()).Equals(NextConsensus))
+                return false;
+            Transaction tx_gen = Transactions.Values.FirstOrDefault(p => p.Type == TransactionType.MinerTransaction);
+            Fixed8 amount_netfee = Block.CalculateNetFee(Transactions.Values);
+            if (tx_gen?.Outputs.Sum(p => p.Value) != amount_netfee) return false;
+            return true;
         }
     }
 }

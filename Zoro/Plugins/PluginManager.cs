@@ -10,7 +10,7 @@ namespace Zoro.Plugins
     public class PluginManager : IDisposable
     {
         public ZoroSystem System { get; private set; }
-        private readonly List<Plugin> Plugins = new List<Plugin>();
+        public readonly List<Plugin> Plugins = new List<Plugin>();
         private readonly List<ILogPlugin> Loggers = new List<ILogPlugin>();
         internal readonly List<IPolicyPlugin> Policies = new List<IPolicyPlugin>();
         internal readonly List<IRpcPlugin> RpcPlugins = new List<IRpcPlugin>();

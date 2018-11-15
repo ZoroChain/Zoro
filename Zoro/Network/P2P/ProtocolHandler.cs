@@ -181,6 +181,7 @@ namespace Zoro.Network.P2P
                     break;
                 hash = blockchain.GetBlockHash(index);
                 if (hash == null) break;
+                if (hash == payload.HashStop) break;
                 hashes.Add(hash);
             }
             if (hashes.Count == 0) return;
@@ -248,6 +249,7 @@ namespace Zoro.Network.P2P
                 uint index = state.TrimmedBlock.Index + i;
                 hash = blockchain.GetBlockHash(index);
                 if (hash == null) break;
+                if (hash == payload.HashStop) break;
                 Header header = cache.TryGet(hash)?.TrimmedBlock.Header;
                 if (header == null) break;
                 headers.Add(header);

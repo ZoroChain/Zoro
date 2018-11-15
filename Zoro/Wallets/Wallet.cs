@@ -11,7 +11,6 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using ECPoint = Zoro.Cryptography.ECC.ECPoint;
-using VMArray = Neo.VM.Types.Array;
 
 namespace Zoro.Wallets
 {
@@ -115,7 +114,7 @@ namespace Zoro.Wallets
                 if (engine.State.HasFlag(VMState.FAULT))
                     return new BigDecimal(0, 0);
                 byte decimals = (byte)engine.ResultStack.Pop().GetBigInteger();
-                BigInteger amount = ((VMArray)engine.ResultStack.Pop()).Aggregate(BigInteger.Zero, (x, y) => x + y.GetBigInteger());
+                BigInteger amount = engine.ResultStack.Pop().GetBigInteger();
                 return new BigDecimal(amount, decimals);
             }
             else
@@ -279,7 +278,7 @@ namespace Zoro.Wallets
             return tx;
         }
 
-        public Transaction MakeTransaction(List<TransactionAttribute> attributes, IEnumerable<TransferOutput> outputs, UInt160 from = null, UInt160 change_address = null, Fixed8 fee = default(Fixed8))
+        public Transaction MakeTransaction(Blockchain blockchain, List<TransactionAttribute> attributes, IEnumerable<TransferOutput> outputs, UInt160 from = null, UInt160 change_address = null, Fixed8 fee = default(Fixed8))
         {
             var cOutputs = outputs.Where(p => !p.IsGlobalAsset).GroupBy(p => new
             {
@@ -305,41 +304,36 @@ namespace Zoro.Wallets
                 {
                     foreach (var output in cOutputs)
                     {
-                        byte[] script;
-                        using (ScriptBuilder sb2 = new ScriptBuilder())
+                        var balances = new List<(UInt160 Account, BigInteger Value)>();
+                        foreach (UInt160 account in accounts)
                         {
-                            sb2.EmitPush(0);
-                            foreach (UInt160 account in accounts)
+                            byte[] script;
+                            using (ScriptBuilder sb2 = new ScriptBuilder())
                             {
                                 sb2.EmitAppCall(output.AssetId, "balanceOf", account);
-                                sb2.Emit(OpCode.ADD);
+                                script = sb2.ToArray();
                             }
-                            script = sb2.ToArray();
+                            ApplicationEngine engine = ApplicationEngine.Run(script, blockchain);
+                            if (engine.State.HasFlag(VMState.FAULT)) return null;
+                            balances.Add((account, engine.ResultStack.Pop().GetBigInteger()));
                         }
-                        ApplicationEngine engine = ApplicationEngine.Run(script, Blockchain.Root);
-                        if (engine.State.HasFlag(VMState.FAULT)) return null;
-                        var balances = ((IEnumerable<StackItem>)(VMArray)engine.ResultStack.Pop()).Reverse().Zip(accounts, (i, a) => new
-                        {
-                            Account = a,
-                            Value = i.GetBigInteger()
-                        }).ToArray();
                         BigInteger sum = balances.Aggregate(BigInteger.Zero, (x, y) => x + y.Value);
                         if (sum < output.Value) return null;
                         if (sum != output.Value)
                         {
-                            balances = balances.OrderByDescending(p => p.Value).ToArray();
+                            balances = balances.OrderByDescending(p => p.Value).ToList();
                             BigInteger amount = output.Value;
                             int i = 0;
                             while (balances[i].Value <= amount)
                                 amount -= balances[i++].Value;
                             if (amount == BigInteger.Zero)
-                                balances = balances.Take(i).ToArray();
+                                balances = balances.Take(i).ToList();
                             else
-                                balances = balances.Take(i).Concat(new[] { balances.Last(p => p.Value >= amount) }).ToArray();
+                                balances = balances.Take(i).Concat(new[] { balances.Last(p => p.Value >= amount) }).ToList();
                             sum = balances.Aggregate(BigInteger.Zero, (x, y) => x + y.Value);
                         }
                         sAttributes.UnionWith(balances.Select(p => p.Account));
-                        for (int i = 0; i < balances.Length; i++)
+                        for (int i = 0; i < balances.Count; i++)
                         {
                             BigInteger value = balances[i].Value;
                             if (i == 0)
