@@ -229,5 +229,50 @@ namespace Zoro.AppChain
 
             return false;
         }
+
+        // 根据Hash字符串，获取对应的Blockchain对象
+        public Blockchain GetBlockchain(string hashString)
+        {
+            if (TryParseChainHash(hashString, out UInt160 chainHash))
+            {
+                Blockchain blockchain = GetBlockchain(chainHash);
+                return blockchain;
+            }
+            else
+            {
+                return Blockchain.Root;
+            }
+        }
+
+        // 将Hash字符串转换成UInt160
+        public bool TryParseChainHash(string hashString, out UInt160 chainHash)
+        {
+            if (hashString.Length == 40 || (hashString.StartsWith("0x") && hashString.Length == 42))
+            {
+                chainHash = UInt160.Parse(hashString);
+                return true;
+            }
+            else if (hashString.Length == 0) //只有长度为零的字符串才认为是根链的Hash
+            {
+                chainHash = UInt160.Zero;
+                return true;
+            }
+            chainHash = null;
+            return false;
+        }
+
+        // 根据Hash字符串，获取对应的LocalNode对象
+        public LocalNode GetLocalNode(string hashString)
+        {
+            if (TryParseChainHash(hashString, out UInt160 chainHash))
+            {
+                LocalNode localNode = GetLocalNode(chainHash);
+                return localNode;
+            }
+            else
+            {
+                return LocalNode.Root;
+            }
+        }
     }
 }
