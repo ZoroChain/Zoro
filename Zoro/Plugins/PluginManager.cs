@@ -1,9 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Collections.Generic;
+using Microsoft.AspNetCore.Http;
 using Zoro.Network.P2P.Payloads;
 using Zoro.Wallets;
+using Zoro.IO.Json;
 
 namespace Zoro.Plugins
 {
@@ -118,6 +120,17 @@ namespace Zoro.Plugins
                 if (plugin.OnMessage(message))
                     return true;
             return false;
+        }
+
+        public JObject ProcessRpcMethod(HttpContext context, string method, JArray _params)
+        {
+            JObject result = null;
+            foreach (IRpcPlugin plugin in PluginManager.Singleton.RpcPlugins)
+            {
+                result = plugin.OnProcess(context, method, _params);
+                if (result != null) break;
+            }
+            return result;
         }
 
         public void SetWallet(Wallet wallet)
