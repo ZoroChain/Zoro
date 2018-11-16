@@ -4,8 +4,9 @@ using Zoro.IO;
 using Zoro.Ledger;
 using Zoro.Network.P2P.Payloads;
 using Zoro.Persistence;
-using Zoro.Wallets;
 using Zoro.Plugins;
+using Zoro.SmartContract;
+using Zoro.Wallets;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -30,10 +31,17 @@ namespace Zoro.Consensus
         public Dictionary<UInt256, Transaction> Transactions;
         public byte[][] Signatures;
         public ushort[] ExpectedView;
-        public KeyPair KeyPair;
-        public UInt160 ChainHash;
+        private KeyPair KeyPair;
+        private readonly Wallet wallet;        
+        private readonly Blockchain blockchain;
 
         public int M => Validators.Length - (Validators.Length - 1) / 3;
+
+        public ConsensusContext(Blockchain blockchain, Wallet wallet)
+        {
+            this.blockchain = blockchain;
+            this.wallet = wallet;
+        }
 
         public void ChangeView(ushort view_number)
         {
@@ -50,6 +58,23 @@ namespace Zoro.Consensus
             _header = null;
         }
 
+        public Block CreateBlock()
+        {
+            Block block = MakeHeader();
+            if (block == null) return null;
+            Contract contract = Contract.CreateMultiSigContract(M, Validators);
+            ContractParametersContext sc = new ContractParametersContext(block, blockchain);
+            for (int i = 0, j = 0; i < Validators.Length && j < M; i++)
+                if (Signatures[i] != null)
+                {
+                    sc.AddSignature(contract, Validators[i], Signatures[i]);
+                    j++;
+                }
+            sc.Verifiable.Witnesses = sc.GetWitnesses();
+            block.Transactions = TransactionHashes.Select(p => Transactions[p]).ToArray();
+            return block;
+        }
+
         public void Dispose()
         {
             Snapshot?.Dispose();
@@ -63,7 +88,7 @@ namespace Zoro.Consensus
 
         public ConsensusPayload MakeChangeView()
         {
-            return MakePayload(new ChangeView
+            return MakeSignedPayload(new ChangeView
             {
                 NewViewNumber = ExpectedView[MyIndex]
             });
@@ -79,7 +104,7 @@ namespace Zoro.Consensus
                 {
                     Version = Version,
                     PrevHash = PrevHash,
-                    ChainHash = ChainHash,
+                    ChainHash = blockchain.ChainHash,
                     MerkleRoot = MerkleTree.ComputeRoot(TransactionHashes),
                     Timestamp = Timestamp,
                     Index = BlockIndex,
@@ -91,24 +116,46 @@ namespace Zoro.Consensus
             return _header;
         }
 
-        private ConsensusPayload MakePayload(ConsensusMessage message)
+        private ConsensusPayload MakeSignedPayload(ConsensusMessage message)
         {
             message.ViewNumber = ViewNumber;
-            return new ConsensusPayload
+            ConsensusPayload payload = new ConsensusPayload
             {
                 Version = Version,
                 PrevHash = PrevHash,
-                ChainHash = ChainHash,
+                ChainHash = blockchain.ChainHash,
                 BlockIndex = BlockIndex,
                 ValidatorIndex = (ushort)MyIndex,
                 Timestamp = Timestamp,
                 Data = message.ToArray()
             };
+            SignPayload(payload);
+            return payload;
+        }
+
+        public void SignHeader()
+        {
+            Signatures[MyIndex] = MakeHeader()?.Sign(KeyPair);
+        }
+
+        private void SignPayload(ConsensusPayload payload)
+        {
+            ContractParametersContext sc;
+            try
+            {
+                sc = new ContractParametersContext(payload, blockchain);
+                wallet.Sign(sc);
+            }
+            catch (InvalidOperationException)
+            {
+                return;
+            }
+            sc.Verifiable.Witnesses = sc.GetWitnesses();
         }
 
         public ConsensusPayload MakePrepareRequest()
         {
-            return MakePayload(new PrepareRequest
+            return MakeSignedPayload(new PrepareRequest
             {
                 Nonce = Nonce,
                 NextConsensus = NextConsensus,
@@ -120,13 +167,13 @@ namespace Zoro.Consensus
 
         public ConsensusPayload MakePrepareResponse(byte[] signature)
         {
-            return MakePayload(new PrepareResponse
+            return MakeSignedPayload(new PrepareResponse
             {
                 Signature = signature
             });
         }
 
-        public void Reset(Wallet wallet, Blockchain blockchain)
+        public void Reset()
         {
             Snapshot?.Dispose();
             Snapshot = blockchain.GetSnapshot();
@@ -141,7 +188,6 @@ namespace Zoro.Consensus
             Signatures = new byte[Validators.Length][];
             ExpectedView = new ushort[Validators.Length];
             KeyPair = null;
-            ChainHash = blockchain.ChainHash;
             for (int i = 0; i < Validators.Length; i++)
             {
                 WalletAccount account = wallet.GetAccount(Validators[i]);
@@ -155,9 +201,9 @@ namespace Zoro.Consensus
             _header = null;
         }
 
-        public void Fill(Wallet wallet)
+        public void Fill()
         {
-            IEnumerable<Transaction> mem_pool = Snapshot.Blockchain.GetMemoryPool();
+            IEnumerable<Transaction> mem_pool = blockchain.GetMemoryPool();
             foreach (IPolicyPlugin plugin in PluginManager.Singleton.Policies)
                 mem_pool = plugin.FilterForBlock(mem_pool);
             List<Transaction> transactions = mem_pool.ToList();
@@ -173,7 +219,7 @@ namespace Zoro.Consensus
                 ulong nonce = GetNonce();
                 MinerTransaction tx = new MinerTransaction
                 {
-                    ChainHash = Snapshot.Blockchain.ChainHash,
+                    ChainHash = blockchain.ChainHash,
                     Nonce = (uint)(nonce % (uint.MaxValue + 1ul)),
                     Attributes = new TransactionAttribute[0],
                     Inputs = new CoinReference[0],
@@ -190,6 +236,7 @@ namespace Zoro.Consensus
             TransactionHashes = transactions.Select(p => p.Hash).ToArray();
             Transactions = transactions.ToDictionary(p => p.Hash);
             NextConsensus = Blockchain.GetConsensusAddress(Snapshot.GetValidators(transactions).ToArray());
+            Timestamp = Math.Max(DateTime.UtcNow.ToTimestamp(), Snapshot.GetHeader(PrevHash).Timestamp + 1);
         }
 
         private static ulong GetNonce()

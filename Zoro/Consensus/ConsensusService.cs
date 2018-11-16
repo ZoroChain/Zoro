@@ -9,7 +9,6 @@ using Zoro.Network.P2P;
 using Zoro.Network.P2P.Payloads;
 using Zoro.Persistence;
 using Zoro.Plugins;
-using Zoro.SmartContract;
 using Zoro.Wallets;
 using System;
 using System.Collections.Generic;
@@ -25,7 +24,7 @@ namespace Zoro.Consensus
 
         public static readonly TimeSpan MaxTimeSpanPerBlock = TimeSpan.FromSeconds(Settings.Default.MaxSecondsPerBlock);
 
-        private readonly ConsensusContext context = new ConsensusContext();
+        private readonly ConsensusContext context;
         private readonly ZoroSystem system;
         private readonly Wallet wallet;
         private DateTime block_received_time;
@@ -41,6 +40,7 @@ namespace Zoro.Consensus
             this.chainHash = chainHash;
             this.blockchain = AppChainManager.Singleton.AskBlockchain(chainHash);
             this.localNode = AppChainManager.Singleton.AskLocalNode(chainHash);
+            this.context = new ConsensusContext(blockchain, wallet);
         }
 
         private bool AddTransaction(Transaction tx, bool verify)
@@ -60,8 +60,8 @@ namespace Zoro.Consensus
                 {
                     Log($"send prepare response");
                     context.State |= ConsensusState.SignatureSent;
-                    context.Signatures[context.MyIndex] = context.MakeHeader().Sign(context.KeyPair);
-                    SignAndRelay(context.MakePrepareResponse(context.Signatures[context.MyIndex]));
+                    context.SignHeader();
+                    system.LocalNode.Tell(new LocalNode.SendDirectly { Inventory = context.MakePrepareResponse(context.Signatures[context.MyIndex]) });
                     CheckSignatures();
                 }
                 else
@@ -101,18 +101,7 @@ namespace Zoro.Consensus
         {
             if (context.Signatures.Count(p => p != null) >= context.M && context.TransactionHashes.All(p => context.Transactions.ContainsKey(p)))
             {
-                Contract contract = Contract.CreateMultiSigContract(context.M, context.Validators);
-                Block block = context.MakeHeader();
-                ContractParametersContext sc = new ContractParametersContext(block, blockchain);
-                for (int i = 0, j = 0; i < context.Validators.Length && j < context.M; i++)
-                    if (context.Signatures[i] != null)
-                    {
-                        sc.AddSignature(contract, context.Validators[i], context.Signatures[i]);
-                        j++;
-                    }
-
-                sc.Verifiable.Witnesses = sc.GetWitnesses();
-                block.Transactions = context.TransactionHashes.Select(p => context.Transactions[p]).ToArray();
+                Block block = context.CreateBlock();
                 Log($"relay block: {block.Hash}");
                 system.LocalNode.Tell(new LocalNode.Relay { Inventory = block });
                 context.State |= ConsensusState.BlockSent;
@@ -122,7 +111,7 @@ namespace Zoro.Consensus
         private void InitializeConsensus(ushort view_number)
         {
             if (view_number == 0)
-                context.Reset(wallet, blockchain);
+                context.Reset();
             else
                 context.ChangeView(view_number);
             if (context.MyIndex < 0) return;
@@ -331,11 +320,10 @@ namespace Zoro.Consensus
                 context.State |= ConsensusState.RequestSent;
                 if (!context.State.HasFlag(ConsensusState.SignatureSent))
                 {
-                    context.Fill(wallet);
-                    context.Timestamp = Math.Max(DateTime.UtcNow.ToTimestamp(), context.Snapshot.GetHeader(context.PrevHash).Timestamp + 1);
-                    context.Signatures[context.MyIndex] = context.MakeHeader().Sign(context.KeyPair);
+                    context.Fill();
+                    context.SignHeader();
                 }
-                SignAndRelay(context.MakePrepareRequest());
+                system.LocalNode.Tell(new LocalNode.SendDirectly { Inventory = context.MakePrepareRequest() });
                 if (context.TransactionHashes.Length > 1)
                 {
                     foreach (InvGroupPayload payload in InvGroupPayload.CreateGroup(InventoryType.TX, context.TransactionHashes.Skip(1).ToArray()))
@@ -381,24 +369,8 @@ namespace Zoro.Consensus
 
             Log($"request change view: height={context.BlockIndex} view={context.ViewNumber} nv={context.ExpectedView[context.MyIndex]} state={context.State}");
             SetNextTimer(context.ExpectedView[context.MyIndex]);
-            SignAndRelay(context.MakeChangeView());
+            system.LocalNode.Tell(new LocalNode.SendDirectly { Inventory = context.MakeChangeView() });
             CheckExpectedView(context.ExpectedView[context.MyIndex]);
-        }
-
-        private void SignAndRelay(ConsensusPayload payload)
-        {
-            ContractParametersContext sc;
-            try
-            {
-                sc = new ContractParametersContext(payload, blockchain);
-                wallet.Sign(sc);
-            }
-            catch (InvalidOperationException)
-            {
-                return;
-            }
-            sc.Verifiable.Witnesses = sc.GetWitnesses();
-            system.LocalNode.Tell(new LocalNode.SendDirectly { Inventory = payload });
         }
     }
 
