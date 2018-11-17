@@ -79,7 +79,12 @@ namespace Zoro.Persistence
 
         public static Transaction GetTransaction(this IPersistence persistence, UInt256 hash)
         {
-            return persistence.Transactions.TryGet(hash)?.Transaction;
+            Transaction tx = persistence.Transactions.TryGet(hash)?.Transaction;
+            if (tx != null && persistence.Blockchain != null)
+            {
+                tx.ChainHash = persistence.Blockchain.ChainHash;
+            }
+            return tx;
         }
 
         public static TransactionOutput GetUnspent(this IPersistence persistence, UInt256 hash, ushort index)
