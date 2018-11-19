@@ -1,8 +1,11 @@
 ﻿using Zoro.Cryptography.ECC;
+using Zoro.Network.P2P.Payloads;
 using Zoro.Ledger;
 using Zoro.Persistence;
+using Zoro.IO.Caching;
 using Neo.VM;
 using System.Text;
+using Zoro.Plugins;
 
 namespace Zoro.SmartContract
 {
@@ -106,8 +109,12 @@ namespace Zoro.SmartContract
             if (Trigger != TriggerType.Application) return false;
             try
             {
+                // 只在交易上链时执行
+                if (Snapshot.PersistingBlock == null)
+                    return false;
+
                 // 只能在根链上执行创建应用链的指令
-                if (Snapshot.Blockchain.ChainHash != UInt160.Zero)
+                if (!Snapshot.Blockchain.ChainHash.Equals(UInt160.Zero))
                     return false;
 
                 UInt160 hash = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
@@ -167,14 +174,15 @@ namespace Zoro.SmartContract
         {
             if (Trigger != TriggerType.Application) return false;
 
-            // 只能在根链上执行更改应用链共识节点的指令
-            if (Snapshot.Blockchain.ChainHash != UInt160.Zero)
+            UInt160 chainHash = Snapshot.Blockchain.ChainHash;
+
+            // 只能在应用链上执行更改应用链共识节点的指令
+            if (chainHash.Equals(UInt160.Zero))
                 return false;
 
-            UInt160 hash = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
-
-            AppChainState state = Snapshot.AppChains.TryGet(hash);
-            if (state == null)
+            // 在应用链的数据库里查询应用链状态信息
+            AppChainState state = Snapshot.AppChainState.GetAndChange();
+            if (state.Hash == null)
                 return false;
 
             // 只有应用链的所有者有权限更换共识节点
@@ -193,13 +201,14 @@ namespace Zoro.SmartContract
                 validators[i] = ECPoint.DecodePoint(Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray()).HexToBytes(), ECCurve.Secp256r1);
             }
 
-            // 把变更保存到数据库
-            state = Snapshot.AppChains.GetAndChange(hash);
-
+            // 将修改保存到数据库
             state.StandbyValidators = validators;
 
             // 添加通知事件，等待上链后处理
-            Snapshot.Blockchain.AddAppChainNotification("ChangeValidators", state);
+            if (Snapshot.PersistingBlock != null)
+                Snapshot.Blockchain.AddAppChainNotification("ChangeValidators", state);
+
+            engine.CurrentContext.EvaluationStack.Push(StackItem.FromInterface(state));
 
             return true;
         }
@@ -209,7 +218,7 @@ namespace Zoro.SmartContract
             if (Trigger != TriggerType.Application) return false;
 
             // 只能在根链上执行更改应用链种子节点的指令
-            if (Snapshot.Blockchain.ChainHash != UInt160.Zero)
+            if (!Snapshot.Blockchain.ChainHash.Equals(UInt160.Zero))
                 return false;
 
             UInt160 hash = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
@@ -240,7 +249,10 @@ namespace Zoro.SmartContract
             state.SeedList = seedList;
 
             // 添加通知事件，等待上链后处理
-            Snapshot.Blockchain.AddAppChainNotification("ChangeSeedList", state);
+            if (Snapshot.PersistingBlock != null)
+                Snapshot.Blockchain.AddAppChainNotification("ChangeSeedList", state);
+
+            engine.CurrentContext.EvaluationStack.Push(StackItem.FromInterface(state));
 
             return true;
         }

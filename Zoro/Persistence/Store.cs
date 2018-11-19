@@ -22,6 +22,7 @@ namespace Zoro.Persistence
         MetaDataCache<ValidatorsCountState> IPersistence.ValidatorsCount => GetValidatorsCount();
         MetaDataCache<HashIndexState> IPersistence.BlockHashIndex => GetBlockHashIndex();
         MetaDataCache<HashIndexState> IPersistence.HeaderHashIndex => GetHeaderHashIndex();
+        MetaDataCache<AppChainState> IPersistence.AppChainState => GetAppChainState();
 
         public abstract DataCache<UInt256, BlockState> GetBlocks();
         public abstract DataCache<UInt256, TransactionState> GetTransactions();
@@ -37,6 +38,7 @@ namespace Zoro.Persistence
         public abstract MetaDataCache<ValidatorsCountState> GetValidatorsCount();
         public abstract MetaDataCache<HashIndexState> GetBlockHashIndex();
         public abstract MetaDataCache<HashIndexState> GetHeaderHashIndex();
+        public abstract MetaDataCache<AppChainState> GetAppChainState();
 
         public abstract Snapshot GetSnapshot();
         public abstract void Dispose();

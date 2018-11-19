@@ -73,6 +73,17 @@ namespace Zoro.Ledger
             _names = replica._names;
         }
 
+        public void CopyFrom(AppChainState state)
+        {
+            Hash = state.Hash;
+            Name = state.Name;
+            Owner = state.Owner;
+            Timestamp = state.Timestamp;
+            SeedList = state.SeedList;
+            StandbyValidators = state.StandbyValidators;
+            _names = state._names;
+        }
+
         private Dictionary<CultureInfo, string> _names;
         public string GetName(CultureInfo culture = null)
         {
@@ -142,6 +153,22 @@ namespace Zoro.Ledger
         public override string ToString()
         {
             return GetName();
+        }
+
+        public bool CompareStandbyValidators(ECPoint[] validators)
+        {
+            if (StandbyValidators.Length != validators.Length)
+                return false;
+
+            for (int i = 0; i < StandbyValidators.Length; i++)
+            {
+                if (!StandbyValidators[i].Equals(validators[i]))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 }

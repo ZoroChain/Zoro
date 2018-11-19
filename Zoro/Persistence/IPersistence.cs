@@ -21,6 +21,7 @@ namespace Zoro.Persistence
         MetaDataCache<ValidatorsCountState> ValidatorsCount { get; }
         MetaDataCache<HashIndexState> BlockHashIndex { get; }
         MetaDataCache<HashIndexState> HeaderHashIndex { get; }
+        MetaDataCache<AppChainState> AppChainState { get; }
 
         Blockchain Blockchain { get; }
     }

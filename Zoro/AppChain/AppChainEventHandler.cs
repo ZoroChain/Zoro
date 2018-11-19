@@ -90,10 +90,11 @@ namespace Zoro.AppChain
         private void OnChangeValidators(AppChainState state)
         {
             // 通知正在运行的应用链对象，更新共识节点公钥
-            if (appchainMgr.GetAppChainSystem(state.Hash, out ZoroSystem system))
+            Blockchain blockchain = appchainMgr.GetBlockchain(state.Hash);
+            if (blockchain != null)
             {
-                // 这里必须要等Blockchain更改了StandbyValidators以后才能开启共识服务
-                bool success = system.Blockchain.Ask<bool>(new Blockchain.ChangeValidators { Validators = state.StandbyValidators }).Result;
+                // 先更改Blockchain的StandbyValidators，再开启共识服务
+                bool success = blockchain.ChangeStandbyValidators(state.StandbyValidators);
 
                 // 要启动共识服务，必须打开钱包
                 if (success && wallet != null)
@@ -137,7 +138,7 @@ namespace Zoro.AppChain
             listeningWsPorts.Add(wsport);
 
             // 在根链启动后，获取应用链列表，启动应用链
-            if (chainHash == UInt160.Zero && CheckAppChainPort())
+            if (chainHash.Equals(UInt160.Zero) && CheckAppChainPort())
             {
                 // 获取本地IP地址
                 myIPAddress = GetMyIPAddress();

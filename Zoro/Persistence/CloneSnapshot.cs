@@ -21,6 +21,7 @@ namespace Zoro.Persistence
         public override MetaDataCache<ValidatorsCountState> ValidatorsCount { get; }
         public override MetaDataCache<HashIndexState> BlockHashIndex { get; }
         public override MetaDataCache<HashIndexState> HeaderHashIndex { get; }
+        public override MetaDataCache<AppChainState> AppChainState { get; }
 
         public CloneSnapshot(Snapshot snapshot, Blockchain blockchain)
             : base(blockchain)
@@ -40,6 +41,7 @@ namespace Zoro.Persistence
             this.ValidatorsCount = snapshot.ValidatorsCount.CreateSnapshot();
             this.BlockHashIndex = snapshot.BlockHashIndex.CreateSnapshot();
             this.HeaderHashIndex = snapshot.HeaderHashIndex.CreateSnapshot();
+            this.AppChainState = snapshot.AppChainState.CreateSnapshot();
         }
     }
 }

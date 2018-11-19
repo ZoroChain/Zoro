@@ -16,6 +16,7 @@
 
         public const byte IX_HeaderHashList = 0x80;
         public const byte IX_ValidatorsCount = 0x90;
+        public const byte IX_AppChainState = 0xa0;
         public const byte IX_CurrentBlock = 0xc0;
         public const byte IX_CurrentHeader = 0xc1;
 

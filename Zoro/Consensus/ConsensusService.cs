@@ -14,6 +14,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
+using Zoro.SmartContract;
+
 namespace Zoro.Consensus
 {
     public sealed class ConsensusService : UntypedActor
@@ -58,7 +60,7 @@ namespace Zoro.Consensus
             {
                 if (context.VerifyRequest())
                 {
-                    Log($"send prepare response");
+                    //Log($"send prepare response");
                     context.State |= ConsensusState.SignatureSent;
                     context.SignHeader();
                     system.LocalNode.Tell(new LocalNode.SendDirectly { Inventory = context.MakePrepareResponse(context.Signatures[context.MyIndex]) });
@@ -101,8 +103,12 @@ namespace Zoro.Consensus
         {
             if (context.Signatures.Count(p => p != null) >= context.M && context.TransactionHashes.All(p => context.Transactions.ContainsKey(p)))
             {
+                Header prev_header = context.Snapshot.GetHeader(context.PrevHash);
+                UInt160 scriptHash = Contract.CreateMultiSigRedeemScript(context.M, context.Validators).ToScriptHash();
+                Log($"CheckSignatures, prev consensus:{prev_header.NextConsensus}, scripthash:{scriptHash}");
+
                 Block block = context.CreateBlock();
-                Log($"relay block: {block.Hash}");
+                //Log($"relay block: {block.Hash}");
                 system.LocalNode.Tell(new LocalNode.Relay { Inventory = block });
                 context.State |= ConsensusState.BlockSent;
             }
@@ -118,6 +124,8 @@ namespace Zoro.Consensus
             if (view_number > 0)
                 Log($"changeview: view={view_number} primary={context.Validators[context.GetPrimaryIndex((ushort)(view_number - 1u))]}", LogLevel.Warning);
             Log($"initialize: height={context.BlockIndex} view={view_number} index={context.MyIndex} role={(context.MyIndex == context.PrimaryIndex ? ConsensusState.Primary : ConsensusState.Backup)}");
+            UInt160 nextConsensus = Blockchain.GetConsensusAddress(context.Validators);
+            Log($"context.NextConsensus: {nextConsensus}");
             if (context.MyIndex == context.PrimaryIndex)
             {
                 context.State |= ConsensusState.Primary;
@@ -195,7 +203,7 @@ namespace Zoro.Consensus
 
         private void OnPersistCompleted(Block block)
         {
-            Log($"persist block: {block.Hash}");
+            //Log($"persist block: {block.Hash}");
             block_received_time = DateTime.UtcNow;
             InitializeConsensus(0);
         }
@@ -204,7 +212,7 @@ namespace Zoro.Consensus
         {
             if (context.State.HasFlag(ConsensusState.RequestReceived)) return;
             if (payload.ValidatorIndex != context.PrimaryIndex) return;
-            Log($"{nameof(OnPrepareRequestReceived)}: height={payload.BlockIndex} view={message.ViewNumber} index={payload.ValidatorIndex} tx={message.TransactionHashes.Length}");
+            //Log($"{nameof(OnPrepareRequestReceived)}: height={payload.BlockIndex} view={message.ViewNumber} index={payload.ValidatorIndex} tx={message.TransactionHashes.Length}");
             if (!context.State.HasFlag(ConsensusState.Backup)) return;
             if (payload.Timestamp <= context.Snapshot.GetHeader(context.PrevHash).Timestamp || payload.Timestamp > DateTime.UtcNow.AddMinutes(10).ToTimestamp())
             {
@@ -258,7 +266,7 @@ namespace Zoro.Consensus
         private void OnPrepareResponseReceived(ConsensusPayload payload, PrepareResponse message)
         {
             if (context.Signatures[payload.ValidatorIndex] != null) return;
-            Log($"{nameof(OnPrepareResponseReceived)}: height={payload.BlockIndex} view={message.ViewNumber} index={payload.ValidatorIndex}");
+            //Log($"{nameof(OnPrepareResponseReceived)}: height={payload.BlockIndex} view={message.ViewNumber} index={payload.ValidatorIndex}");
             byte[] hashData = context.MakeHeader()?.GetHashData();
             if (hashData == null)
             {
@@ -306,22 +314,24 @@ namespace Zoro.Consensus
         {
             if (context.State.HasFlag(ConsensusState.BlockSent)) return;
             if (timer.Height != context.BlockIndex || timer.ViewNumber != context.ViewNumber) return;
-            Log($"timeout: height={timer.Height} view={timer.ViewNumber} state={context.State}");
+            //Log($"timeout: height={timer.Height} view={timer.ViewNumber} state={context.State}");
             if (context.State.HasFlag(ConsensusState.Primary) && !context.State.HasFlag(ConsensusState.RequestSent))
             {
                 if (blockchain.GetMemoryPool().Count() == 0 && DateTime.UtcNow - block_received_time < MaxTimeSpanPerBlock)
                 {
-                    Log($"waiting for transaction: height={timer.Height} view={timer.ViewNumber}");
+                    //Log($"waiting for transaction: height={timer.Height} view={timer.ViewNumber}");
                     ChangeTimer(Blockchain.TimePerBlock);
                     return;
                 }
 
-                Log($"send prepare request: height={timer.Height} view={timer.ViewNumber}");
+                //Log($"send prepare request: height={timer.Height} view={timer.ViewNumber}");
                 context.State |= ConsensusState.RequestSent;
                 if (!context.State.HasFlag(ConsensusState.SignatureSent))
                 {
                     context.Fill();
                     context.SignHeader();
+
+                    Log($"RequestSent context.NextConsensus: {context.NextConsensus}");
                 }
                 system.LocalNode.Tell(new LocalNode.SendDirectly { Inventory = context.MakePrepareRequest() });
                 if (context.TransactionHashes.Length > 1)
