@@ -47,7 +47,7 @@ namespace Zoro
             ChainHash = chainHash;
 
             // 只有在创建根链的ZoroSystem对象时，才创建ActorSystem
-            if (chainHash == UInt160.Zero)
+            if (chainHash.Equals(UInt160.Zero))
             {
                 if (root != null)
                     throw new InvalidOperationException();
@@ -75,7 +75,7 @@ namespace Zoro
             this.TaskManager = ActorSystem.ActorOf(Network.P2P.TaskManager.Props(this, chainHash), $"TaskManager_{hashString}");
 
             // 只有在创建根链的ZoroSystem对象时，才创建PluginManager，确保所有插件对象只实例化一次
-            if (chainHash == UInt160.Zero)
+            if (chainHash.Equals(UInt160.Zero))
             {
                 PluginMgr = new PluginManager(this);
                 PluginMgr.LoadPlugins();
@@ -153,7 +153,7 @@ namespace Zoro
         public void StartRpc(IPAddress bindAddress, int port, Wallet wallet = null, string sslCert = null, string password = null, string[] trustedAuthorities = null)
         {
             // 确保只启动一次RpcServer
-            if (ChainHash == UInt160.Zero)
+            if (ChainHash.Equals(UInt160.Zero))
             {
                 RpcServer = new RpcServer(this, wallet);
                 RpcServer.Start(bindAddress, port, sslCert, password, trustedAuthorities);

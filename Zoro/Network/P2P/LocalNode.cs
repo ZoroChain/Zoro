@@ -61,9 +61,9 @@ namespace Zoro.Network.P2P
             //lock (GetType())
             {
                 this.system = system;
-                this.ChainHash = chainHash;                
+                this.ChainHash = chainHash;
 
-                if (chainHash == UInt160.Zero)
+                if (chainHash.Equals(UInt160.Zero))
                 {
                     if (root != null)
                         throw new InvalidOperationException();
