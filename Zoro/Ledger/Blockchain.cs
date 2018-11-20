@@ -23,7 +23,7 @@ namespace Zoro.Ledger
 {
     public sealed class Blockchain : UntypedActor
     {
-        public class ChangeValidators { public ECPoint[] Validators; }
+        public class ChangeValidators { public UInt160 ChainHash; public ECPoint[] Validators; }
 
         public class Register { }
         public class ApplicationExecuted { public Transaction Transaction; public ApplicationExecutionResult[] ExecutionResults; }
@@ -174,21 +174,21 @@ namespace Zoro.Ledger
             this.Store = store;
             store.Blockchain = this;
 
-            if (chainHash == UInt160.Zero)
+            if (chainHash.Equals(UInt160.Zero))
             {
                 if (root != null)
                     throw new InvalidOperationException();
 
                 root = this;
                 Name = "Root";
-                StandbyValidators = Settings.Default.StandbyValidators.OfType<string>().Select(p => ECPoint.DecodePoint(p.HexToBytes(), ECCurve.Secp256r1)).ToArray();
+                StandbyValidators = GetStandbyValidators();
             }
             else
             {
                 AppChainState state = AppChainManager.Singleton.RegisterAppChain(chainHash, this);
 
-                this.Name = state.Name;
-                this.StandbyValidators = (ECPoint[])state.StandbyValidators.Clone();
+                Name = state.Name;
+                StandbyValidators = GetStandbyValidators();
             }
 
             GenesisBlock.RebuildMerkleRoot();
@@ -216,9 +216,17 @@ namespace Zoro.Ledger
                 }
 
                 if (header_index.Count == 0)
+                {
                     Persist(GenesisBlock);
+                    if (!chainHash.Equals(UInt160.Zero))
+                    {
+                        SaveAppChainState();
+                    }
+                }
                 else
+                {
                     UpdateCurrentSnapshot();
+                }
             }
         }
 
@@ -443,7 +451,8 @@ namespace Zoro.Ledger
             PersistCompleted completed = new PersistCompleted { Block = block };
             system.Consensus?.Tell(completed);
             Distribute(completed);
-            Log($"Block Persisted:{block.Index}, ChainHash:{ChainHash.ToString()}");
+            if (system.Consensus == null)
+                Log($"Block Persisted:{block.Index}, ChainHash:{ChainHash.ToString()}");
         }
 
         protected override void OnReceive(object message)
@@ -473,7 +482,7 @@ namespace Zoro.Ledger
                     subscribers.Remove(terminated.ActorRef);
                     break;
                 case ChangeValidators msg:
-                    Sender.Tell(OnChangeValidators(msg.Validators));
+                    Sender.Tell(OnChangeStandbyValidators(msg.ChainHash, msg.Validators));
                     break;
             }
         }
@@ -744,14 +753,98 @@ namespace Zoro.Ledger
             Interlocked.Exchange(ref currentSnapshot, GetSnapshot())?.Dispose();
         }
 
-        private bool OnChangeValidators(ECPoint[] validators)
+        private void SaveAppChainState()
         {
+            AppChainState state = Root.Store.GetAppChains().TryGet(ChainHash);
+
+            if (state == null)
+            {
+                throw new InvalidOperationException();
+            }
+
+            using (Snapshot snapshot = GetSnapshot())
+            {
+                snapshot.AppChainState.GetAndChange().CopyFrom(state);
+
+                snapshot.Commit();
+            }
+        }
+
+        public ECPoint[] GetStandbyValidators(Snapshot snapshot = null)
+        {
+            if (ChainHash.Equals(UInt160.Zero))
+            {
+                return Settings.Default.StandbyValidators.OfType<string>().Select(p => ECPoint.DecodePoint(p.HexToBytes(), ECCurve.Secp256r1)).ToArray();
+            }
+            else
+            {
+                if (snapshot == null)
+                    snapshot = GetSnapshot();
+
+                AppChainState appchainState = snapshot.AppChainState.Get();
+
+                if (appchainState != null && appchainState.Hash != null)
+                {
+                    return appchainState.StandbyValidators;
+                }
+
+                AppChainState state = Root.Store.GetAppChains().TryGet(ChainHash);
+
+                return state.StandbyValidators;
+            }
+        }
+
+        private bool OnChangeStandbyValidators(UInt160 chainHash, ECPoint[] validators)
+        {
+            // 只能变更根链上记录的应用链共识节点
+            if (!ChainHash.Equals(UInt160.Zero))
+            {
+                throw new InvalidOperationException();
+            }
+
             if (validators.Length < 4)
             {
                 Log($"The number of validators is less then the minimum number:{validators.Length}");
                 return false;
             }
+
+            AppChainState state = Root.Store.GetAppChains().TryGet(chainHash);
+
+            if (state == null)
+            {
+                return false;
+            }
+
+            // 变更根链数据库里记录的应用链共识节点
+            using (Snapshot snapshot = GetSnapshot())
+            {
+                snapshot.AppChains.GetAndChange(chainHash).StandbyValidators = validators;
+                snapshot.Commit();
+            }
+            UpdateCurrentSnapshot();
+
+            return true;
+        }
+
+        public bool ChangeStandbyValidators(ECPoint[] validators)
+        {
+            // 只能变更应用链的共识节点
+            if (ChainHash.Equals(UInt160.Zero))
+            {
+                throw new InvalidOperationException();
+            }
+
+            if (validators.Length < 4)
+            {
+                Log($"The number of validators is less then the minimum number:{validators.Length}");
+                return false;
+            }
+
             StandbyValidators = validators;
+
+            // 通知根链更新应用链的共识节点
+            ZoroSystem.Root.Blockchain.Tell(new ChangeValidators { ChainHash = ChainHash, Validators = validators });
+
             return true;
         }
 

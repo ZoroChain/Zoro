@@ -309,8 +309,10 @@ namespace Zoro.Consensus
             Log($"timeout: height={timer.Height} view={timer.ViewNumber} state={context.State}");
             if (context.State.HasFlag(ConsensusState.Primary) && !context.State.HasFlag(ConsensusState.RequestSent))
             {
+                // MemoryPool里没有交易请求，并且没有到最长出块时间
                 if (blockchain.GetMemoryPool().Count() == 0 && DateTime.UtcNow - block_received_time < MaxTimeSpanPerBlock)
                 {
+                    // 等待下一次出块时间再判断是否需要出块
                     Log($"waiting for transaction: height={timer.Height} view={timer.ViewNumber}");
                     ChangeTimer(Blockchain.TimePerBlock);
                     return;

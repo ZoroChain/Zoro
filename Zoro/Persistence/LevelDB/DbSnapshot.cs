@@ -27,6 +27,7 @@ namespace Zoro.Persistence.LevelDB
         public override MetaDataCache<ValidatorsCountState> ValidatorsCount { get; }
         public override MetaDataCache<HashIndexState> BlockHashIndex { get; }
         public override MetaDataCache<HashIndexState> HeaderHashIndex { get; }
+        public override MetaDataCache<AppChainState> AppChainState { get; }
 
         public DbSnapshot(DB db, Blockchain blockchain)
             : base(blockchain)
@@ -49,6 +50,7 @@ namespace Zoro.Persistence.LevelDB
             ValidatorsCount = new DbMetaDataCache<ValidatorsCountState>(db, options, batch, Prefixes.IX_ValidatorsCount);
             BlockHashIndex = new DbMetaDataCache<HashIndexState>(db, options, batch, Prefixes.IX_CurrentBlock);
             HeaderHashIndex = new DbMetaDataCache<HashIndexState>(db, options, batch, Prefixes.IX_CurrentHeader);
+            AppChainState = new DbMetaDataCache<AppChainState>(db, options, batch, Prefixes.IX_AppChainState);
         }
 
         public override void Commit()

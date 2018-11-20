@@ -3,10 +3,13 @@ using Zoro.IO.Caching;
 using Zoro.IO.Wrappers;
 using Zoro.Ledger;
 using Zoro.Network.P2P.Payloads;
+using Zoro.SmartContract;
 using Neo.VM;
+using Neo.VM.Types;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace Zoro.Persistence
 {
@@ -27,6 +30,7 @@ namespace Zoro.Persistence
         public abstract MetaDataCache<ValidatorsCountState> ValidatorsCount { get; }
         public abstract MetaDataCache<HashIndexState> BlockHashIndex { get; }
         public abstract MetaDataCache<HashIndexState> HeaderHashIndex { get; }
+        public abstract MetaDataCache<AppChainState> AppChainState { get; }
 
         public uint Height => BlockHashIndex.Get().Index;
         public uint HeaderHeight => HeaderHashIndex.Get().Index;
@@ -147,6 +151,7 @@ namespace Zoro.Persistence
             BlockHashIndex.Commit();
             HeaderHashIndex.Commit();
             AppChains.Commit();
+            AppChainState.Commit();
         }
 
         public virtual void Dispose()
@@ -190,6 +195,7 @@ namespace Zoro.Persistence
 
         public IEnumerable<ECPoint> GetValidators(IEnumerable<Transaction> others)
         {
+            ECPoint[] standbyValidators = Blockchain.StandbyValidators;
             Snapshot snapshot = Clone();
             foreach (Transaction tx in others)
             {
@@ -250,6 +256,36 @@ namespace Zoro.Persistence
                                     break;
                             }
                         break;
+                    case InvocationTransaction tx_invocation:
+                        // 这里只能改变应用链的共识节点
+                        if (!Blockchain.ChainHash.Equals(UInt160.Zero))
+                        {
+                            // 判断脚本里是否调用了更改应用链共识节点的SysCall
+                            if (HashChangeValidatorsSysCall(tx_invocation.Script, "Zoro.AppChain.ChangeValidators"))
+                            {
+                                // 运行脚本，但结果不保存到DB
+                                using (ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, tx_invocation, snapshot, tx_invocation.Gas, true))
+                                {
+                                    engine.LoadScript(tx_invocation.Script);
+                                    if (engine.Execute())
+                                    {
+                                        // 获取脚本的返回值
+                                        if (engine.ResultStack.Peek() is InteropInterface _interface)
+                                        {
+                                            AppChainState state = _interface.GetInterface<AppChainState>();
+
+                                            // 判断应用链的共识节点是否发生了变化
+                                            if (state != null && !state.CompareStandbyValidators(standbyValidators))
+                                            {
+                                                standbyValidators = state.StandbyValidators;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        break;
                 }
             }
             int count = (int)snapshot.ValidatorsCount.Get().Votes.Select((p, i) => new
@@ -261,8 +297,8 @@ namespace Zoro.Persistence
                 p.Count,
                 Weight = w
             }).WeightedAverage(p => p.Count, p => p.Weight);
-            count = Math.Max(count, Blockchain.StandbyValidators.Length);
-            HashSet<ECPoint> sv = new HashSet<ECPoint>(Blockchain.StandbyValidators);
+            count = Math.Max(count, standbyValidators.Length);
+            HashSet<ECPoint> sv = new HashSet<ECPoint>(standbyValidators);
             ECPoint[] pubkeys = snapshot.Validators.Find().Select(p => p.Value).Where(p => (p.Registered && p.Votes > Fixed8.Zero) || sv.Contains(p.PublicKey)).OrderByDescending(p => p.Votes).ThenBy(p => p.PublicKey).Select(p => p.PublicKey).Take(count).ToArray();
             IEnumerable<ECPoint> result;
             if (pubkeys.Length == count)
@@ -272,11 +308,31 @@ namespace Zoro.Persistence
             else
             {
                 HashSet<ECPoint> hashSet = new HashSet<ECPoint>(pubkeys);
-                for (int i = 0; i < Blockchain.StandbyValidators.Length && hashSet.Count < count; i++)
-                    hashSet.Add(Blockchain.StandbyValidators[i]);
+                for (int i = 0; i < standbyValidators.Length && hashSet.Count < count; i++)
+                    hashSet.Add(standbyValidators[i]);
                 result = hashSet;
             }
             return result.OrderBy(p => p);
+        }
+
+        private bool HashChangeValidatorsSysCall(byte[] script, string method)
+        {
+            byte opcode = (byte)OpCode.SYSCALL;
+            int len = script.Length;
+            for (int i = 0;i < len;i ++)
+            {
+                if (script[i] == opcode)
+                {
+                    string str = Encoding.ASCII.GetString(script, i + 2, script[i + 1]);
+
+                    if (str == method)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
     }
 }
