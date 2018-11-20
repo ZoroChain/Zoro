@@ -143,6 +143,10 @@ namespace Zoro.SmartContract
                     validators[i] = ECPoint.DecodePoint(Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray()).HexToBytes(), ECCurve.Secp256r1);
                 }
 
+                // 判断输入的共识节点字符串格式是否无效或者重复
+                if (!CheckValidators(validators, validatorCount))
+                    return false;
+
                 AppChainState state = Snapshot.AppChains.TryGet(hash);
                 if (state == null)
                 {
@@ -200,6 +204,10 @@ namespace Zoro.SmartContract
             {
                 validators[i] = ECPoint.DecodePoint(Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray()).HexToBytes(), ECCurve.Secp256r1);
             }
+            
+            // 判断输入的共识节点字符串格式是否无效或者重复
+            if (!CheckValidators(validators, validatorCount))
+                return false;
 
             // 将修改保存到数据库
             state.StandbyValidators = validators;
@@ -253,6 +261,27 @@ namespace Zoro.SmartContract
                 Snapshot.Blockchain.AddAppChainNotification("ChangeSeedList", state);
 
             engine.CurrentContext.EvaluationStack.Push(StackItem.FromInterface(state));
+
+            return true;
+        }
+
+        private bool CheckValidators(ECPoint[] validators, int count)
+        {
+            for (int i = 0;i < count; i ++)
+            {
+                // 判断有效性
+                if (validators[i].IsInfinity)
+                    return false;
+
+                // 判断重复
+                for (int j = i + 1;j < count; j ++)
+                {
+                    if (validators[i].Equals(validators[j]))
+                    {
+                        return false;
+                    }
+                }
+            }
 
             return true;
         }
