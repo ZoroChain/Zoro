@@ -20,6 +20,7 @@ namespace Zoro.Network.P2P
         public class SetVersion { public VersionPayload Version; }
         public class SetVerack { }
         public class SetFilter { public BloomFilter Filter; }
+        private class Timer { }
 
         private readonly ZoroSystem system;
         private readonly LocalNode localNode;
@@ -31,6 +32,10 @@ namespace Zoro.Network.P2P
         private bool verack = false;
         private BloomFilter bloom_filter;
 
+        private static readonly TimeSpan TimerInterval = TimeSpan.FromMinutes(1);
+        private static readonly uint MaxHashCount = Settings.Default.MaxKnownHashCount / 10;
+        private readonly ICancelable timer = Context.System.Scheduler.ScheduleTellRepeatedlyCancelable(TimerInterval, TimerInterval, Context.Self, new Timer(), ActorRefs.NoSender);
+
         public ProtocolHandler(ZoroSystem system, LocalNode localNode, Blockchain blockchain)
         {
             this.system = system;
@@ -40,6 +45,11 @@ namespace Zoro.Network.P2P
 
         protected override void OnReceive(object message)
         {
+            if (message is Timer _)
+            {
+                OnTimer();
+                return;
+            }
             if (!(message is Message msg)) return;
             if (version == null)
             {
@@ -338,6 +348,18 @@ namespace Zoro.Network.P2P
         public static Props Props(ZoroSystem system, LocalNode localNode, Blockchain blockchain)
         {
             return Akka.Actor.Props.Create(() => new ProtocolHandler(system, localNode, blockchain)).WithMailbox("protocol-handler-mailbox");
+        }
+
+        private void OnTimer()
+        {
+            if (MaxHashCount > 0)
+            {
+                if (knownHashes.Count > MaxHashCount)
+                    knownHashes.Clear();
+
+                if (sentHashes.Count > MaxHashCount)
+                    sentHashes.Clear();
+            }
         }
     }
 

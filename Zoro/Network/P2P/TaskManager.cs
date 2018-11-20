@@ -23,6 +23,7 @@ namespace Zoro.Network.P2P
 
         private static readonly TimeSpan TimerInterval = TimeSpan.FromSeconds(30);
         private static readonly TimeSpan TaskTimeout = TimeSpan.FromMinutes(1);
+        private static readonly uint MaxKnownHashCount = Settings.Default.MaxKnownHashCount;
 
         private readonly ZoroSystem system;
         private readonly HashSet<UInt256> knownHashes = new HashSet<UInt256>();
@@ -190,6 +191,8 @@ namespace Zoro.Network.P2P
                     }
             foreach (TaskSession session in sessions.Values)
                 RequestTasks(session);
+
+            ClearKnownHashes();
         }
 
         protected override void PostStop()
@@ -241,6 +244,14 @@ namespace Zoro.Network.P2P
                     }
                 }
                 session.RemoteNode.Tell(Message.Create("getblocks", GetBlocksPayload.Create(hash)));
+            }
+        }
+
+        private void ClearKnownHashes()
+        {
+            if (MaxKnownHashCount > 0 && knownHashes.Count > MaxKnownHashCount)
+            {
+                knownHashes.Clear();
             }
         }
     }
