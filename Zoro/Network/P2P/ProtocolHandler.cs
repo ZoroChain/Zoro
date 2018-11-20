@@ -188,7 +188,7 @@ namespace Zoro.Network.P2P
             Context.Parent.Tell(Message.Create("invgroup", InvGroupPayload.Create(InventoryType.Block, hashes.ToArray())));
         }
 
-        private void ReplyInventoryData(UInt256 hash, InventoryType type)
+        private void OnGetInvertoryData(UInt256 hash, InventoryType type)
         {
             blockchain.RelayCache.TryGet(hash, out IInventory inventory);
             switch (type)
@@ -224,7 +224,7 @@ namespace Zoro.Network.P2P
 
         private void OnGetDataMessageReceived(InvPayload payload)
         {
-            ReplyInventoryData(payload.Hash, payload.Type);
+            OnGetInvertoryData(payload.Hash, payload.Type);
         }
 
         private void OnGetDataGroupMessageReceived(InvGroupPayload payload)
@@ -232,7 +232,7 @@ namespace Zoro.Network.P2P
             UInt256[] hashes = payload.Hashes.Where(p => sentHashes.Add(p)).ToArray();
             foreach (UInt256 hash in hashes)
             {
-                ReplyInventoryData(hash, payload.Type);
+                OnGetInvertoryData(hash, payload.Type);
             }
         }
 
