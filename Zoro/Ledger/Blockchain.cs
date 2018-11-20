@@ -897,37 +897,9 @@ namespace Zoro.Ledger
 
     internal class BlockchainMailbox : PriorityMailbox
     {
-        enum PriorityState : byte
-        {
-            Block = 1,
-            Consensus = 2,
-            Transaction = 4,
-        }
-
-        private PriorityState state = 0;
-
         public BlockchainMailbox(Akka.Actor.Settings settings, Config config)
             : base(settings, config)
         {
-            InitializeHighPriorityState();
-        }
-
-        private void InitializeHighPriorityState()
-        {
-            string[] str = Zoro.Settings.Default.HighPriorityMessages;
-
-            if (str.Contains("Block"))
-            {
-                state |= PriorityState.Block;
-            }
-            if (str.Contains("Consensus"))
-            {
-                state |= PriorityState.Consensus;
-            }
-            if (str.Contains("Transaction"))
-            {
-                state |= PriorityState.Transaction;
-            }
         }
 
         protected override bool IsHighPriority(object message)

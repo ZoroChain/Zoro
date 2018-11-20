@@ -5,8 +5,9 @@ using Zoro.Ledger;
 using Zoro.AppChain;
 using Zoro.Network.P2P.Payloads;
 using System;
-using System.Collections.Generic;
 using System.Linq;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace Zoro.Network.P2P
 {
@@ -259,16 +260,24 @@ namespace Zoro.Network.P2P
                 case TaskManager.RestartTasks _:
                     return true;
                 case TaskManager.NewTask task:
-                    if (task.Payload.Type == InventoryType.Block || task.Payload.Type == InventoryType.Consensus)
-                        return true;
-                    return false;
+                    return IsHighPriority(task.Payload.Type);
                 case TaskManager.NewGroupTask tasks:
-                    if (tasks.Payload.Type == InventoryType.Block || tasks.Payload.Type == InventoryType.Consensus)
-                        return true;
-                    return false;
+                    return IsHighPriority(tasks.Payload.Type);
                 default:
                     return false;
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        bool IsHighPriority(InventoryType type)
+        {
+            if (type == InventoryType.Block)
+                return state.HasFlag(PriorityState.Block);
+            if (type == InventoryType.Consensus)
+                return state.HasFlag(PriorityState.Consensus);
+            if (type == InventoryType.TX)
+                return state.HasFlag(PriorityState.Transaction);
+            return false;
         }
     }
 }
