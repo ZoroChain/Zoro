@@ -224,7 +224,10 @@ namespace Zoro.Network.P2P
 
         private void OnGetDataMessageReceived(InvPayload payload)
         {
-            OnGetInvertoryData(payload.Hash, payload.Type);
+            if (sentHashes.Add(payload.Hash))
+            {
+                OnGetInvertoryData(payload.Hash, payload.Type);
+            }
         }
 
         private void OnGetDataGroupMessageReceived(InvGroupPayload payload)
