@@ -16,7 +16,6 @@ namespace Zoro
         public Fixed8 LowPriorityThreshold { get; private set; }
         public uint SecondsPerBlock { get; private set; }
         public uint MaxSecondsPerBlock { get; private set; }
-        public uint MaxKnownHashCount { get; private set; }
         public string[] HighPriorityMessages { get; private set; }
 
         public static Settings Default { get; private set; }
@@ -36,7 +35,6 @@ namespace Zoro
             this.SystemFee = section.GetSection("SystemFee").GetChildren().ToDictionary(p => (TransactionType)Enum.Parse(typeof(TransactionType), p.Key, true), p => Fixed8.Parse(p.Value));
             this.SecondsPerBlock = GetValueOrDefault(section.GetSection("SecondsPerBlock"), 15u, p => uint.Parse(p));
             this.MaxSecondsPerBlock = GetValueOrDefault(section.GetSection("MaxSecondsPerBlock"), 15u, p => uint.Parse(p));
-            this.MaxKnownHashCount = GetValueOrDefault(section.GetSection("MaxKnownHashCount"), 10000u, p => uint.Parse(p));
             this.LowPriorityThreshold = GetValueOrDefault(section.GetSection("LowPriorityThreshold"), Fixed8.FromDecimal(0.001m), p => Fixed8.Parse(p));
             this.HighPriorityMessages = section.GetSection("HighPriorityMessages").GetChildren().Select(p => p.Value).ToArray();
             if (this.HighPriorityMessages.Length == 0)
