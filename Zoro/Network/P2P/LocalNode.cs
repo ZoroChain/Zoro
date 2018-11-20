@@ -16,8 +16,6 @@ namespace Zoro.Network.P2P
 {
     public class LocalNode : Peer
     {
-        public class ChangeSeedList { public string[] SeedList; }
-
         public class Relay { public IInventory Inventory; }
         internal class RelayDirectly { public IInventory Inventory; }
         internal class SendDirectly { public IInventory Inventory; }
@@ -178,9 +176,6 @@ namespace Zoro.Network.P2P
                     break;
                 case RelayResultReason _:
                     break;
-                case ChangeSeedList msg:
-                    OnChangeSeedList(msg.SeedList);
-                    break;
             }
         }
 
@@ -212,9 +207,23 @@ namespace Zoro.Network.P2P
             return RemoteNode.Props(system, connection, remote, local, this);
         }
 
-        private void OnChangeSeedList(string[] seedList)
+        public void ChangeSeedList(string[] seedList)
         {
+            // 只能变更应用链的种子节点
+            if (ChainHash.Equals(UInt160.Zero))
+            {
+                throw new InvalidOperationException();
+            }
+
+            if (seedList.Length < 1)
+            {
+                throw new ArgumentException();
+            }
+
             SeedList = seedList;
+
+            // 通知根链更新应用链的种子节点
+            ZoroSystem.Root.Blockchain.Tell(new Blockchain.ChangeAppChainSeedList { ChainHash = ChainHash, SeedList = seedList });
         }
     }
 }

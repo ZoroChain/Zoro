@@ -125,9 +125,12 @@ namespace Zoro.AppChain
         private void OnChangeSeedList(AppChainState state)
         {
             // 通知正在运行的应用链对象，更新种子节点地址
-            if (appchainMgr.GetAppChainSystem(state.Hash, out ZoroSystem system))
+            LocalNode localNode = appchainMgr.GetLocalNode(state.Hash);
+            if (localNode != null)
             {
-                system.LocalNode.Tell(new LocalNode.ChangeSeedList { SeedList = state.SeedList });
+                Log($"Change appchain seedlist, name={state.Name} hash={state.Hash.ToString()}");
+
+                localNode.ChangeSeedList(state.SeedList);
             }
         }
 
