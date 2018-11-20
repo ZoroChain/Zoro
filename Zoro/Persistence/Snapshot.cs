@@ -261,7 +261,7 @@ namespace Zoro.Persistence
                         if (!Blockchain.ChainHash.Equals(UInt160.Zero))
                         {
                             // 判断脚本里是否调用了更改应用链共识节点的SysCall
-                            if (HashChangeValidatorsSysCall(tx_invocation.Script, "Zoro.AppChain.ChangeValidators"))
+                            if (IsSysCallScript(tx_invocation.Script, "Zoro.AppChain.ChangeValidators"))
                             {
                                 // 运行脚本，但结果不保存到DB
                                 using (ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, tx_invocation, snapshot, tx_invocation.Gas, true))
@@ -315,7 +315,8 @@ namespace Zoro.Persistence
             return result.OrderBy(p => p);
         }
 
-        private bool HashChangeValidatorsSysCall(byte[] script, string method)
+        // 判断虚拟机指令里是否调用了特定的SysCall
+        private bool IsSysCallScript(byte[] script, string method)
         {
             byte opcode = (byte)OpCode.SYSCALL;
             int len = script.Length;
@@ -323,11 +324,18 @@ namespace Zoro.Persistence
             {
                 if (script[i] == opcode)
                 {
-                    string str = Encoding.ASCII.GetString(script, i + 2, script[i + 1]);
+                    // 获取字符串的长度
+                    int strLen = script[i + 1];
 
-                    if (str == method)
+                    // 防止越界
+                    if (i + strLen < len - 1) 
                     {
-                        return true;
+                        string str = Encoding.ASCII.GetString(script, i + 2, strLen);
+
+                        if (str == method)
+                        {
+                            return true;
+                        }
                     }
                 }
             }
