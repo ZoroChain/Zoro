@@ -23,7 +23,8 @@ namespace Zoro.Ledger
 {
     public sealed class Blockchain : UntypedActor
     {
-        public class ChangeValidators { public UInt160 ChainHash; public ECPoint[] Validators; }
+        public class ChangeAppChainSeedList { public UInt160 ChainHash; public string[] SeedList; }
+        public class ChangeAppChainValidators { public UInt160 ChainHash; public ECPoint[] Validators; }
 
         public class Register { }
         public class ApplicationExecuted { public Transaction Transaction; public ApplicationExecutionResult[] ExecutionResults; }
@@ -481,8 +482,11 @@ namespace Zoro.Ledger
                 case Terminated terminated:
                     subscribers.Remove(terminated.ActorRef);
                     break;
-                case ChangeValidators msg:
-                    Sender.Tell(OnChangeStandbyValidators(msg.ChainHash, msg.Validators));
+                case ChangeAppChainValidators msg:
+                    Sender.Tell(OnChangeAppChainValidators(msg.ChainHash, msg.Validators));
+                    break;
+                case ChangeAppChainSeedList msg:
+                    Sender.Tell(OnChangeAppChainSeedList(msg.ChainHash, msg.SeedList));
                     break;
             }
         }
@@ -794,13 +798,11 @@ namespace Zoro.Ledger
             }
         }
 
-        private bool OnChangeStandbyValidators(UInt160 chainHash, ECPoint[] validators)
+        private bool OnChangeAppChainValidators(UInt160 chainHash, ECPoint[] validators)
         {
             // 只能变更根链上记录的应用链共识节点
             if (!ChainHash.Equals(UInt160.Zero))
-            {
-                throw new InvalidOperationException();
-            }
+                return false;
 
             if (validators.Length < 4)
             {
@@ -809,11 +811,8 @@ namespace Zoro.Ledger
             }
 
             AppChainState state = Root.Store.GetAppChains().TryGet(chainHash);
-
             if (state == null)
-            {
                 return false;
-            }
 
             // 变更根链数据库里记录的应用链共识节点
             using (Snapshot snapshot = GetSnapshot())
@@ -843,7 +842,34 @@ namespace Zoro.Ledger
             StandbyValidators = validators;
 
             // 通知根链更新应用链的共识节点
-            ZoroSystem.Root.Blockchain.Tell(new ChangeValidators { ChainHash = ChainHash, Validators = validators });
+            ZoroSystem.Root.Blockchain.Tell(new ChangeAppChainValidators { ChainHash = ChainHash, Validators = validators });
+
+            return true;
+        }
+
+        private bool OnChangeAppChainSeedList(UInt160 chainHash, string[] seedList)
+        {
+            // 只能变更根链上记录的应用链种子节点
+            if (!ChainHash.Equals(UInt160.Zero))
+                return false;
+
+            if (seedList.Length < 1)
+            {
+                Log($"The number of seed nodes is less then the minimum number:{seedList.Length}");
+                return false;
+            }
+
+            AppChainState state = Root.Store.GetAppChains().TryGet(chainHash);
+            if (state == null)
+                return false;
+
+            // 变更根链数据库里记录的应用链种子节点
+            using (Snapshot snapshot = GetSnapshot())
+            {
+                snapshot.AppChains.GetAndChange(chainHash).SeedList = seedList;
+                snapshot.Commit();
+            }
+            UpdateCurrentSnapshot();
 
             return true;
         }

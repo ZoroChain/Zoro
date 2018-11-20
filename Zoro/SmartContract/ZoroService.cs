@@ -109,26 +109,29 @@ namespace Zoro.SmartContract
             if (Trigger != TriggerType.Application) return false;
             try
             {
-                // 只在交易上链时执行
-                if (Snapshot.PersistingBlock == null)
-                    return false;
-
                 // 只能在根链上执行创建应用链的指令
                 if (!Snapshot.Blockchain.ChainHash.Equals(UInt160.Zero))
                     return false;
 
+                // 应用链的Hash
                 UInt160 hash = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
 
+                // 应用链的名字
                 if (engine.CurrentContext.EvaluationStack.Peek().GetByteArray().Length > 252) return false;
                 string name = Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
 
+                // 应用链的所有者
                 ECPoint owner = ECPoint.DecodePoint(engine.CurrentContext.EvaluationStack.Pop().GetByteArray(), ECCurve.Secp256r1);
                 if (owner.IsInfinity) return false;
+
+                // 交易的见证人里必须有应用链的所有者
                 if (!CheckWitness(engine, owner))
                     return false;
 
+                // 创建时间
                 uint timestamp = (uint)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
 
+                // 种子节点
                 int seedCount = (int)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
                 string[] seedList = new string[seedCount];
                 for (int i = 0; i < seedCount; i++)
@@ -136,6 +139,7 @@ namespace Zoro.SmartContract
                     seedList[i] = Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
                 }
 
+                // 共识节点
                 int validatorCount = (int)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
                 ECPoint[] validators = new ECPoint[validatorCount];
                 for (int i = 0; i < validatorCount; i++)
@@ -143,8 +147,16 @@ namespace Zoro.SmartContract
                     validators[i] = ECPoint.DecodePoint(Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray()).HexToBytes(), ECCurve.Secp256r1);
                 }
 
+                // 共识节点的数量不能小于四个
+                if (validatorCount < 4)
+                    return false;
+
                 // 判断输入的共识节点字符串格式是否无效或者重复
                 if (!CheckValidators(validators, validatorCount))
+                    return false;
+
+                // 种子节点的数量不能为零
+                if (seedCount <= 0)
                     return false;
 
                 AppChainState state = Snapshot.AppChains.TryGet(hash);
@@ -159,12 +171,16 @@ namespace Zoro.SmartContract
                         SeedList = seedList,
                         StandbyValidators = validators,
                     };
+
+                    // 保存到数据库
                     Snapshot.AppChains.Add(hash, state);
 
-                    // 添加创建应用链的事件通知
-                    Snapshot.Blockchain.AddAppChainNotification("Create", state);
+                    // 添加通知事件，等待上链后处理
+                    if (Snapshot.PersistingBlock != null)
+                        Snapshot.Blockchain.AddAppChainNotification("Create", state);
                 }
 
+                // 设置脚本的返回值
                 engine.CurrentContext.EvaluationStack.Push(StackItem.FromInterface(state));
             }
             catch
@@ -209,13 +225,14 @@ namespace Zoro.SmartContract
             if (!CheckValidators(validators, validatorCount))
                 return false;
 
-            // 将修改保存到数据库
+            // 将修改保存到应用链的数据库
             state.StandbyValidators = validators;
 
             // 添加通知事件，等待上链后处理
             if (Snapshot.PersistingBlock != null)
                 Snapshot.Blockchain.AddAppChainNotification("ChangeValidators", state);
 
+            // 设置脚本的返回值
             engine.CurrentContext.EvaluationStack.Push(StackItem.FromInterface(state));
 
             return true;
@@ -225,14 +242,15 @@ namespace Zoro.SmartContract
         {
             if (Trigger != TriggerType.Application) return false;
 
-            // 只能在根链上执行更改应用链种子节点的指令
-            if (!Snapshot.Blockchain.ChainHash.Equals(UInt160.Zero))
+            UInt160 chainHash = Snapshot.Blockchain.ChainHash;
+
+            // 只能在应用链上执行更改应用链共识节点的指令
+            if (chainHash.Equals(UInt160.Zero))
                 return false;
 
-            UInt160 hash = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
-
-            AppChainState state = Snapshot.AppChains.TryGet(hash);
-            if (state == null)
+            // 在应用链的数据库里查询应用链状态信息
+            AppChainState state = Snapshot.AppChainState.GetAndChange();
+            if (state.Hash == null)
                 return false;
 
             // 只有应用链的所有者有权限更换种子节点
@@ -251,20 +269,24 @@ namespace Zoro.SmartContract
                 seedList[i] = Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
             }
 
-            // 把变更保存到数据库
-            state = Snapshot.AppChains.GetAndChange(hash);
+            // 判断输入的种子节点地址是否重复
+            if (!CheckSeedList(seedList, seedCount))
+                return false;
 
+            // 把变更保存到应用链的数据库
             state.SeedList = seedList;
 
             // 添加通知事件，等待上链后处理
             if (Snapshot.PersistingBlock != null)
                 Snapshot.Blockchain.AddAppChainNotification("ChangeSeedList", state);
 
+            // 设置脚本的返回值
             engine.CurrentContext.EvaluationStack.Push(StackItem.FromInterface(state));
 
             return true;
         }
 
+        // 检查输入的共识节点是否无效或重复
         private bool CheckValidators(ECPoint[] validators, int count)
         {
             for (int i = 0;i < count; i ++)
@@ -277,6 +299,23 @@ namespace Zoro.SmartContract
                 for (int j = i + 1;j < count; j ++)
                 {
                     if (validators[i].Equals(validators[j]))
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        // 检查输入的种子节点是否重复
+        private bool CheckSeedList(string[] seedList, int count)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                for (int j = i + 1; j < count; j++)
+                {
+                    if (seedList[i].Equals(seedList[j]))
                     {
                         return false;
                     }
