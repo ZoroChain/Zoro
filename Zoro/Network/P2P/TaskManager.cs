@@ -23,7 +23,7 @@ namespace Zoro.Network.P2P
 
         private static readonly TimeSpan TimerInterval = TimeSpan.FromSeconds(30);
         private static readonly TimeSpan TaskTimeout = TimeSpan.FromMinutes(1);
-        private static readonly int MaxKnownHashCount = 10000;
+        private static readonly int MaxKnownHashCount = Settings.Default.MaxTaskHashCount;
 
         private readonly ZoroSystem system;
         private readonly HashSet<UInt256> knownHashes = new HashSet<UInt256>();
