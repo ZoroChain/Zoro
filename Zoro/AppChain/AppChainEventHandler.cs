@@ -83,6 +83,13 @@ namespace Zoro.AppChain
                 return;
             }
 
+            // 检查种子节点是否有效
+            if (!CheckSeedList(state))
+            {
+                Log($"The appchain's seedlist is invalid, name={state.Name} hash={state.Hash}");
+                return;
+            }
+
             StartAppChain(state);
         }
 
@@ -159,7 +166,11 @@ namespace Zoro.AppChain
                     // 判断是否是关注的应用链
                     if (IsInterestedChainName(state.Name.ToLower()) || IsInterestedChainHash(state.Hash))
                     {
-                        StartAppChain(state);
+                        // 检查种子节点是否有效
+                        if (CheckSeedList(state))
+                        {
+                            StartAppChain(state);
+                        }
                     }
                 }
             }
@@ -374,6 +385,29 @@ namespace Zoro.AppChain
         private bool IsInterestedChainHash(UInt160 chainHash)
         {
             return keyHashes.Contains(chainHash);
+        }
+
+        // 检查种子节点的地址和端口是否有效
+        private bool CheckSeedList(AppChainState state)
+        {
+            foreach (string hostAndPort in state.SeedList)
+            {
+                string[] p = hostAndPort.Split(':');
+                if (p.Length < 2)
+                    return false;
+
+                IPEndPoint seed;
+                try
+                {
+                    seed = GetIPEndpointFromHostPort(p[0], int.Parse(p[1]));
+                }
+                catch (AggregateException)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         // 判断本地节点是否在共识节点列表中
