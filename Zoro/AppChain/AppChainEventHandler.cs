@@ -77,7 +77,7 @@ namespace Zoro.AppChain
             }
 
             // 检查新创建的应用链是否在关注列表中
-            if (!CheckAppChainName(state.Name.ToLower()) && !CheckAppChainHash(state.Hash))
+            if (!IsInterestedChainName(state.Name.ToLower()) && !IsInterestedChainHash(state.Hash))
             {
                 Log($"The appchain is not in the key name list, name={state.Name} hash={state.Hash}");
                 return;
@@ -157,7 +157,7 @@ namespace Zoro.AppChain
                 foreach (var state in appchains)
                 {
                     // 判断是否是关注的应用链
-                    if (CheckAppChainName(state.Name.ToLower()) || CheckAppChainHash(state.Hash))
+                    if (IsInterestedChainName(state.Name.ToLower()) || IsInterestedChainHash(state.Hash))
                     {
                         StartAppChain(state);
                     }
@@ -351,11 +351,17 @@ namespace Zoro.AppChain
         }
 
         // 判断应用链的名字是否在关注列表中
-        private bool CheckAppChainName(string name)
+        private bool IsInterestedChainName(string chainName)
         {
-            foreach (string key in keyNames)
+            foreach (string name in keyNames)
             {
-                if (name.Contains(key))
+                if (name.Length > 0 && name == chainName)
+                    return true;
+
+                Regex reg = new Regex(name);
+
+                bool IsMatch = reg.IsMatch(chainName);
+                if (IsMatch)
                 {
                     return true;
                 }
@@ -365,7 +371,7 @@ namespace Zoro.AppChain
         }
 
         // 判断应用链的Hash是否在关注列表中
-        private bool CheckAppChainHash(UInt160 chainHash)
+        private bool IsInterestedChainHash(UInt160 chainHash)
         {
             return keyHashes.Contains(chainHash);
         }
