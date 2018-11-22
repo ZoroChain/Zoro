@@ -369,12 +369,15 @@ namespace Zoro.AppChain
                 if (name.Length > 0 && name == chainName)
                     return true;
 
-                Regex reg = new Regex(name);
-
-                bool IsMatch = reg.IsMatch(chainName);
-                if (IsMatch)
+                if (name.Contains('+') || name.Contains('*') || name.Contains('?'))
                 {
-                    return true;
+                    Regex reg = new Regex(name);
+
+                    bool IsMatch = reg.IsMatch(chainName);
+                    if (IsMatch)
+                    {
+                        return true;
+                    }
                 }
             }
 
