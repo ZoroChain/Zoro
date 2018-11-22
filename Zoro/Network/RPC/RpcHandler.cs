@@ -231,6 +231,14 @@ namespace Zoro.Network.RPC
 
                             return new JArray(blockchain.GetMemoryPool().Select(p => (JObject)p.Hash.ToString()));
                         }
+                    case "getrawmempoolcount":
+                        {
+                            Blockchain blockchain = GetTargetChain(_params[0]);
+                            if (blockchain == null)
+                                throw new RpcException(-100, "Unknown blockchain");
+
+                            return blockchain.GetMemoryPool().Count();
+                        }
                     case "getrawtransaction":
                         {
                             Blockchain blockchain = GetTargetChain(_params[0]);
