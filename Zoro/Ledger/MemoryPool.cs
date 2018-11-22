@@ -161,5 +161,18 @@ namespace Zoro.Ledger
                 return false;
             }
         }
+
+        public IEnumerable<Transaction> GetTransactions(int count)
+        {
+            IEnumerable<Transaction> trans = _mem_pool_fee.OrderBy(p => p.Value.Transaction.NetworkFee / p.Value.Transaction.Size)
+                .ThenBy(p => p.Value.Transaction.NetworkFee)
+                .OrderBy(p => p.Value.Timestamp)
+                .Select(p => p.Value.Transaction)
+                .Concat(_mem_pool_free.OrderBy(p => p.Value.Timestamp)
+                .Select(p => p.Value.Transaction))
+                .Take(count);
+
+            return trans;
+        }
     }
 }

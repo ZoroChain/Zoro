@@ -156,6 +156,8 @@ namespace Zoro.Ledger
         private readonly List<AppChainEventArgs> appchainNotifications = new List<AppChainEventArgs>();
         public static event EventHandler<AppChainEventArgs> AppChainNofity;
 
+        public static readonly int MemPoolRelayCount = Settings.Default.MemPoolRelayCount;
+
         public UInt160 ChainHash { get; }
 
         private static Blockchain root;
@@ -438,22 +440,33 @@ namespace Zoro.Ledger
             block_cache.Remove(block.Hash);
             foreach (Transaction tx in block.Transactions)
                 mem_pool.TryRemove(tx.Hash, out _);
-            mem_pool_unverified.Clear();
-            foreach (Transaction tx in mem_pool
-                .OrderByDescending(p => p.NetworkFee / p.Size)
-                .ThenByDescending(p => p.NetworkFee)
-                .ThenByDescending(p => new BigInteger(p.Hash.ToArray())))
-            {
-                mem_pool_unverified.TryAdd(tx.Hash, tx);
-                Self.Tell(tx, ActorRefs.NoSender);
-            }
-            mem_pool.Clear();
+            //mem_pool_unverified.Clear();
+            //foreach (Transaction tx in mem_pool
+            //    .OrderByDescending(p => p.NetworkFee / p.Size)
+            //    .ThenByDescending(p => p.NetworkFee)
+            //    .ThenByDescending(p => new BigInteger(p.Hash.ToArray())))
+            //{
+            //    mem_pool_unverified.TryAdd(tx.Hash, tx);
+            //    Self.Tell(tx, ActorRefs.NoSender);
+            //}
+            //mem_pool.Clear();
+            RelayMemoryPool();
             InvokeAppChainNotifications();
             PersistCompleted completed = new PersistCompleted { Block = block };
             system.Consensus?.Tell(completed);
             Distribute(completed);
             if (system.Consensus == null)
                 Log($"Block Persisted:{block.Index}, NumTx:{block.Transactions.Length}");
+        }
+
+        // 广播MemoryPool中还未上链的交易
+        private void RelayMemoryPool()
+        {
+            IEnumerable<Transaction> trans = mem_pool.GetTransactions(MemPoolRelayCount);
+            foreach (Transaction tx in trans)
+            {
+                system.LocalNode.Tell(new LocalNode.RelayDirectly { Inventory = tx });
+            }
         }
 
         protected override void OnReceive(object message)
