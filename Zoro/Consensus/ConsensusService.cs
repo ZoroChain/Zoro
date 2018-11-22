@@ -83,9 +83,9 @@ namespace Zoro.Consensus
             }, ActorRefs.NoSender);
         }
 
-        private void SetNextTimer(ushort viewNumber)
+        private void SetNextTimer(int viewNumber)
         {
-            TimeSpan span = TimeSpan.FromSeconds(MaxSecondsPerBlock * (viewNumber + 2));
+            TimeSpan span = TimeSpan.FromSeconds(MaxSecondsPerBlock * (viewNumber + 1));
             ChangeTimer(span);
         }
 
@@ -131,7 +131,7 @@ namespace Zoro.Consensus
             else
             {
                 context.State = ConsensusState.Backup;
-                SetNextTimer(view_number);
+                SetNextTimer(view_number + 1);
             }
         }
 
@@ -331,7 +331,7 @@ namespace Zoro.Consensus
                     foreach (InvGroupPayload payload in InvGroupPayload.CreateGroup(InventoryType.TX, context.TransactionHashes.Skip(1).ToArray()))
                         system.LocalNode.Tell(Message.Create("invgroup", payload));
                 }
-                SetNextTimer(timer.ViewNumber);
+                SetNextTimer(timer.ViewNumber + 1);
             }
             else if ((context.State.HasFlag(ConsensusState.Primary) && context.State.HasFlag(ConsensusState.RequestSent)) || context.State.HasFlag(ConsensusState.Backup))
             {
@@ -395,16 +395,14 @@ namespace Zoro.Consensus
             {
                 if (i != context.MyIndex)
                 {
-                    ushort number = context.ExpectedView[i];
-
-                    if (number > myNumber)
+                    if (context.ExpectedView[i] > myNumber)
                     {
                         count++;
                     }
                 }
             }
 
-            return count >= context.M;
+            return count >= context.M - 1;
         }
     }
 
