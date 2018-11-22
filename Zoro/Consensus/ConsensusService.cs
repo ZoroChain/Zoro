@@ -22,7 +22,8 @@ namespace Zoro.Consensus
         public class SetViewNumber { public byte ViewNumber; }
         internal class Timer { public uint Height; public ushort ViewNumber; }
 
-        public static readonly TimeSpan MaxTimeSpanPerBlock = TimeSpan.FromSeconds(Settings.Default.MaxSecondsPerBlock);
+        private static readonly uint MaxSecondsPerBlock = Settings.Default.MaxSecondsPerBlock;
+        private static readonly TimeSpan MaxTimeSpanPerBlock = TimeSpan.FromSeconds(MaxSecondsPerBlock);
 
         private readonly ConsensusContext context;
         private readonly ZoroSystem system;
@@ -84,7 +85,7 @@ namespace Zoro.Consensus
 
         private void SetNextTimer(ushort viewNumber)
         {
-            TimeSpan span = TimeSpan.FromSeconds(Blockchain.SecondsPerBlock * (viewNumber + 2));
+            TimeSpan span = TimeSpan.FromSeconds(MaxSecondsPerBlock * (viewNumber + 2));
             ChangeTimer(span);
         }
 
@@ -117,7 +118,7 @@ namespace Zoro.Consensus
             if (context.MyIndex < 0) return;
             if (view_number > 0)
                 Log($"changeview: view={view_number} primary={context.Validators[context.GetPrimaryIndex((ushort)(view_number - 1u))]}", LogLevel.Warning);
-            Log($"initialize: height={context.BlockIndex} view={view_number} index={context.MyIndex} role={(context.MyIndex == context.PrimaryIndex ? ConsensusState.Primary : ConsensusState.Backup)}");
+            Log($"initialize: height={context.BlockIndex} view={view_number} index={context.MyIndex} role={(context.MyIndex == context.PrimaryIndex ? ConsensusState.Primary : ConsensusState.Backup)} M={context.M}");
             if (context.MyIndex == context.PrimaryIndex)
             {
                 context.State |= ConsensusState.Primary;
@@ -130,7 +131,7 @@ namespace Zoro.Consensus
             else
             {
                 context.State = ConsensusState.Backup;
-                ChangeTimer(TimeSpan.FromSeconds(Settings.Default.MaxSecondsPerBlock * 2));
+                SetNextTimer(view_number);
             }
         }
 
@@ -317,14 +318,13 @@ namespace Zoro.Consensus
                     ChangeTimer(Blockchain.TimePerBlock);
                     return;
                 }
-
-                Log($"send prepare request: height={timer.Height} view={timer.ViewNumber}");
                 context.State |= ConsensusState.RequestSent;
                 if (!context.State.HasFlag(ConsensusState.SignatureSent))
                 {
                     context.Fill();
                     context.SignHeader();
                 }
+                Log($"send prepare request: height={timer.Height} view={timer.ViewNumber}");
                 system.LocalNode.Tell(new LocalNode.SendDirectly { Inventory = context.MakePrepareRequest() });
                 if (context.TransactionHashes.Length > 1)
                 {
@@ -368,11 +368,43 @@ namespace Zoro.Consensus
                 context.State |= ConsensusState.ViewChanging;
                 context.ExpectedView[context.MyIndex]++;
             }
+            else
+            {
+                // 判断本地的ViewNumber是否掉队了
+                if (IsMyExpectedViewNumberOutdated())
+                {
+                    Log($"my expected view number is outdated: height={context.BlockIndex} view={context.ViewNumber} nv={context.ExpectedView[context.MyIndex]} state={context.State}");
+
+                    // 同步本地的ViewNumber
+                    context.ExpectedView[context.MyIndex]++;
+                }
+            }
 
             Log($"request change view: height={context.BlockIndex} view={context.ViewNumber} nv={context.ExpectedView[context.MyIndex]} state={context.State}");
             SetNextTimer(context.ExpectedView[context.MyIndex]);
             system.LocalNode.Tell(new LocalNode.SendDirectly { Inventory = context.MakeChangeView() });
             CheckExpectedView(context.ExpectedView[context.MyIndex]);
+        }
+
+        private bool IsMyExpectedViewNumberOutdated()
+        {
+            ushort count = 0;
+            ushort myNumber = context.ExpectedView[context.MyIndex];
+
+            for (int i = 0; i < context.ExpectedView.Length; i++)
+            {
+                if (i != context.MyIndex)
+                {
+                    ushort number = context.ExpectedView[i];
+
+                    if (number > myNumber)
+                    {
+                        count++;
+                    }
+                }
+            }
+
+            return count >= context.M;
         }
     }
 

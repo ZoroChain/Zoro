@@ -453,7 +453,7 @@ namespace Zoro.Ledger
             system.Consensus?.Tell(completed);
             Distribute(completed);
             if (system.Consensus == null)
-                Log($"Block Persisted:{block.Index}, ChainHash:{ChainHash.ToString()}");
+                Log($"Block Persisted:{block.Index}, NumTx:{block.Transactions.Length}");
         }
 
         protected override void OnReceive(object message)
