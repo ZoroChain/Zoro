@@ -243,7 +243,10 @@ namespace Zoro.Network.P2P
                         break;
                     }
                 }
-                session.RemoteNode.Tell(Message.Create("getblocks", GetBlocksPayload.Create(hash)));
+                if (hash != null)
+                {
+                    session.RemoteNode.Tell(Message.Create("getblocks", GetBlocksPayload.Create(hash)));
+                }
             }
         }
 
