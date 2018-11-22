@@ -462,7 +462,7 @@ namespace Zoro.Ledger
         // 广播MemoryPool中还未上链的交易
         private void RelayMemoryPool()
         {
-            IEnumerable<Transaction> trans = mem_pool.GetTransactions(MemPoolRelayCount);
+            Transaction[] trans = mem_pool.GetTransactions(MemPoolRelayCount);
             foreach (Transaction tx in trans)
             {
                 system.LocalNode.Tell(new LocalNode.RelayDirectly { Inventory = tx });

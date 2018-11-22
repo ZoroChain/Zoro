@@ -162,17 +162,16 @@ namespace Zoro.Ledger
             }
         }
 
-        public IEnumerable<Transaction> GetTransactions(int count)
+        public Transaction[] GetTransactions(int count)
         {
-            IEnumerable<Transaction> trans = _mem_pool_fee.OrderBy(p => p.Value.Transaction.NetworkFee / p.Value.Transaction.Size)
-                .ThenBy(p => p.Value.Transaction.NetworkFee)
-                .OrderBy(p => p.Value.Timestamp)
-                .Select(p => p.Value.Transaction)
-                .Concat(_mem_pool_free.OrderBy(p => p.Value.Timestamp)
-                .Select(p => p.Value.Transaction))
-                .Take(count);
-
-            return trans;
+            return _mem_pool_fee.Values
+                .OrderByDescending(p => p.Transaction.NetworkFee / p.Transaction.Size)
+                .ThenByDescending(p => p.Transaction.NetworkFee)
+                .OrderBy(p => p.Timestamp)
+                .Concat(_mem_pool_free.Values.OrderBy(p => p.Timestamp))
+                .Take(count)
+                .Select(p => p.Transaction)
+                .ToArray();
         }
     }
 }
