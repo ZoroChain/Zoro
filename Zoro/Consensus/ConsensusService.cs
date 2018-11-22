@@ -314,7 +314,6 @@ namespace Zoro.Consensus
                 if (blockchain.GetMemoryPool().Count() == 0 && DateTime.UtcNow - block_received_time < MaxTimeSpanPerBlock)
                 {
                     // 等待下一次出块时间再判断是否需要出块
-                    Log($"waiting for transaction: height={timer.Height} view={timer.ViewNumber}");
                     ChangeTimer(Blockchain.TimePerBlock);
                     return;
                 }
