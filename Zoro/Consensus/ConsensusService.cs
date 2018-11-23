@@ -118,7 +118,7 @@ namespace Zoro.Consensus
             if (context.MyIndex < 0) return;
             if (view_number > 0)
                 Log($"changeview: view={view_number} primary={context.Validators[context.GetPrimaryIndex((ushort)(view_number - 1u))]}", LogLevel.Warning);
-            Log($"initialize: height={context.BlockIndex} view={view_number} index={context.MyIndex} role={(context.MyIndex == context.PrimaryIndex ? ConsensusState.Primary : ConsensusState.Backup)} M={context.M}");
+            Log($"initialize: height={context.BlockIndex} view={view_number} index={context.MyIndex} role={(context.MyIndex == context.PrimaryIndex ? ConsensusState.Primary : ConsensusState.Backup)}");
             if (context.MyIndex == context.PrimaryIndex)
             {
                 context.State |= ConsensusState.Primary;
@@ -323,7 +323,7 @@ namespace Zoro.Consensus
                     context.Fill();
                     context.SignHeader();
                 }
-                Log($"send prepare request: height={timer.Height} view={timer.ViewNumber}");
+                Log($"send prepare request: height={timer.Height} view={timer.ViewNumber} tx={context.TransactionHashes.Length}");
                 system.LocalNode.Tell(new LocalNode.SendDirectly { Inventory = context.MakePrepareRequest() });
                 if (context.TransactionHashes.Length > 1)
                 {
