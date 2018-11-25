@@ -253,6 +253,8 @@ namespace Zoro.Consensus
                 {
                     Payload = InvGroupPayload.Create(InventoryType.TX, hashes)
                 });
+
+                Log($"restart tasks, tx={hashes.Length}");
             }
         }
 
