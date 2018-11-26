@@ -130,35 +130,35 @@ namespace Zoro.SmartContract
                 // 创建时间
                 uint timestamp = (uint)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
 
-                // 种子节点
                 int seedCount = (int)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
+
+                // 种子节点的数量不能为零
+                if (seedCount <= 0)
+                    return false;
+
                 string[] seedList = new string[seedCount];
                 for (int i = 0; i < seedCount; i++)
                 {
                     seedList[i] = Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
                 }
 
-                // 种子节点的数量不能为零
-                if (seedCount <= 0)
-                    return false;
-
-                // 判断输入的种子节点地址是否合法
+                // 判断输入的种子节点地址是否有效
                 if (!CheckSeedList(seedList, seedCount))
                     return false;
 
-                // 共识节点
                 int validatorCount = (int)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
+
+                // 共识节点的数量不能小于四个
+                if (validatorCount < 4)
+                    return false;
+
                 ECPoint[] validators = new ECPoint[validatorCount];
                 for (int i = 0; i < validatorCount; i++)
                 {
                     validators[i] = ECPoint.DecodePoint(Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray()).HexToBytes(), ECCurve.Secp256r1);
                 }
 
-                // 共识节点的数量不能小于四个
-                if (validatorCount < 4)
-                    return false;
-
-                // 判断输入的共识节点字符串格式是否无效或者重复
+                // 判断输入的共识节点字符串格式是否有效
                 if (!CheckValidators(validators, validatorCount))
                     return false;
 
@@ -224,7 +224,7 @@ namespace Zoro.SmartContract
                 validators[i] = ECPoint.DecodePoint(Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray()).HexToBytes(), ECCurve.Secp256r1);
             }
             
-            // 判断输入的共识节点字符串格式是否无效或者重复
+            // 判断输入的共识节点字符串格式是否有效
             if (!CheckValidators(validators, validatorCount))
                 return false;
 
@@ -272,7 +272,7 @@ namespace Zoro.SmartContract
                 seedList[i] = Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
             }
 
-            // 判断输入的种子节点地址是否重复
+            // 判断输入的种子节点地址是否有效
             if (!CheckSeedList(seedList, seedCount))
                 return false;
 
@@ -311,7 +311,7 @@ namespace Zoro.SmartContract
             return true;
         }
 
-        // 检查输入的种子节点是否合法
+        // 检查输入的种子节点是否有效
         private bool CheckSeedList(string[] seedList, int count)
         {
             // 检查输入的种子节点是否重复
@@ -326,7 +326,7 @@ namespace Zoro.SmartContract
                 }
             }
 
-            // 检查输入的种子节点IP地址是否合法
+            // 检查输入的种子节点IP地址是否有效
             foreach (var ipaddress in seedList)
             {
                 if (!CheckIPAddress(ipaddress))
@@ -338,7 +338,7 @@ namespace Zoro.SmartContract
             return true;
         }
 
-        // 检查IP地址是否合法
+        // 检查IP地址是否有效
         private bool CheckIPAddress(string ipaddress)
         {            
             string[] p = ipaddress.Split(':');
