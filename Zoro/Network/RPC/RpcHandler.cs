@@ -413,7 +413,25 @@ namespace Zoro.Network.RPC
                         {
                             UInt160 script_hash = UInt160.Parse(_params[0].AsString());
                             AppChainState state = Blockchain.Root.Store.GetAppChains().TryGet(script_hash);
-                            return state?.ToJson() ?? throw new RpcException(-100, "Unknown appchain");
+                            JObject json = state?.ToJson() ?? throw new RpcException(-100, "Unknown appchain");
+                            Blockchain blockchain = GetTargetChain(_params[0]);
+                            json["blockcount"] = blockchain.Height;
+                            return json;
+                        }
+                    case "getappchainlist":
+                        {
+                            IEnumerable<AppChainState> appchains = Blockchain.Root.Store.GetAppChains().Find().OrderBy(p => p.Value.Timestamp).Select(p => p.Value);
+                            JObject json = new JArray(appchains.Select(p => {
+                                JObject obj = new JObject();
+                                obj["name"] = p.Name;
+                                obj["hash"] = p.Hash.ToString();
+                                obj["owner"] = p.Owner.ToString();
+                                obj["createtime"] = $"{ p.Timestamp.ToDateTime():yyyy-MM-dd:hh\\:mm\\:ss}";
+                                obj["validators"] = new JArray(p.StandbyValidators.Select(q => (JObject)q.ToString()));
+                                obj["seedlist"] = new JArray(p.SeedList.Select(q => (JObject)q));
+                                return obj;
+                            }));
+                            return json;
                         }
                     case "getappchainlistenerports":
                         {
