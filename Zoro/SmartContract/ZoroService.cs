@@ -138,6 +138,14 @@ namespace Zoro.SmartContract
                     seedList[i] = Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
                 }
 
+                // 种子节点的数量不能为零
+                if (seedCount <= 0)
+                    return false;
+
+                // 判断输入的种子节点地址是否合法
+                if (!CheckSeedList(seedList, seedCount))
+                    return false;
+
                 // 共识节点
                 int validatorCount = (int)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
                 ECPoint[] validators = new ECPoint[validatorCount];
@@ -152,10 +160,6 @@ namespace Zoro.SmartContract
 
                 // 判断输入的共识节点字符串格式是否无效或者重复
                 if (!CheckValidators(validators, validatorCount))
-                    return false;
-
-                // 种子节点的数量不能为零
-                if (seedCount <= 0)
                     return false;
 
                 AppChainState state = Snapshot.AppChains.TryGet(hash);
