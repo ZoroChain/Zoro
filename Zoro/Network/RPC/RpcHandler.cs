@@ -415,7 +415,7 @@ namespace Zoro.Network.RPC
                             AppChainState state = Blockchain.Root.Store.GetAppChains().TryGet(script_hash);
                             JObject json = state?.ToJson() ?? throw new RpcException(-100, "Unknown appchain");
                             Blockchain blockchain = GetTargetChain(_params[0]);
-                            json["blockcount"] = blockchain.Height;
+                            json["blockcount"] = blockchain != null ? blockchain.Height : 0;
                             return json;
                         }
                     case "getappchainlist":
