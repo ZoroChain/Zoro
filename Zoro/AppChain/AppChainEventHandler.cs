@@ -10,7 +10,6 @@ using Zoro.Wallets;
 using Zoro.Plugins;
 using Zoro.Network.P2P;
 using Zoro.Cryptography.ECC;
-using Akka.Actor;
 
 namespace Zoro.AppChain
 {
@@ -171,6 +170,10 @@ namespace Zoro.AppChain
                         {
                             StartAppChain(state);
                         }
+                        else
+                        {
+                            Log($"The appchain's seedlist is invalid, name={state.Name} hash={state.Hash}");
+                        }
                     }
                 }
             }
@@ -315,7 +318,7 @@ namespace Zoro.AppChain
                         IPEndPoint seed;
                         try
                         {
-                            seed = GetIPEndpointFromHostPort(p[0], int.Parse(p[1]));
+                            seed = Helper.GetIPEndpointFromHostPort(p[0], int.Parse(p[1]));
                         }
                         catch (AggregateException)
                         {
@@ -333,25 +336,6 @@ namespace Zoro.AppChain
             }
 
             return listenPort;
-        }
-
-        // 将域名或地址，转换为IP和端口
-        private IPEndPoint GetIPEndpointFromHostPort(string hostNameOrAddress, int port)
-        {
-            if (IPAddress.TryParse(hostNameOrAddress, out IPAddress ipAddress))
-                return new IPEndPoint(ipAddress, port);
-            IPHostEntry entry;
-            try
-            {
-                entry = Dns.GetHostEntry(hostNameOrAddress);
-            }
-            catch (SocketException)
-            {
-                return null;
-            }
-            ipAddress = entry.AddressList.FirstOrDefault(p => p.AddressFamily == AddressFamily.InterNetwork || p.IsIPv6Teredo);
-            if (ipAddress == null) return null;
-            return new IPEndPoint(ipAddress, port);
         }
 
         // 判断是否配置了应用链的侦听端口
@@ -390,6 +374,20 @@ namespace Zoro.AppChain
         // 检查种子节点的地址和端口是否有效
         private bool CheckSeedList(AppChainState state)
         {
+            int count = state.SeedList.Length;
+
+            // 检查输入的种子节点是否重复
+            for (int i = 0; i < count; i++)
+            {
+                for (int j = i + 1; j < count; j++)
+                {
+                    if (state.SeedList[i].Equals(state.SeedList[j]))
+                    {
+                        return false;
+                    }
+                }
+            }
+
             foreach (string hostAndPort in state.SeedList)
             {
                 string[] p = hostAndPort.Split(':');
@@ -399,7 +397,7 @@ namespace Zoro.AppChain
                 IPEndPoint seed;
                 try
                 {
-                    seed = GetIPEndpointFromHostPort(p[0], int.Parse(p[1]));
+                    seed = Helper.GetIPEndpointFromHostPort(p[0], int.Parse(p[1]));
                 }
                 catch (AggregateException)
                 {

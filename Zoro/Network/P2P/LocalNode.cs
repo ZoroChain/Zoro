@@ -91,24 +91,6 @@ namespace Zoro.Network.P2P
             Connections.Tell(message);
         }
 
-        private IPEndPoint GetIPEndpointFromHostPort(string hostNameOrAddress, int port)
-        {
-            if (IPAddress.TryParse(hostNameOrAddress, out IPAddress ipAddress))
-                return new IPEndPoint(ipAddress, port);
-            IPHostEntry entry;
-            try
-            {
-                entry = Dns.GetHostEntry(hostNameOrAddress);
-            }
-            catch (SocketException)
-            {
-                return null;
-            }
-            ipAddress = entry.AddressList.FirstOrDefault(p => p.AddressFamily == AddressFamily.InterNetwork || p.IsIPv6Teredo);
-            if (ipAddress == null) return null;
-            return new IPEndPoint(ipAddress, port);
-        }
-
         private IEnumerable<IPEndPoint> GetIPEndPointsFromSeedList(int seedsToTake)
         {
             if (seedsToTake > 0)
@@ -121,7 +103,7 @@ namespace Zoro.Network.P2P
                     IPEndPoint seed;
                     try
                     {
-                        seed = GetIPEndpointFromHostPort(p[0], int.Parse(p[1]));
+                        seed = Zoro.Helper.GetIPEndpointFromHostPort(p[0], int.Parse(p[1]));
                     }
                     catch (AggregateException)
                     {

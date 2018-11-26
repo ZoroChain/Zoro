@@ -1,11 +1,10 @@
 ﻿using Zoro.Cryptography.ECC;
-using Zoro.Network.P2P.Payloads;
 using Zoro.Ledger;
 using Zoro.Persistence;
-using Zoro.IO.Caching;
 using Neo.VM;
+using System;
+using System.Net;
 using System.Text;
-using Zoro.Plugins;
 
 namespace Zoro.SmartContract
 {
@@ -253,7 +252,7 @@ namespace Zoro.SmartContract
             if (state.Hash == null)
                 return false;
 
-            // 只有应用链的所有者有权限更换种子节点
+            // 只有应用链的所有者有权限更改种子节点
             if (!CheckWitness(engine, state.Owner))
                 return false;
 
@@ -308,9 +307,10 @@ namespace Zoro.SmartContract
             return true;
         }
 
-        // 检查输入的种子节点是否重复
+        // 检查输入的种子节点是否合法
         private bool CheckSeedList(string[] seedList, int count)
         {
+            // 检查输入的种子节点是否重复
             for (int i = 0; i < count; i++)
             {
                 for (int j = i + 1; j < count; j++)
@@ -320,6 +320,35 @@ namespace Zoro.SmartContract
                         return false;
                     }
                 }
+            }
+
+            // 检查输入的种子节点IP地址是否合法
+            foreach (var ipaddress in seedList)
+            {
+                if (!CheckIPAddress(ipaddress))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        // 检查IP地址是否合法
+        private bool CheckIPAddress(string ipaddress)
+        {            
+            string[] p = ipaddress.Split(':');
+            if (p.Length < 2)
+                return false;
+
+            IPEndPoint seed;
+            try
+            {
+                seed = Zoro.Helper.GetIPEndpointFromHostPort(p[0], int.Parse(p[1]));
+            }
+            catch (AggregateException)
+            {
+                return false;
             }
 
             return true;
