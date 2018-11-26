@@ -415,6 +415,17 @@ namespace Zoro.Network.RPC
                             AppChainState state = Blockchain.Root.Store.GetAppChains().TryGet(script_hash);
                             return state?.ToJson() ?? throw new RpcException(-100, "Unknown appchain");
                         }
+                    case "getappchainlistenerports":
+                        {
+                            LocalNode[] appchainNodes = AppChainManager.Singleton.GetAppChainLocalNodes();
+                            JObject json = new JArray(appchainNodes.OrderBy(p => p.ListenerPort).Select(p => {
+                                JObject obj = new JObject();
+                                obj["name"] = p.Blockchain.Name;
+                                obj["port"] = p.ListenerPort;
+                                return obj;
+                                }));
+                            return json;
+                        }
                     default:
                         throw new RpcException(-32601, "Method not found");
                 }
