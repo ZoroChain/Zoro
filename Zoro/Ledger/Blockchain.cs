@@ -139,8 +139,8 @@ namespace Zoro.Ledger
         private readonly ZoroSystem system;
         private readonly List<UInt256> header_index = new List<UInt256>();
         private uint stored_header_count = 0;
-        private readonly Dictionary<UInt256, Block> block_cache = new Dictionary<UInt256, Block>();
-        private readonly Dictionary<uint, Block> block_cache_unverified = new Dictionary<uint, Block>();
+        private readonly ConcurrentDictionary<UInt256, Block> block_cache = new ConcurrentDictionary<UInt256, Block>();
+        private readonly ConcurrentDictionary<uint, Block> block_cache_unverified = new ConcurrentDictionary<uint, Block>();
         private readonly MemoryPool mem_pool = new MemoryPool(50_000);
         private readonly ConcurrentDictionary<UInt256, Transaction> mem_pool_unverified = new ConcurrentDictionary<UInt256, Transaction>();
         internal readonly RelayCache RelayCache = new RelayCache(100);
@@ -344,7 +344,7 @@ namespace Zoro.Ledger
                 int blocksPersisted = 0;
                 foreach (Block blockToPersist in blocksToPersistList)
                 {
-                    block_cache_unverified.Remove(blockToPersist.Index);
+                    block_cache_unverified.TryRemove(blockToPersist.Index, out Block _);
                     Persist(blockToPersist);
 
                     if (blocksPersisted++ < blocksToPersistList.Count - 2) continue;
@@ -359,7 +359,7 @@ namespace Zoro.Ledger
             }
             else
             {
-                block_cache.Add(block.Hash, block);
+                block_cache.TryAdd(block.Hash, block);
                 if (block.Index + 100 >= header_index.Count)
                     system.LocalNode.Tell(new LocalNode.RelayDirectly { Inventory = block });
                 if (block.Index == header_index.Count)
@@ -437,7 +437,7 @@ namespace Zoro.Ledger
 
         private void OnPersistCompleted(Block block)
         {
-            block_cache.Remove(block.Hash);
+            block_cache.TryRemove(block.Hash, out Block _);
             foreach (Transaction tx in block.Transactions)
                 mem_pool.TryRemove(tx.Hash, out _);
             //mem_pool_unverified.Clear();
