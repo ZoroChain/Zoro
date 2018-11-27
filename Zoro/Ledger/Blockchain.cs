@@ -440,17 +440,17 @@ namespace Zoro.Ledger
             block_cache.Remove(block.Hash);
             foreach (Transaction tx in block.Transactions)
                 mem_pool.TryRemove(tx.Hash, out _);
-            //mem_pool_unverified.Clear();
-            //foreach (Transaction tx in mem_pool
-            //    .OrderByDescending(p => p.NetworkFee / p.Size)
-            //    .ThenByDescending(p => p.NetworkFee)
-            //    .ThenByDescending(p => new BigInteger(p.Hash.ToArray())))
-            //{
-            //    mem_pool_unverified.TryAdd(tx.Hash, tx);
-            //    Self.Tell(tx, ActorRefs.NoSender);
-            //}
-            //mem_pool.Clear();
-            RelayMemoryPool();
+            mem_pool_unverified.Clear();
+            foreach (Transaction tx in mem_pool
+                .OrderByDescending(p => p.NetworkFee / p.Size)
+                .ThenByDescending(p => p.NetworkFee)
+                .ThenByDescending(p => new BigInteger(p.Hash.ToArray())))
+            {
+                mem_pool_unverified.TryAdd(tx.Hash, tx);
+                Self.Tell(tx, ActorRefs.NoSender);
+            }
+            mem_pool.Clear();
+            //RelayMemoryPool();
             InvokeAppChainNotifications();
             PersistCompleted completed = new PersistCompleted { Block = block };
             system.Consensus?.Tell(completed);
