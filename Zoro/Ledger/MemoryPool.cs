@@ -105,7 +105,7 @@ namespace Zoro.Ledger
 
             if (Count > Capacity)
             {
-                RemoveOldest(_mem_pool_free, DateTime.UtcNow.AddSeconds(-Blockchain.SecondsPerBlock * 20));
+                RemoveOldest(_mem_pool_free, DateTime.UtcNow.AddSeconds(-Blockchain.MaxSecondsPerBlock * 20));
 
                 var exceed = Count - Capacity;
 

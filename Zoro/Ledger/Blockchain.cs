@@ -33,6 +33,7 @@ namespace Zoro.Ledger
         public class ImportCompleted { }
 
         public static readonly uint SecondsPerBlock = Settings.Default.SecondsPerBlock;
+        public static readonly uint MaxSecondsPerBlock = Settings.Default.MaxSecondsPerBlock;
         public const uint DecrementInterval = 2000000;
         public const uint MaxValidators = 1024;
         public static readonly uint[] GenerationAmount = { 8, 7, 6, 5, 4, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
