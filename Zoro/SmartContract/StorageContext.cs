@@ -1,8 +1,6 @@
-﻿using Neo.VM;
-
-namespace Zoro.SmartContract
+﻿namespace Zoro.SmartContract
 {
-    internal class StorageContext : IInteropInterface
+    internal class StorageContext
     {
         public UInt160 ScriptHash;
         public bool IsReadOnly;

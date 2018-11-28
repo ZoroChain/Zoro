@@ -130,12 +130,15 @@ namespace Zoro
             }
         }
 
-        public void StartNode(int port = 0, int ws_port = 0)
+        public void StartNode(int port = 0, int wsPort = 0, int minDesiredConnections = Peer.DefaultMinDesiredConnections,
+            int maxConnections = Peer.DefaultMaxConnections)
         {
             LocalNode.Tell(new Peer.Start
             {
                 Port = port,
-                WsPort = ws_port
+                WsPort = wsPort,
+                MinDesiredConnections = minDesiredConnections,
+                MaxConnections = maxConnections
             });
 
             // 向插件发送消息通知
@@ -143,11 +146,11 @@ namespace Zoro
             {
                 ChainHash = ChainHash,
                 Port = port,
-                WsPort = ws_port,
+                WsPort = wsPort,
             });
 
             // 向应用链管理器发送事件通知
-            AppChainManager.Singleton.OnBlockChainStarted(ChainHash, port, ws_port);
+            AppChainManager.Singleton.OnBlockChainStarted(ChainHash, port, wsPort);
         }
 
         public void StartRpc(IPAddress bindAddress, int port, Wallet wallet = null, string sslCert = null, string password = null, string[] trustedAuthorities = null)

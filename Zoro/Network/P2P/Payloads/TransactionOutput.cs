@@ -1,13 +1,12 @@
 ﻿using Zoro.IO;
 using Zoro.IO.Json;
-using Neo.VM;
 using Zoro.Wallets;
 using System;
 using System.IO;
 
 namespace Zoro.Network.P2P.Payloads
 {
-    public class TransactionOutput : IInteropInterface, ISerializable
+    public class TransactionOutput : ISerializable
     {
         public UInt256 AssetId;
         public Fixed8 Value;

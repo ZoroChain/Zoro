@@ -1,11 +1,10 @@
 ﻿using Zoro.Network.P2P.Payloads;
 using Zoro.Persistence;
-using Neo.VM;
 using System.Linq;
 
 namespace Zoro.SmartContract
 {
-    internal class WitnessWrapper : IInteropInterface
+    internal class WitnessWrapper
     {
         public byte[] VerificationScript;
 

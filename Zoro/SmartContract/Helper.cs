@@ -3,11 +3,15 @@ using Zoro.Network.P2P.Payloads;
 using Zoro.Persistence;
 using Neo.VM;
 using System;
+using System.Collections.Generic;
+using System.Text;
 
 namespace Zoro.SmartContract
 {
     public static class Helper
     {
+        private static readonly Dictionary<string, uint> method_hashes = new Dictionary<string, uint>();
+
         public static bool IsMultiSigContract(this byte[] script)
         {
             int m, n = 0;
@@ -67,6 +71,15 @@ namespace Zoro.SmartContract
         public static bool IsStandardContract(this byte[] script)
         {
             return script.IsSignatureContract() || script.IsMultiSigContract();
+        }
+
+        public static uint ToInteropMethodHash(this string method)
+        {
+            if (method_hashes.TryGetValue(method, out uint hash))
+                return hash;
+            hash = BitConverter.ToUInt32(Encoding.ASCII.GetBytes(method).Sha256(), 0);
+            method_hashes[method] = hash;
+            return hash;
         }
 
         public static UInt160 ToScriptHash(this byte[] script)

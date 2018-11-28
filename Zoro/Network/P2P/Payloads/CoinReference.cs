@@ -1,12 +1,11 @@
 ﻿using Zoro.IO;
 using Zoro.IO.Json;
-using Neo.VM;
 using System;
 using System.IO;
 
 namespace Zoro.Network.P2P.Payloads
 {
-    public class CoinReference : IEquatable<CoinReference>, IInteropInterface, ISerializable
+    public class CoinReference : IEquatable<CoinReference>, ISerializable
     {
         public UInt256 PrevHash;
         public ushort PrevIndex;

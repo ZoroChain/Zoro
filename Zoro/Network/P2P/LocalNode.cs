@@ -8,7 +8,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Net.Sockets;
 using System.Reflection;
 using System.Threading;
 
@@ -21,8 +20,6 @@ namespace Zoro.Network.P2P
         internal class SendDirectly { public IInventory Inventory; }
 
         public const uint ProtocolVersion = 0;
-        protected override int ConnectedMax => 10;
-        protected override int UnconnectedMax => 1000;
 
         private readonly ZoroSystem system;
         internal readonly ConcurrentDictionary<IActorRef, RemoteNode> RemoteNodes = new ConcurrentDictionary<IActorRef, RemoteNode>();
