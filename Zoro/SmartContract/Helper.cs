@@ -3,14 +3,14 @@ using Zoro.Network.P2P.Payloads;
 using Zoro.Persistence;
 using Neo.VM;
 using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Text;
 
 namespace Zoro.SmartContract
 {
     public static class Helper
     {
-        private static readonly Dictionary<string, uint> method_hashes = new Dictionary<string, uint>();
+        private static readonly ConcurrentDictionary<string, uint> method_hashes = new ConcurrentDictionary<string, uint>();
 
         public static bool IsMultiSigContract(this byte[] script)
         {
