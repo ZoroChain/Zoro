@@ -65,6 +65,7 @@ namespace Zoro.Network.P2P
                 OnVerackMessageReceived();
                 return;
             }
+            blockchain.Log($"RecvMsg:{msg.Command} {msg.Size}", Plugins.LogLevel.Debug);
             switch (msg.Command)
             {
                 case "addr":

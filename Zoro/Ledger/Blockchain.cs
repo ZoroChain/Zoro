@@ -457,7 +457,7 @@ namespace Zoro.Ledger
             system.Consensus?.Tell(completed);
             Distribute(completed);
             if (system.Consensus == null)
-                Log($"Block Persisted:{block.Index}, NumTx:{block.Transactions.Length}");
+                Log($"Block Persisted:{block.Index}, tx:{block.Transactions.Length}");
         }
 
         // 广播MemoryPool中还未上链的交易
@@ -820,7 +820,7 @@ namespace Zoro.Ledger
 
             if (validators.Length < 4)
             {
-                Log($"The number of validators is less then the minimum number:{validators.Length}");
+                Log($"The number of validators is less then the minimum number:{validators.Length}", LogLevel.Warning);
                 return false;
             }
 
@@ -849,7 +849,7 @@ namespace Zoro.Ledger
 
             if (validators.Length < 4)
             {
-                Log($"The number of validators is less then the minimum number:{validators.Length}");
+                Log($"The number of validators is less then the minimum number:{validators.Length}", LogLevel.Warning);
                 return false;
             }
 
@@ -869,7 +869,7 @@ namespace Zoro.Ledger
 
             if (seedList.Length < 1)
             {
-                Log($"The number of seed nodes is less then the minimum number:{seedList.Length}");
+                Log($"The number of seed nodes is less then the minimum number:{seedList.Length}", LogLevel.Warning);
                 return false;
             }
 
@@ -888,7 +888,7 @@ namespace Zoro.Ledger
             return true;
         }
 
-        private void Log(string message, LogLevel level = LogLevel.Info)
+        public void Log(string message, LogLevel level = LogLevel.Info)
         {
             PluginManager.Singleton?.Log(nameof(Blockchain), level, message, ChainHash);
         }

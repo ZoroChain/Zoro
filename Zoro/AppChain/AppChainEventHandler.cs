@@ -71,21 +71,21 @@ namespace Zoro.AppChain
             // 检查本地节点是否设置了应用链的端口
             if (!CheckAppChainPort())
             {
-                Log($"No appchain will be started because all listen ports are zero, name={state.Name} hash={state.Hash}");
+                Log($"No appchain will be started because all listen ports are zero, name={state.Name} hash={state.Hash}", LogLevel.Warning);
                 return;
             }
 
             // 检查新创建的应用链是否在关注列表中
             if (!IsInterestedChainName(state.Name.ToLower()) && !IsInterestedChainHash(state.Hash))
             {
-                Log($"The appchain is not in the key name list, name={state.Name} hash={state.Hash}");
+                Log($"The appchain is not in the key name list, name={state.Name} hash={state.Hash}", LogLevel.Warning);
                 return;
             }
 
             // 检查种子节点是否有效
             if (!CheckSeedList(state))
             {
-                Log($"The appchain's seedlist is invalid, name={state.Name} hash={state.Hash}");
+                Log($"The appchain's seedlist is invalid, name={state.Name} hash={state.Hash}", LogLevel.Warning);
                 return;
             }
 
@@ -172,7 +172,7 @@ namespace Zoro.AppChain
                         }
                         else
                         {
-                            Log($"The appchain's seedlist is invalid, name={state.Name} hash={state.Hash}");
+                            Log($"The appchain's seedlist is invalid, name={state.Name} hash={state.Hash}", LogLevel.Warning);
                         }
                     }
                 }
@@ -187,7 +187,7 @@ namespace Zoro.AppChain
             // 获取应用链的侦听端口
             if (!GetAppChainListenPort(state.SeedList, out int listenPort, out int listenWsPort))
             {
-                Log($"The specified listen port is already in used, name={name} hash={hashString}, port={listenPort}");
+                Log($"The specified listen port is already in used, name={name} hash={hashString}, port={listenPort}", LogLevel.Warning);
                 return;
             }
 
@@ -203,7 +203,7 @@ namespace Zoro.AppChain
             }
             else
             {
-                Log($"Failed to start appchain, name={name} hash={hashString}");
+                Log($"Failed to start appchain, name={name} hash={hashString}", LogLevel.Warning);
             }
         }
 

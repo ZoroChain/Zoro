@@ -18,8 +18,9 @@ namespace Zoro.Plugins
         internal readonly List<IRpcPlugin> RpcPlugins = new List<IRpcPlugin>();
         internal static readonly List<IPersistencePlugin> PersistencePlugins = new List<IPersistencePlugin>();
 
-        static private bool enableLog = true;
-        static private List<string> disabledLogSources = new List<string>();
+        private static bool enableLog = true;
+        private static LogLevel logLevel = LogLevel.Info;
+        private static List<string> disabledLogSources = new List<string>();
 
         public static PluginManager Singleton { get; private set; }
 
@@ -66,7 +67,7 @@ namespace Zoro.Plugins
 
         public void Log(string source, LogLevel level, string message, UInt160 chainHash)
         {
-            if (enableLog && !disabledLogSources.Contains(source))
+            if (enableLog && logLevel >= level && !disabledLogSources.Contains(source))
             {
                 foreach (ILogPlugin plugin in Loggers)
                     plugin.Log(source, level, message, chainHash);
@@ -76,6 +77,11 @@ namespace Zoro.Plugins
         public static void EnableLog(bool enabled)
         {
             enableLog = enabled;
+        }
+
+        public static void SetLogLevel(LogLevel lv)
+        {
+            logLevel = lv;
         }
 
         public static void DisableLogSource(string source)
