@@ -162,14 +162,7 @@ namespace Zoro.Network.P2P
         {
             inventory.ChainHash = ChainHash;
             if (inventory is Transaction transaction)
-            {
                 system.Consensus?.Tell(transaction);
-            }
-            else if (inventory is ConsensusPayload payload)
-            {
-                OnNewConsensus(payload);
-                return;
-            }
             system.Blockchain.Tell(inventory);
         }
 
@@ -181,15 +174,6 @@ namespace Zoro.Network.P2P
         private void OnSendDirectly(IInventory inventory)
         {
             Connections.Tell(inventory);
-        }
-
-        private RelayResultReason OnNewConsensus(ConsensusPayload payload)
-        {
-            if (!payload.Verify(Blockchain.GetSnapshot())) return RelayResultReason.Invalid;
-            system.Consensus?.Tell(payload);
-            Blockchain.RelayCache.Add(payload);
-            OnRelayDirectly(payload);
-            return RelayResultReason.Succeed;
         }
 
         public static Props Props(ZoroSystem system, UInt160 chainHash)
