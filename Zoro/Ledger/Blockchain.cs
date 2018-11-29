@@ -511,6 +511,9 @@ namespace Zoro.Ledger
 
         private void Persist(Block block)
         {
+            if (system.Consensus == null)
+                Log($"Persist Block:{block.Index}, tx:{block.Transactions.Length}");
+
             using (Snapshot snapshot = GetSnapshot())
             {
                 snapshot.PersistingBlock = block;
