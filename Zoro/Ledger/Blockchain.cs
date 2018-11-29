@@ -464,10 +464,8 @@ namespace Zoro.Ledger
         private void RelayMemoryPool()
         {
             Transaction[] trans = mem_pool.GetTransactions(MemPoolRelayCount);
-            foreach (Transaction tx in trans)
-            {
-                system.LocalNode.Tell(new LocalNode.RelayDirectly { Inventory = tx });
-            }
+            foreach (InvGroupPayload payload in InvGroupPayload.CreateGroup(InventoryType.TX, trans.Select(p => p.Hash).ToArray()))
+                system.LocalNode.Tell(Message.Create("invgroup", payload));
         }
 
         protected override void OnReceive(object message)
