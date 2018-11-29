@@ -210,7 +210,7 @@ namespace Zoro.Network.P2P
         {
             ack = false;
             SendData(ByteString.FromBytes(message.ToArray()));
-            localNode.Blockchain.Log($"SendMsg:{Remote.Address} {message.Command} {message.Size}", Plugins.LogLevel.Debug);
+            localNode.Blockchain.Log($"send:{message.Command} {message.Size} [{Remote.Address}]", Plugins.LogLevel.Debug);
         }
 
         protected override SupervisorStrategy SupervisorStrategy()
