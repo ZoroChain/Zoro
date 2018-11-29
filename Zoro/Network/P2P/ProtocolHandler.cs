@@ -25,7 +25,8 @@ namespace Zoro.Network.P2P
         private readonly ZoroSystem system;
         private readonly LocalNode localNode;
         private readonly Blockchain blockchain;
-        
+        private readonly RemoteNode remoteNode;
+
         private readonly HashSet<UInt256> knownHashes = new HashSet<UInt256>();
         private readonly HashSet<UInt256> sentHashes = new HashSet<UInt256>();
         private VersionPayload version;
@@ -36,11 +37,12 @@ namespace Zoro.Network.P2P
         private static readonly int MaxHashCount = Settings.Default.MaxProtocolHashCount;
         private readonly ICancelable timer = Context.System.Scheduler.ScheduleTellRepeatedlyCancelable(TimerInterval, TimerInterval, Context.Self, new Timer(), ActorRefs.NoSender);
 
-        public ProtocolHandler(ZoroSystem system, LocalNode localNode, Blockchain blockchain)
+        public ProtocolHandler(ZoroSystem system, LocalNode localNode, Blockchain blockchain, RemoteNode remoteNode)
         {
             this.system = system;
             this.localNode = localNode;
             this.blockchain = blockchain;
+            this.remoteNode = remoteNode;
         }
 
         protected override void OnReceive(object message)
@@ -65,7 +67,7 @@ namespace Zoro.Network.P2P
                 OnVerackMessageReceived();
                 return;
             }
-            blockchain.Log($"RecvMsg:{msg.Command} {msg.Size}", Plugins.LogLevel.Debug);
+            blockchain.Log($"RecvMsg:{remoteNode.Remote.Address} {msg.Command} {msg.Size}", Plugins.LogLevel.Debug);
             switch (msg.Command)
             {
                 case "addr":
@@ -352,9 +354,9 @@ namespace Zoro.Network.P2P
             base.PostStop();
         }
 
-        public static Props Props(ZoroSystem system, LocalNode localNode, Blockchain blockchain)
+        public static Props Props(ZoroSystem system, LocalNode localNode, Blockchain blockchain, RemoteNode remoteNode)
         {
-            return Akka.Actor.Props.Create(() => new ProtocolHandler(system, localNode, blockchain)).WithMailbox("protocol-handler-mailbox");
+            return Akka.Actor.Props.Create(() => new ProtocolHandler(system, localNode, blockchain, remoteNode)).WithMailbox("protocol-handler-mailbox");
         }
 
         private void OnTimer()

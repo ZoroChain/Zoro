@@ -37,7 +37,7 @@ namespace Zoro.Network.P2P
         {
             this.system = system;
             this.localNode = localNode;
-            this.protocol = Context.ActorOf(ProtocolHandler.Props(system, localNode, localNode.Blockchain), "RemoteNode_" + localNode.ChainHash.ToString());
+            this.protocol = Context.ActorOf(ProtocolHandler.Props(system, localNode, localNode.Blockchain, this), "RemoteNode_" + localNode.ChainHash.ToString());
             localNode.RemoteNodes.TryAdd(Self, this);
             SendMessage(Message.Create("version", VersionPayload.Create(localNode.ChainHash, localNode.ListenerPort, LocalNode.Nonce, LocalNode.UserAgent, localNode.Blockchain.Height)));
         }
@@ -210,7 +210,7 @@ namespace Zoro.Network.P2P
         {
             ack = false;
             SendData(ByteString.FromBytes(message.ToArray()));
-            localNode.Blockchain.Log($"SendMsg:{message.Command} {message.Size}", Plugins.LogLevel.Debug);
+            localNode.Blockchain.Log($"SendMsg:{Remote.Address} {message.Command} {message.Size}", Plugins.LogLevel.Debug);
         }
 
         protected override SupervisorStrategy SupervisorStrategy()
