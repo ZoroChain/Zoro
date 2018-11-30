@@ -395,6 +395,7 @@ namespace Zoro.Ledger
 
         private void OnNewHeaders(Header[] headers)
         {
+            Log($"OnNewHeaders begin num:{headers.Length} height:{header_index.Count}", LogLevel.Debug);
             using (Snapshot snapshot = GetSnapshot())
             {
                 foreach (Header header in headers)
@@ -416,6 +417,7 @@ namespace Zoro.Ledger
             }
             UpdateCurrentSnapshot();
             system.TaskManager.Tell(new TaskManager.HeaderTaskCompleted(), Sender);
+            Log($"OnNewHeaders end {headers.Length} height:{header_index.Count}", LogLevel.Debug);
         }
 
         private RelayResultReason OnNewTransaction(Transaction transaction)
@@ -438,6 +440,9 @@ namespace Zoro.Ledger
 
         private void OnPersistCompleted(Block block)
         {
+            if (system.Consensus == null)
+                Log($"OnPersistCompleted:{block.Index}, tx:{block.Transactions.Length}");
+
             block_cache.TryRemove(block.Hash, out Block _);
             foreach (Transaction tx in block.Transactions)
                 mem_pool.TryRemove(tx.Hash, out _);

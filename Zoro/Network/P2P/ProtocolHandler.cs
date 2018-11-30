@@ -185,6 +185,7 @@ namespace Zoro.Network.P2P
             BlockState state = blockchain.Store.GetBlocks().TryGet(hash);
             if (state == null) return;
             List<UInt256> hashes = new List<UInt256>();
+            blockchain.Log($"OnGetBlocks begin, blockIndex:{state.TrimmedBlock.Index}", Plugins.LogLevel.Debug);
             for (uint i = 1; i <= InvGroupPayload.MaxHashesCount; i++)
             {
                 uint index = state.TrimmedBlock.Index + i;
@@ -195,6 +196,7 @@ namespace Zoro.Network.P2P
                 if (hash == payload.HashStop) break;
                 hashes.Add(hash);
             }
+            blockchain.Log($"OnGetBlocks end, blockIndex:{state.TrimmedBlock.Index}, count:{hashes.Count}", Plugins.LogLevel.Debug);
             if (hashes.Count == 0) return;
             Context.Parent.Tell(Message.Create("invgroup", InvGroupPayload.Create(InventoryType.Block, hashes.ToArray())));
         }
@@ -243,11 +245,13 @@ namespace Zoro.Network.P2P
 
         private void OnGetDataGroupMessageReceived(InvGroupPayload payload)
         {
+            blockchain.Log($"OnGetDataGroup begin, count:{payload.Hashes.Length}", Plugins.LogLevel.Debug);
             UInt256[] hashes = payload.Hashes.Where(p => sentHashes.Add(p)).ToArray();
             foreach (UInt256 hash in hashes)
             {
                 OnGetInvertoryData(hash, payload.Type);
             }
+            blockchain.Log($"OnGetDataGroup end, count:{hashes.Length}", Plugins.LogLevel.Debug);
         }
 
         private void OnGetHeadersMessageReceived(GetBlocksPayload payload)
@@ -257,6 +261,7 @@ namespace Zoro.Network.P2P
             DataCache<UInt256, BlockState> cache = blockchain.Store.GetBlocks();
             BlockState state = cache.TryGet(hash);
             if (state == null) return;
+            blockchain.Log($"OnGetHeaders begin, blockIndex:{state.TrimmedBlock.Index}", Plugins.LogLevel.Debug);
             List<Header> headers = new List<Header>();
             for (uint i = 1; i <= HeadersPayload.MaxHeadersCount; i++)
             {
@@ -268,6 +273,7 @@ namespace Zoro.Network.P2P
                 if (header == null) break;
                 headers.Add(header);
             }
+            blockchain.Log($"OnGetHeaders end, blockIndex:{state.TrimmedBlock.Index}, count:{headers.Count}", Plugins.LogLevel.Debug);
             if (headers.Count == 0) return;
             Context.Parent.Tell(Message.Create("headers", HeadersPayload.Create(headers)));
         }
