@@ -440,9 +440,6 @@ namespace Zoro.Ledger
 
         private void OnPersistCompleted(Block block)
         {
-            if (system.Consensus == null)
-                Log($"OnPersistCompleted:{block.Index}, tx:{block.Transactions.Length}");
-
             block_cache.TryRemove(block.Hash, out Block _);
             foreach (Transaction tx in block.Transactions)
                 mem_pool.TryRemove(tx.Hash, out _);
