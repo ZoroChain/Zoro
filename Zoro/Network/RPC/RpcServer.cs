@@ -31,14 +31,12 @@ namespace Zoro.Network.RPC
 {
     public sealed class RpcServer : RpcHandler, IDisposable
     {
-        private readonly ZoroSystem system;
         private Wallet wallet;
         private IWebHost host;
 
-        public RpcServer(ZoroSystem system, Wallet wallet = null)
+        public RpcServer(Wallet wallet = null)
             : base(wallet)
         {
-            this.system = system;
             this.wallet = wallet;
         }
 

@@ -235,15 +235,15 @@ namespace Zoro.AppChain
             if (wallet != null)
             {
                 // 获取应用链的ZoroSytem
-                if (appchainMgr.GetAppChainSystem(state.Hash, out ZoroSystem appchainSystem))
+                if (appchainMgr.GetAppSystem(state.Hash, out ZoroSystem system))
                 {
                     // 判断是否已经开启了共识服务
-                    if (appchainSystem.HasConsensusService)
+                    if (system.HasConsensusService)
                     {
                         Log($"Stopping consensus service, name={state.Name} hash={state.Hash}");
 
                         // 停止共识服务
-                        appchainSystem.StopConsensus();
+                        system.ActorSystem.StopConsensus();
                     }
                 }
             }

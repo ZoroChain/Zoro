@@ -16,7 +16,8 @@ namespace Zoro.AppChain
     {
         AppChainEventHandler eventHandler;
 
-        private static ConcurrentDictionary<UInt160, ZoroSystem> AppChainSystems = new ConcurrentDictionary<UInt160, ZoroSystem>();
+        private static ConcurrentDictionary<UInt160, ZoroActorSystem> AppActorSystems = new ConcurrentDictionary<UInt160, ZoroActorSystem>();
+        private static ConcurrentDictionary<UInt160, ZoroSystem> AppSystems = new ConcurrentDictionary<UInt160, ZoroSystem>();
         private static ConcurrentDictionary<UInt160, Blockchain> AppBlockChains = new ConcurrentDictionary<UInt160, Blockchain>();
         private static ConcurrentDictionary<UInt160, LocalNode> AppLocalNodes = new ConcurrentDictionary<UInt160, LocalNode>();
 
@@ -63,9 +64,9 @@ namespace Zoro.AppChain
 
                 Store appStore = new LevelDBStore(fullPath);
 
-                ZoroSystem appSystem = new ZoroSystem(chainHash, appStore);
+                ZoroActorSystem appSystem = new ZoroActorSystem(chainHash, appStore);
 
-                AppChainSystems[chainHash] = appSystem;
+                AppActorSystems[chainHash] = appSystem;
 
                 appSystem.StartNode(port, wsport);
 
@@ -80,7 +81,7 @@ namespace Zoro.AppChain
         {
             UInt160 chainHash = UInt160.Parse(hashString);
 
-            if (GetAppChainSystem(chainHash, out ZoroSystem system))
+            if (GetActorSystem(chainHash, out ZoroActorSystem system))
             {
                 system.StartConsensus(chainHash, wallet);
 
@@ -91,7 +92,7 @@ namespace Zoro.AppChain
         }
 
         // 注册应用链对象
-        public AppChainState RegisterAppChain(UInt160 chainHash, Blockchain blockchain)
+        public AppChainState RegisterAppBlockChain(UInt160 chainHash, Blockchain blockchain)
         {
             AppChainState state = Blockchain.Root.Store.GetAppChains().TryGet(chainHash);
 
@@ -187,10 +188,17 @@ namespace Zoro.AppChain
             return localNode;
         }
 
-        // 根据应用链的Hash，获取应用链的ZoroSystem对象
-        public bool GetAppChainSystem(UInt160 chainHash, out ZoroSystem system)
+        // 注册应用链的ZoroSystem对象
+        public void RegisterAppSystem(UInt160 chainHash, ZoroSystem chain)
         {
-            return AppChainSystems.TryGetValue(chainHash, out system);
+            AppChainState state = Blockchain.Root.Store.GetAppChains().TryGet(chainHash);
+
+            if (state == null)
+            {
+                throw new InvalidOperationException();
+            }
+
+            AppSystems[chainHash] = chain;
         }
 
         // 根据链的Hash，获取ZoroSystem对象
@@ -202,22 +210,35 @@ namespace Zoro.AppChain
             }
             else
             {
-                if (AppChainSystems.TryGetValue(chainHash, out ZoroSystem system))
+                if (AppSystems.TryGetValue(chainHash, out ZoroSystem chain))
                 {
-                    return system;
+                    return chain;
                 }
             }
 
             return null;
         }
 
+
+        // 根据应用链的Hash，获取应用链的ZoroChain对象
+        public bool GetAppSystem(UInt160 chainHash, out ZoroSystem chain)
+        {
+            return AppSystems.TryGetValue(chainHash, out chain);
+        }
+
+        // 根据应用链的Hash，获取应用链的ZoroSystem对象
+        public bool GetActorSystem(UInt160 chainHash, out ZoroActorSystem system)
+        {
+            return AppActorSystems.TryGetValue(chainHash, out system);
+        }
+
         // 停止所有的应用链
         public void StopAllAppChains()
         {
-            ZoroSystem[] appchains = AppChainSystems.Values.ToArray();
+            ZoroActorSystem[] appchains = AppActorSystems.Values.ToArray();
             if (appchains.Length > 0)
             {
-                AppChainSystems.Clear();
+                AppActorSystems.Clear();
                 foreach (var system in appchains)
                 {
                     system.Dispose();
@@ -228,7 +249,7 @@ namespace Zoro.AppChain
         // 停止某个应用链
         public bool StopAppChainSystem(UInt160 chainHash)
         {
-            if (AppChainSystems.TryRemove(chainHash, out ZoroSystem appchainSystem))
+            if (AppActorSystems.TryRemove(chainHash, out ZoroActorSystem appchainSystem))
             {
                 appchainSystem.Dispose();
 

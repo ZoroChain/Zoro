@@ -11,7 +11,6 @@ namespace Zoro.Plugins
 {
     public class PluginManager : IDisposable
     {
-        public ZoroSystem System { get; private set; }
         public readonly List<Plugin> Plugins = new List<Plugin>();
         private readonly List<ILogPlugin> Loggers = new List<ILogPlugin>();
         internal readonly List<IPolicyPlugin> Policies = new List<IPolicyPlugin>();
@@ -24,11 +23,9 @@ namespace Zoro.Plugins
 
         public static PluginManager Singleton { get; private set; }
 
-        public PluginManager(ZoroSystem system)
+        public PluginManager()
         {
             Singleton = this;
-
-            System = system;
         }
 
         public void Dispose()

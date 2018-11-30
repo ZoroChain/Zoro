@@ -1,39 +1,35 @@
-﻿using Akka.Actor;
-using Zoro.Consensus;
-using Zoro.Ledger;
-using Zoro.Network.P2P;
-using Zoro.Network.RPC;
-using Zoro.Persistence;
+﻿using System;
+using System.Threading;
+using Akka.Actor;
 using Zoro.Plugins;
 using Zoro.Wallets;
 using Zoro.AppChain;
-using System;
-using System.Net;
-using System.Threading;
-
+using Zoro.Consensus;
+using Zoro.Network.P2P;
+using Zoro.Persistence;
 
 namespace Zoro
 {
-    public class ZoroSystem : IDisposable
+    public sealed class ZoroSystem : UntypedActor
     {
         public class ChainStarted { public UInt160 ChainHash; public int Port; public int WsPort; }
         public class ChainStopped { public UInt160 ChainHash; }
 
+        public class Start { public int Port = 0; public int WsPort = 0; public int MinDesiredConnections = Peer.DefaultMinDesiredConnections; public int MaxConnections = Peer.DefaultMaxConnections; }
+        public class StartConsensus { public Wallet Wallet; };
+        public class StopConsensus { };
+
         public UInt160 ChainHash { get; private set; }
-        public PluginManager PluginMgr { get; }
-        public ActorSystem ActorSystem { get; }
+        public ZoroActorSystem ActorSystem { get; private set; }
+
         public IActorRef Blockchain { get; }
         public IActorRef LocalNode { get; }
         internal IActorRef TaskManager { get; }
         public IActorRef Consensus { get; private set; }
-        public RpcServer RpcServer { get; private set; }
 
         public bool HasConsensusService => Consensus != null;
-        
-        private Store store;
 
         private static ZoroSystem root;
-
         public static ZoroSystem Root
         {
             get
@@ -42,96 +38,58 @@ namespace Zoro
                 return root;
             }
         }
-        public ZoroSystem(UInt160 chainHash, Store store)
+
+        public ZoroSystem(ZoroActorSystem actorSystem, Store store, UInt160 chainHash)
         {
             ChainHash = chainHash;
+            ActorSystem = actorSystem;
 
-            // 只有在创建根链的ZoroSystem对象时，才创建ActorSystem
             if (chainHash.Equals(UInt160.Zero))
             {
                 if (root != null)
                     throw new InvalidOperationException();
 
                 root = this;
-
-                this.ActorSystem = ActorSystem.Create(nameof(ZoroSystem),
-                    $"akka {{ log-dead-letters = off }}" +
-                    $"blockchain-mailbox {{ mailbox-type: \"{typeof(BlockchainMailbox).AssemblyQualifiedName}\" }}" +
-                    $"task-manager-mailbox {{ mailbox-type: \"{typeof(TaskManagerMailbox).AssemblyQualifiedName}\" }}" +
-                    $"remote-node-mailbox {{ mailbox-type: \"{typeof(RemoteNodeMailbox).AssemblyQualifiedName}\" }}" +
-                    $"protocol-handler-mailbox {{ mailbox-type: \"{typeof(ProtocolHandlerMailbox).AssemblyQualifiedName}\" }}" +
-                    $"consensus-service-mailbox {{ mailbox-type: \"{typeof(ConsensusServiceMailbox).AssemblyQualifiedName}\" }}");
             }
             else
             {
-                // 创建应用链的ZoroSystem时，使用根链的ActorSystem
-                this.ActorSystem = Root.ActorSystem;
+                AppChainManager.Singleton.RegisterAppSystem(chainHash, this);
             }
 
-            string hashString = chainHash.ToString();
-
-            this.Blockchain = ActorSystem.ActorOf(Ledger.Blockchain.Props(this, store, chainHash), $"Blockchain_{hashString}");
-            this.LocalNode = ActorSystem.ActorOf(Network.P2P.LocalNode.Props(this, chainHash), $"LocalNode_{hashString}");
-            this.TaskManager = ActorSystem.ActorOf(Network.P2P.TaskManager.Props(this, chainHash), $"TaskManager_{hashString}");
-
-            // 只有在创建根链的ZoroSystem对象时，才创建PluginManager，确保所有插件对象只实例化一次
-            if (chainHash.Equals(UInt160.Zero))
-            {
-                PluginMgr = new PluginManager(this);
-                PluginMgr.LoadPlugins();
-            }
-
-            this.store = store;
+            Blockchain = Context.ActorOf(Ledger.Blockchain.Props(this, store, chainHash), $"Blockchain");
+            LocalNode = Context.ActorOf(Network.P2P.LocalNode.Props(this, chainHash), $"LocalNode");
+            TaskManager = Context.ActorOf(Network.P2P.TaskManager.Props(this, chainHash), $"TaskManager");
         }
 
-        public void Dispose()
+        public IActorRef ActorOf(Props props, string name = null)
         {
-            PluginMgr?.Dispose();
-            RpcServer?.Dispose();
-
-            if (Consensus != null)
-            {
-                ActorSystem.Stop(Consensus);
-            }
-            ActorSystem.Stop(TaskManager);
-            ActorSystem.Stop(LocalNode);
-            ActorSystem.Stop(Blockchain);
-
-            // 只有在停止根链时才停止ActorSystem
-            if (this == root)
-            {
-                ActorSystem.Dispose();
-            }
-            else
-            {
-                // 向插件发送消息通知
-                PluginManager.Singleton.SendMessage(new ChainStopped
-                {
-                    ChainHash = ChainHash
-                });
-            }
+            return Context.ActorOf(props, name);
         }
 
-        public void StartConsensus(UInt160 chainHash, Wallet wallet)
+        public void Stop(IActorRef actor)
+        {
+            Context.Stop(actor);
+        }
+
+        private void _StartConsensus(Wallet wallet)
         {
             if (Consensus == null)
             {
-                Consensus = ActorSystem.ActorOf(ConsensusService.Props(this, wallet, chainHash), $"ConsensusService_{chainHash.ToString()}");
+                Consensus = Context.ActorOf(ConsensusService.Props(this, wallet, ChainHash), $"ConsensusService");
                 Consensus.Tell(new ConsensusService.Start());
             }
         }
 
-        public void StopConsensus()
+        private void _StopConsensus()
         {
             if (Consensus != null)
             {
-                ActorSystem.Stop(Consensus);
+                Context.Stop(Consensus);
                 Consensus = null;
             }
         }
 
-        public void StartNode(int port = 0, int wsPort = 0, int minDesiredConnections = Peer.DefaultMinDesiredConnections,
-            int maxConnections = Peer.DefaultMaxConnections)
+        private void StartNode(int port, int wsPort, int minDesiredConnections, int maxConnections)
         {
             LocalNode.Tell(new Peer.Start
             {
@@ -153,14 +111,36 @@ namespace Zoro
             AppChainManager.Singleton.OnBlockChainStarted(ChainHash, port, wsPort);
         }
 
-        public void StartRpc(IPAddress bindAddress, int port, Wallet wallet = null, string sslCert = null, string password = null, string[] trustedAuthorities = null)
+        protected override void OnReceive(object message)
         {
-            // 确保只启动一次RpcServer
-            if (ChainHash.Equals(UInt160.Zero))
+            switch (message)
             {
-                RpcServer = new RpcServer(this, wallet);
-                RpcServer.Start(bindAddress, port, sslCert, password, trustedAuthorities);
+                case Start start:
+                    StartNode(start.Port, start.WsPort, start.MinDesiredConnections, start.MaxConnections);
+                    break;
+                case StartConsensus startConsensus:
+                    _StartConsensus(startConsensus.Wallet);
+                    break;
+                case StopConsensus _:
+                    _StopConsensus();
+                    break;
             }
+        }
+
+        protected override void PostStop()
+        {
+            base.PostStop();
+
+            // 向插件发送消息通知
+            PluginManager.Singleton.SendMessage(new ChainStopped
+            {
+                ChainHash = ChainHash
+            });
+        }
+
+        public static Props Props(ZoroActorSystem actorSystem, Store store, UInt160 chainHash)
+        {
+            return Akka.Actor.Props.Create(() => new ZoroSystem(actorSystem, store, chainHash));
         }
     }
 }

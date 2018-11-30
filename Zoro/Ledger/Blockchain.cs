@@ -189,7 +189,7 @@ namespace Zoro.Ledger
             }
             else
             {
-                AppChainState state = AppChainManager.Singleton.RegisterAppChain(chainHash, this);
+                AppChainState state = AppChainManager.Singleton.RegisterAppBlockChain(chainHash, this);
 
                 Name = state.Name;
                 StandbyValidators = GetStandbyValidators();
@@ -691,6 +691,7 @@ namespace Zoro.Ledger
 
         protected override void PostStop()
         {
+            Log($"OnStop Blockchain {Name}");
             base.PostStop();
             currentSnapshot?.Dispose();
             Store?.Dispose();
