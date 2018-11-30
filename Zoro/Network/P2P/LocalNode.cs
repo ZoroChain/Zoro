@@ -176,6 +176,12 @@ namespace Zoro.Network.P2P
             Connections.Tell(inventory);
         }
 
+        protected override void PostStop()
+        {
+            Blockchain.Log($"OnStop LocalNode {Blockchain.Name}");
+            base.PostStop();
+        }
+
         public static Props Props(ZoroSystem system, UInt160 chainHash)
         {
             return Akka.Actor.Props.Create(() => new LocalNode(system, chainHash));

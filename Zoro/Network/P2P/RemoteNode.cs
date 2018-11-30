@@ -197,6 +197,7 @@ namespace Zoro.Network.P2P
 
         protected override void PostStop()
         {
+            localNode.Blockchain.Log($"OnStop RemoteNode {localNode.Blockchain.Name} {Remote}");
             localNode.RemoteNodes.TryRemove(Self, out _);
             base.PostStop();
         }

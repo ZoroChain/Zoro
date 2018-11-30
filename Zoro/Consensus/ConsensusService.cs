@@ -352,7 +352,7 @@ namespace Zoro.Consensus
 
         protected override void PostStop()
         {
-            Log("OnStop");
+            Log($"OnStop Consensus {blockchain.Name}");
             context.Dispose();
             base.PostStop();
         }
