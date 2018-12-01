@@ -19,6 +19,7 @@ namespace Zoro
         public int MaxTaskHashCount { get; private set; }
         public int MaxProtocolHashCount { get; private set; }
         public int MemPoolRelayCount { get; private set; }
+        public string NetworkType { get; }
         public string[] HighPriorityMessages { get; private set; }
 
         public static Settings Default { get; private set; }
@@ -42,6 +43,7 @@ namespace Zoro
             this.MaxProtocolHashCount = GetValueOrDefault(section.GetSection("MaxProtocolHashCount"), 10000, p => int.Parse(p));
             this.MemPoolRelayCount = GetValueOrDefault(section.GetSection("MemPoolRelayCount"), 500, p => int.Parse(p));
             this.LowPriorityThreshold = GetValueOrDefault(section.GetSection("LowPriorityThreshold"), Fixed8.FromDecimal(0.001m), p => Fixed8.Parse(p));
+            this.NetworkType = GetValueOrDefault(section.GetSection("NetworkType"), "Unknown", p => p);
             this.HighPriorityMessages = section.GetSection("HighPriorityMessages").GetChildren().Select(p => p.Value).ToArray();
             if (this.HighPriorityMessages.Length == 0)
                 this.HighPriorityMessages = new string[] { "Block", "Consensus" };

@@ -354,8 +354,6 @@ namespace Zoro.Network.P2P
 
         protected override void PostStop()
         {
-            blockchain.Log($"OnStop ProtocolHandler {localNode.Blockchain.Name} {remoteNode.Remote}");
-
             timer.CancelIfNotNull();
             base.PostStop();
         }

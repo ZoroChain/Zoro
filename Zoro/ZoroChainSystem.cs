@@ -1,8 +1,11 @@
 ﻿using System;
 using System.IO;
 using System.Net;
-using System.Linq;
+using System.Net.Sockets;
 using System.Threading;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Collections.Concurrent;
 using Zoro.Ledger;
 using Zoro.Wallets;
@@ -19,8 +22,6 @@ namespace Zoro
 {
     public class ZoroChainSystem : IDisposable
     {
-        public ActorSystem ActorSystem { get; }
-
         private RpcServer rpcserver;
         private PluginManager pluginmgr;
         private AppChainEventHandler eventHandler;
@@ -29,6 +30,9 @@ namespace Zoro
         private static ConcurrentDictionary<UInt160, ZoroSystem> appSystems = new ConcurrentDictionary<UInt160, ZoroSystem>();
         private static ConcurrentDictionary<UInt160, Blockchain> appBlockchains = new ConcurrentDictionary<UInt160, Blockchain>();
         private static ConcurrentDictionary<UInt160, LocalNode> appLocalNodes = new ConcurrentDictionary<UInt160, LocalNode>();
+
+        public IPAddress MyIPAddress { get; }
+        public ActorSystem ActorSystem { get; }
 
         public static ZoroChainSystem Singleton { get; private set; }
 
@@ -44,13 +48,23 @@ namespace Zoro
                 $"protocol-handler-mailbox {{ mailbox-type: \"{typeof(ProtocolHandlerMailbox).AssemblyQualifiedName}\" }}" +
                 $"consensus-service-mailbox {{ mailbox-type: \"{typeof(ConsensusServiceMailbox).AssemblyQualifiedName}\" }}");
 
+            // 加载插件
             pluginmgr = new PluginManager();
             pluginmgr.LoadPlugins();
 
-            // 创建根链Actor对象
+             // 创建根链Actor对象
             CreateZoroSystem(UInt160.Zero, store);
 
-            eventHandler = new AppChainEventHandler();
+            eventHandler = new AppChainEventHandler(MyIPAddress);
+
+            // 获取IP地址
+            string networkType = Settings.Default.NetworkType;
+            MyIPAddress = GetMyIPAddress(networkType);
+
+            // 打印调试信息
+            string str = "NetworkType:" + networkType + " MyIPAddress:";
+            str += MyIPAddress?.ToString() ?? "null";
+            eventHandler.Log(str);
         }
 
         public void Dispose()
@@ -332,6 +346,7 @@ namespace Zoro
                 foreach (var system in systems)
                 {
                     StopZoroSystem(system.ChainHash);
+                    system.WaitingForStop(TimeSpan.FromSeconds(10));
                 }
             }
         }
@@ -401,6 +416,66 @@ namespace Zoro
                 return system;
             }
             return null;
+        }
+
+
+        // 根据配置，返回本地节点的IP地址
+        private IPAddress GetMyIPAddress(string networkType)
+        {
+            if (networkType == "Internet")
+            {
+                // 获取公网IP地址
+                return GetInternetIPAddress();
+            }
+            else if (networkType == "LAN")
+            {
+                // 获取局域网IP地址
+                return GetLanIPAddress();
+            }
+
+            return null;
+        }
+
+        // 获取局域网IP地址
+        private IPAddress GetLanIPAddress()
+        {
+            IPHostEntry entry;
+            try
+            {
+                entry = Dns.GetHostEntry(Dns.GetHostName());
+            }
+            catch (SocketException)
+            {
+                return null;
+            }
+            IPAddress address = entry.AddressList.FirstOrDefault(p => p.AddressFamily == AddressFamily.InterNetwork || p.IsIPv6Teredo);
+            return address;
+        }
+
+        // 获取公网IP地址
+        private IPAddress GetInternetIPAddress()
+        {
+            using (var webClient = new WebClient())
+            {
+                try
+                {
+                    webClient.Credentials = CredentialCache.DefaultCredentials;
+                    byte[] data = webClient.DownloadData("http://pv.sohu.com/cityjson?ie=utf-8");
+                    string str = Encoding.UTF8.GetString(data);
+                    webClient.Dispose();
+
+                    Match rebool = Regex.Match(str, @"\d{2,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}");
+
+                    if (IPAddress.TryParse(rebool.Value, out IPAddress address))
+                        return address;
+                }
+                catch (Exception)
+                {
+
+                }
+
+                return null;
+            }
         }
     }
 }

@@ -10,7 +10,6 @@ namespace Zoro.AppChain
         public ushort WsPort { get; }
         public string[] KeyNames { get; }
         public UInt160[] KeyHashes { get; }
-        public string NetworkType { get; }
 
         public static AppChainSettings Default { get; private set; }
 
@@ -25,8 +24,7 @@ namespace Zoro.AppChain
             this.Port = ushort.Parse(section.GetSection("Port").Value);
             this.WsPort = ushort.Parse(section.GetSection("WsPort").Value);
             this.KeyNames = section.GetSection("KeyNames").GetChildren().Select(p => p.Value.ToLower()).ToArray();
-            this.KeyHashes = section.GetSection("KeyHashes").GetChildren().Select(p => UInt160.Parse(p.Value.ToLower())).ToArray();
-            this.NetworkType = GetValueOrDefault(section.GetSection("NetworkType"), "Unknown", p => p);
+            this.KeyHashes = section.GetSection("KeyHashes").GetChildren().Select(p => UInt160.Parse(p.Value.ToLower())).ToArray();            
         }
 
         public T GetValueOrDefault<T>(IConfigurationSection section, T defaultValue, Func<string, T> selector)

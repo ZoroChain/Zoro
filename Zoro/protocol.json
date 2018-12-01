@@ -1,5 +1,6 @@
 ﻿{
   "ProtocolConfiguration": {
+    "NetworkType": "LAN",
     "Magic": 58225482,
     "AddressVersion": 23,
     "SecondsPerBlock": 1,

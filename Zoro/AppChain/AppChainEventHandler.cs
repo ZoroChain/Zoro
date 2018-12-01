@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Net;
-using System.Net.Sockets;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using Zoro.Ledger;
@@ -21,20 +19,21 @@ namespace Zoro.AppChain
         private int wsport = AppChainSettings.Default.WsPort;
         private string[] keyNames = AppChainSettings.Default.KeyNames;
         private UInt160[] keyHashes = AppChainSettings.Default.KeyHashes;
-        private string networkType = AppChainSettings.Default.NetworkType;
 
         private readonly HashSet<int> listeningPorts = new HashSet<int>();
         private readonly HashSet<int> listeningWsPorts = new HashSet<int>();
 
-        private IPAddress myIPAddress;
+        private IPAddress myIPAddress = null;
 
-        public AppChainEventHandler()
+        public AppChainEventHandler(IPAddress address)
         {
+            myIPAddress = address;
+
             Blockchain.AppChainNofity += OnAppChainEvent;
         }
 
         // 输出日志
-        private void Log(string message, LogLevel level = LogLevel.Info)
+        public void Log(string message, LogLevel level = LogLevel.Info)
         {
             PluginManager.Singleton.Log(nameof(ZoroChainSystem), level, message, UInt160.Zero);
         }
@@ -54,14 +53,6 @@ namespace Zoro.AppChain
             // 在根链启动后，获取应用链列表，启动应用链
             if (chainHash.Equals(UInt160.Zero) && CheckAppChainPort())
             {
-                // 获取本地IP地址
-                myIPAddress = GetMyIPAddress();
-
-                // 打印调试信息
-                string str = "NetworkType:" + networkType + " MyIPAddress:";
-                str += myIPAddress?.ToString() ?? "null";
-                Log(str);
-
                 // 获取应用链列表
                 IEnumerable<AppChainState> appchains = Blockchain.Root.Store.GetAppChains().Find().OrderBy(p => p.Value.Timestamp).Select(p => p.Value);
 
@@ -420,63 +411,5 @@ namespace Zoro.AppChain
             return false;
         }
 
-        // 根据配置，返回本地节点的IP地址
-        private IPAddress GetMyIPAddress()
-        {
-            if (networkType == "Internet")
-            {
-                // 获取公网IP地址
-                return GetInternetIPAddress();
-            }
-            else if (networkType == "LAN")
-            {
-                // 获取局域网IP地址
-                return GetLanIPAddress();
-            }
-
-            return null;
-        }
-
-        // 获取局域网IP地址
-        private IPAddress GetLanIPAddress()
-        {
-            IPHostEntry entry;
-            try
-            {
-                entry = Dns.GetHostEntry(Dns.GetHostName());
-            }
-            catch (SocketException)
-            {
-                return null;
-            }
-            IPAddress address = entry.AddressList.FirstOrDefault(p => p.AddressFamily == AddressFamily.InterNetwork || p.IsIPv6Teredo);
-            return address;
-        }
-
-        // 获取公网IP地址
-        private IPAddress GetInternetIPAddress()
-        {
-            using (var webClient = new WebClient())
-            {
-                try
-                {
-                    webClient.Credentials = CredentialCache.DefaultCredentials;
-                    byte[] data = webClient.DownloadData("http://pv.sohu.com/cityjson?ie=utf-8");
-                    string str = Encoding.UTF8.GetString(data);
-                    webClient.Dispose();
-
-                    Match rebool = Regex.Match(str, @"\d{2,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}");
-
-                    if (IPAddress.TryParse(rebool.Value, out IPAddress address))
-                        return address;
-                }
-                catch (Exception)
-                {
-                    
-                }
-
-                return null;
-            }
-        }
     }
 }
