@@ -34,6 +34,7 @@ namespace Zoro.Network.P2P
         private ICancelable timer;
         protected ActorSelection Connections => Context.ActorSelection("connection_*");
 
+        private static readonly bool isUPnPDiscovered = false;
         private static readonly HashSet<IPAddress> localAddresses = new HashSet<IPAddress>();
         private readonly Dictionary<IPAddress, int> ConnectedAddresses = new Dictionary<IPAddress, int>();
         protected readonly ConcurrentDictionary<IActorRef, IPEndPoint> ConnectedPeers = new ConcurrentDictionary<IActorRef, IPEndPoint>();
@@ -59,6 +60,18 @@ namespace Zoro.Network.P2P
         static Peer()
         {
             localAddresses.UnionWith(NetworkInterface.GetAllNetworkInterfaces().SelectMany(p => p.GetIPProperties().UnicastAddresses).Select(p => p.Address.Unmap()));
+
+            try
+            {
+                isUPnPDiscovered = UPnP.Discover();
+                if (isUPnPDiscovered)
+                    localAddresses.Add(UPnP.GetExternalIP());
+            }
+            catch { }
+
+            IPAddress myIPAddress = ZoroChainSystem.Singleton.MyIPAddress;
+            if (myIPAddress != null)
+                localAddresses.Add(myIPAddress);
         }
 
         protected void AddPeers(IEnumerable<IPEndPoint> peers)
@@ -139,11 +152,10 @@ namespace Zoro.Network.P2P
             timer = Context.System.Scheduler.ScheduleTellRepeatedlyCancelable(0, 5000, Context.Self, new Timer(), ActorRefs.NoSender);
             if ((port > 0 || wsPort > 0)
                 && localAddresses.All(p => !p.IsIPv4MappedToIPv6 || IsIntranetAddress(p))
-                && UPnP.Discover())
+                && isUPnPDiscovered)
             {
                 try
                 {
-                    localAddresses.Add(UPnP.GetExternalIP());
                     if (port > 0)
                         UPnP.ForwardPort(port, ProtocolType.Tcp, "Zoro");
                     if (wsPort > 0)
