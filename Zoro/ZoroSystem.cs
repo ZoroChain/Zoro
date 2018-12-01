@@ -14,8 +14,7 @@ namespace Zoro
     {
         public class ChainStarted { public UInt160 ChainHash; public int Port; public int WsPort; }
 
-        public class Start { public int Port = 0; public int WsPort = 0; public int MinDesiredConnections = Peer.DefaultMinDesiredConnections; public int MaxConnections = Peer.DefaultMaxConnections; }
-        public class GracefulStop { public TimeSpan Timeout; };
+        public class Start { public int Port = 0; public int WsPort = 0; public int MinDesiredConnections; public int MaxConnections; }
         public class StartConsensus { public Wallet Wallet; };
         public class StopConsensus { };
 
@@ -27,6 +26,8 @@ namespace Zoro
         public IActorRef Consensus { get; private set; }
 
         public bool HasConsensusService => Consensus != null;
+
+        private AutoResetEvent stopEvent = new AutoResetEvent(false);
 
         private static ZoroSystem root;
         public static ZoroSystem Root
@@ -86,12 +87,6 @@ namespace Zoro
             ZoroChainSystem.Singleton.OnBlockChainStarted(ChainHash, port, wsPort);
         }
 
-        private bool _GracefulStop(TimeSpan timeout)
-        {
-            IActorRef system = ZoroChainSystem.Singleton.GetChainActor(ChainHash);
-            return system?.GracefulStop(timeout).Result ?? false;
-        }
-
         private void _StartConsensus(Wallet wallet)
         {
             if (Consensus == null)
@@ -117,9 +112,6 @@ namespace Zoro
                 case Start start:
                     StartNode(start.Port, start.WsPort, start.MinDesiredConnections, start.MaxConnections);
                     break;
-                case GracefulStop stop:
-                    Sender.Tell(_GracefulStop(stop.Timeout));
-                    break;
                 case StartConsensus startConsensus:
                     _StartConsensus(startConsensus.Wallet);
                     break;
@@ -127,6 +119,18 @@ namespace Zoro
                     _StopConsensus();
                     break;
             }
+        }
+
+        protected override void PostStop()
+        {
+            base.PostStop();
+
+            stopEvent.Set();
+        }
+
+        public void WaitingForStop(TimeSpan timeout)
+        {
+            stopEvent.WaitOne(timeout);
         }
 
         public static Props Props(Store store, UInt160 chainHash)

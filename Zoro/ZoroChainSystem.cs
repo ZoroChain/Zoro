@@ -65,8 +65,7 @@ namespace Zoro
             StopAllAppChains();
 
             // 停止根链
-            IActorRef system = GetChainActor(UInt160.Zero);
-            system?.Ask<bool>(new ZoroSystem.GracefulStop { Timeout = TimeSpan.FromSeconds(10) });
+            StopRootSystem();
 
             // 关闭ActorSystem
             ActorSystem.Dispose();
@@ -96,11 +95,21 @@ namespace Zoro
 
         public void StopZoroSystem(UInt160 chainHash)
         {
-            IActorRef system = GetChainActor(chainHash);
+            chainActors.TryRemove(chainHash, out IActorRef system);
 
             if (system != null)
             {
                 ActorSystem.Stop(system);
+            }
+        }
+
+        public void StopRootSystem()
+        {
+            ZoroSystem system = GetZoroSystem(UInt160.Zero);
+            if (system != null)
+            {
+                StopZoroSystem(UInt160.Zero);
+                system.WaitingForStop(TimeSpan.FromSeconds(10));
             }
         }
 
