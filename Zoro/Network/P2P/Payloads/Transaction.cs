@@ -3,7 +3,6 @@ using Zoro.IO;
 using Zoro.IO.Caching;
 using Zoro.IO.Json;
 using Zoro.Ledger;
-using Zoro.AppChain;
 using Zoro.Persistence;
 using Zoro.SmartContract;
 using Neo.VM;

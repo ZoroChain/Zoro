@@ -4,7 +4,6 @@ using Zoro.Cryptography;
 using Zoro.IO;
 using Zoro.IO.Actors;
 using Zoro.Ledger;
-using Zoro.AppChain;
 using Zoro.Network.P2P;
 using Zoro.Network.P2P.Payloads;
 using Zoro.Persistence;

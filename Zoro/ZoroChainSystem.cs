@@ -50,7 +50,7 @@ namespace Zoro
             // 创建根链Actor对象
             CreateZoroSystem(UInt160.Zero, store);
 
-            eventHandler = new AppChainEventHandler(this);
+            eventHandler = new AppChainEventHandler();
         }
 
         public void Dispose()

@@ -3,7 +3,6 @@ using Zoro.IO.Json;
 using Zoro.Ledger;
 using Zoro.Network.P2P.Payloads;
 using Zoro.Persistence;
-using Zoro.AppChain;
 using Neo.VM;
 using System;
 using System.Collections.Generic;

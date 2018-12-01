@@ -9,7 +9,6 @@ using Zoro.Network.P2P;
 using Zoro.Network.P2P.Payloads;
 using Zoro.Persistence;
 using Zoro.Plugins;
-using Zoro.AppChain;
 using Zoro.SmartContract;
 using Neo.VM;
 using System;

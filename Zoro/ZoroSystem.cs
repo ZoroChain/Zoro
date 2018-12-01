@@ -3,7 +3,6 @@ using System.Threading;
 using Akka.Actor;
 using Zoro.Plugins;
 using Zoro.Wallets;
-using Zoro.AppChain;
 using Zoro.Consensus;
 using Zoro.Network.P2P;
 using Zoro.Persistence;

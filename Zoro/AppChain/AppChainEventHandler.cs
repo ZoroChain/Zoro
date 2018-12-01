@@ -16,7 +16,6 @@ namespace Zoro.AppChain
     class AppChainEventHandler
     {
         private Wallet wallet;
-        private ZoroChainSystem zorochainSystem;
 
         private int port = AppChainSettings.Default.Port;
         private int wsport = AppChainSettings.Default.WsPort;
@@ -29,10 +28,8 @@ namespace Zoro.AppChain
 
         private IPAddress myIPAddress;
 
-        public AppChainEventHandler(ZoroChainSystem system)
+        public AppChainEventHandler()
         {
-            zorochainSystem = system;
-
             Blockchain.AppChainNofity += OnAppChainEvent;
         }
 
@@ -135,7 +132,7 @@ namespace Zoro.AppChain
         private void OnChangeValidators(AppChainState state)
         {
             // 通知正在运行的应用链对象，更新共识节点公钥
-            Blockchain blockchain = zorochainSystem.GetBlockchain(state.Hash);
+            Blockchain blockchain = ZoroChainSystem.Singleton.GetBlockchain(state.Hash);
             if (blockchain != null)
             {
                 // 先更改Blockchain的StandbyValidators，再开启共识服务
@@ -155,7 +152,7 @@ namespace Zoro.AppChain
                         Log($"Starting consensus service, name={name} hash={hashString}");
 
                         // 启动共识服务
-                        zorochainSystem.StartConsensus(state.Hash, wallet);
+                        ZoroChainSystem.Singleton.StartConsensus(state.Hash, wallet);
                     }
                     else
                     {
@@ -170,7 +167,7 @@ namespace Zoro.AppChain
         private void OnChangeSeedList(AppChainState state)
         {
             // 通知正在运行的应用链对象，更新种子节点地址
-            LocalNode localNode = zorochainSystem.GetLocalNode(state.Hash);
+            LocalNode localNode = ZoroChainSystem.Singleton.GetLocalNode(state.Hash);
             if (localNode != null)
             {
                 Log($"Change appchain seedlist, name={state.Name} hash={state.Hash.ToString()}");
@@ -192,7 +189,7 @@ namespace Zoro.AppChain
             }
 
             // 启动应用链
-            bool succeed = zorochainSystem.StartAppChain(hashString, listenPort, listenWsPort);
+            bool succeed = ZoroChainSystem.Singleton.StartAppChain(hashString, listenPort, listenWsPort);
 
             if (succeed)
             {
@@ -225,7 +222,7 @@ namespace Zoro.AppChain
                     Log($"Starting consensus service, name={name} hash={hashString}");
 
                     // 启动共识服务
-                    zorochainSystem.StartConsensus(state.Hash, wallet);
+                    ZoroChainSystem.Singleton.StartConsensus(state.Hash, wallet);
                 }
             }
         }
@@ -235,7 +232,7 @@ namespace Zoro.AppChain
             if (wallet != null)
             {
                 // 获取应用链的ZoroSytem
-                if (zorochainSystem.GetAppSystem(state.Hash, out ZoroSystem system))
+                if (ZoroChainSystem.Singleton.GetAppSystem(state.Hash, out ZoroSystem system))
                 {
                     // 判断是否已经开启了共识服务
                     if (system.HasConsensusService)
@@ -243,7 +240,7 @@ namespace Zoro.AppChain
                         Log($"Stopping consensus service, name={state.Name} hash={state.Hash}");
 
                         // 停止共识服务
-                        zorochainSystem.StopConsensus(state.Hash);
+                        ZoroChainSystem.Singleton.StopConsensus(state.Hash);
                     }
                 }
             }

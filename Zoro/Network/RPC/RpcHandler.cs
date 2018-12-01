@@ -6,7 +6,6 @@ using Zoro.IO;
 using Zoro.IO.Json;
 using Zoro.Network.P2P;
 using Zoro.Network.P2P.Payloads;
-using Zoro.AppChain;
 using Zoro.Persistence;
 using Zoro.SmartContract;
 using Zoro.Wallets;
@@ -520,7 +519,7 @@ namespace Zoro.Network.RPC
                 case RelayResultReason.Invalid:
                     throw new RpcException(-504, "Block or transaction validation failed.");
                 default:
-                    throw new RpcException(-500, "Unkown error.");
+                    throw new RpcException(-500, "Unknown error.");
             }
         }
 
