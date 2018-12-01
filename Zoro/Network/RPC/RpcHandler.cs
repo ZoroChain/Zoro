@@ -435,7 +435,7 @@ namespace Zoro.Network.RPC
                         }
                     case "getappchainlistenerports":
                         {
-                            LocalNode[] appchainNodes = AppChainManager.Singleton.GetAppChainLocalNodes();
+                            LocalNode[] appchainNodes = ZoroChainSystem.Singleton.GetAppChainLocalNodes();
                             JObject json = new JArray(appchainNodes.OrderBy(p => p.ListenerPort).Select(p => {
                                 JObject obj = new JObject();
                                 obj["name"] = p.Blockchain.Name;
@@ -526,17 +526,17 @@ namespace Zoro.Network.RPC
 
         private Blockchain GetTargetChain(JObject param)
         {
-            return AppChainManager.Singleton.GetBlockchain(param.AsString());
+            return ZoroChainSystem.Singleton.GetBlockchain(param.AsString());
         }
 
         private LocalNode GetTargetNode(JObject param)
         {
-            return AppChainManager.Singleton.GetLocalNode(param.AsString());
+            return ZoroChainSystem.Singleton.GetLocalNode(param.AsString());
         }
 
         private ZoroSystem GetTargetSystem(JObject param)
         {
-            return AppChainManager.Singleton.GetZoroSystem(param.AsString());
+            return ZoroChainSystem.Singleton.GetZoroSystem(param.AsString());
         }
     }
 }

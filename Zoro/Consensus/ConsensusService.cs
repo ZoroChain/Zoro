@@ -39,8 +39,8 @@ namespace Zoro.Consensus
             this.system = system;
             this.wallet = wallet;
             this.chainHash = chainHash;
-            this.blockchain = AppChainManager.Singleton.AskBlockchain(chainHash);
-            this.localNode = AppChainManager.Singleton.AskLocalNode(chainHash);
+            this.blockchain = ZoroChainSystem.Singleton.AskBlockchain(chainHash);
+            this.localNode = ZoroChainSystem.Singleton.AskLocalNode(chainHash);
             this.context = new ConsensusContext(blockchain, wallet);
         }
 

@@ -189,7 +189,7 @@ namespace Zoro.Ledger
             }
             else
             {
-                AppChainState state = AppChainManager.Singleton.RegisterAppBlockChain(chainHash, this);
+                AppChainState state = ZoroChainSystem.Singleton.RegisterAppChain(chainHash, this);
 
                 Name = state.Name;
                 StandbyValidators = GetStandbyValidators();

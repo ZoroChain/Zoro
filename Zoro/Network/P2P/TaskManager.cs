@@ -40,7 +40,7 @@ namespace Zoro.Network.P2P
         {
             this.system = system;
             this.chainHash = chainHash;
-            this.blockchain = AppChainManager.Singleton.AskBlockchain(chainHash);
+            this.blockchain = ZoroChainSystem.Singleton.AskBlockchain(chainHash);
         }
 
         private void OnHeaderTaskCompleted()

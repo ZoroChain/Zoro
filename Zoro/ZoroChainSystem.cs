@@ -1,44 +1,141 @@
 ﻿using System;
 using System.IO;
+using System.Net;
 using System.Linq;
 using System.Threading;
 using System.Collections.Concurrent;
 using Zoro.Ledger;
 using Zoro.Wallets;
+using Zoro.Plugins;
+using Zoro.AppChain;
+using Zoro.Consensus;
 using Zoro.Network.P2P;
+using Zoro.Network.RPC;
 using Zoro.Persistence;
 using Zoro.Persistence.LevelDB;
 using Akka.Actor;
 
-namespace Zoro.AppChain
+namespace Zoro
 {
-    public class AppChainManager : IDisposable
+    public class ZoroChainSystem : IDisposable
     {
-        AppChainEventHandler eventHandler;
+        public ActorSystem ActorSystem { get; }
 
-        private static ConcurrentDictionary<UInt160, ZoroActorSystem> AppActorSystems = new ConcurrentDictionary<UInt160, ZoroActorSystem>();
-        private static ConcurrentDictionary<UInt160, ZoroSystem> AppSystems = new ConcurrentDictionary<UInt160, ZoroSystem>();
-        private static ConcurrentDictionary<UInt160, Blockchain> AppBlockChains = new ConcurrentDictionary<UInt160, Blockchain>();
-        private static ConcurrentDictionary<UInt160, LocalNode> AppLocalNodes = new ConcurrentDictionary<UInt160, LocalNode>();
+        private RpcServer rpcserver;
+        private PluginManager pluginmgr;
+        private AppChainEventHandler eventHandler;
 
-        public static AppChainManager Singleton { get; private set; }
+        private static ConcurrentDictionary<UInt160, IActorRef> chainActors = new ConcurrentDictionary<UInt160, IActorRef>();
+        private static ConcurrentDictionary<UInt160, ZoroSystem> appSystems = new ConcurrentDictionary<UInt160, ZoroSystem>();
+        private static ConcurrentDictionary<UInt160, Blockchain> appBlockchains = new ConcurrentDictionary<UInt160, Blockchain>();
+        private static ConcurrentDictionary<UInt160, LocalNode> appLocalNodes = new ConcurrentDictionary<UInt160, LocalNode>();
 
-        public AppChainManager()
+        public static ZoroChainSystem Singleton { get; private set; }
+
+        public ZoroChainSystem(Store store)
         {
             Singleton = this;
+
+            ActorSystem = ActorSystem.Create(nameof(ZoroChainSystem),
+                $"akka {{ log-dead-letters = off }}" +
+                $"blockchain-mailbox {{ mailbox-type: \"{typeof(BlockchainMailbox).AssemblyQualifiedName}\" }}" +
+                $"task-manager-mailbox {{ mailbox-type: \"{typeof(TaskManagerMailbox).AssemblyQualifiedName}\" }}" +
+                $"remote-node-mailbox {{ mailbox-type: \"{typeof(RemoteNodeMailbox).AssemblyQualifiedName}\" }}" +
+                $"protocol-handler-mailbox {{ mailbox-type: \"{typeof(ProtocolHandlerMailbox).AssemblyQualifiedName}\" }}" +
+                $"consensus-service-mailbox {{ mailbox-type: \"{typeof(ConsensusServiceMailbox).AssemblyQualifiedName}\" }}");
+
+            pluginmgr = new PluginManager();
+            pluginmgr.LoadPlugins();
+
+            // 创建根链Actor对象
+            CreateZoroSystem(UInt160.Zero, store);
 
             eventHandler = new AppChainEventHandler(this);
         }
 
         public void Dispose()
         {
+            // 停止RpcServer
+            rpcserver?.Dispose();
+
+            // 停止所有插件
+            pluginmgr.Dispose();
+
+            // 停止所有的应用链
             StopAllAppChains();
+
+            // 停止根链
+            IActorRef system = GetChainActor(UInt160.Zero);
+            system?.Ask<bool>(new ZoroSystem.GracefulStop { Timeout = TimeSpan.FromSeconds(10) });
+
+            // 关闭ActorSystem
+            ActorSystem.Dispose();
         }
 
         // 设置钱包
         public void SetWallet(Wallet wallet)
         {
             eventHandler.SetWallet(wallet);
+        }
+
+        // 创建一条区块链的顶层Actor对象
+        public IActorRef CreateZoroSystem(UInt160 chainHash, Store store)
+        {
+            IActorRef system = ActorSystem.ActorOf(ZoroSystem.Props(store, chainHash), $"{chainHash.ToString()}");
+
+            chainActors.TryAdd(chainHash, system);
+
+            return system;
+        }
+
+        public IActorRef GetChainActor(UInt160 chainHash)
+        {
+            chainActors.TryGetValue(chainHash, out IActorRef actor);
+            return actor;
+        }
+
+        public void StopZoroSystem(UInt160 chainHash)
+        {
+            IActorRef system = GetChainActor(chainHash);
+
+            if (system != null)
+            {
+                ActorSystem.Stop(system);
+            }
+        }
+
+        public void StartConsensus(UInt160 chainHash, Wallet wallet)
+        {
+            IActorRef system = GetChainActor(chainHash);
+
+            system?.Tell(new ZoroSystem.StartConsensus { Wallet = wallet });
+        }
+
+        public void StopConsensus(UInt160 chainHash)
+        {
+            IActorRef system = GetChainActor(chainHash);
+
+            system?.Tell(new ZoroSystem.StopConsensus());
+        }
+
+        public void StartNode(UInt160 chainHash, int port = 0, int wsPort = 0, int minDesiredConnections = Peer.DefaultMinDesiredConnections,
+            int maxConnections = Peer.DefaultMaxConnections)
+        {
+            IActorRef system = GetChainActor(chainHash);
+
+            system?.Tell(new ZoroSystem.Start
+            {
+                Port = port,
+                WsPort = wsPort,
+                MinDesiredConnections = minDesiredConnections,
+                MaxConnections = maxConnections
+            });
+        }
+
+        public void StartRpc(IPAddress bindAddress, int port, Wallet wallet = null, string sslCert = null, string password = null, string[] trustedAuthorities = null)
+        {
+            rpcserver = new RpcServer(wallet);
+            rpcserver.Start(bindAddress, port, sslCert, password, trustedAuthorities);
         }
 
         // 事件通知函数：根链或者应用链被启动
@@ -64,11 +161,9 @@ namespace Zoro.AppChain
 
                 Store appStore = new LevelDBStore(fullPath);
 
-                ZoroActorSystem appSystem = new ZoroActorSystem(chainHash, appStore);
+                CreateZoroSystem(chainHash, appStore);
 
-                AppActorSystems[chainHash] = appSystem;
-
-                appSystem.StartNode(port, wsport);
+                StartNode(chainHash, port, wsport);
 
                 return true;
             }
@@ -77,22 +172,15 @@ namespace Zoro.AppChain
         }
 
         // 启动应用链的共识服务
-        public bool StartAppChainConsensus(string hashString, Wallet wallet)
+        public void StartAppChainConsensus(string hashString, Wallet wallet)
         {
             UInt160 chainHash = UInt160.Parse(hashString);
 
-            if (GetActorSystem(chainHash, out ZoroActorSystem system))
-            {
-                system.StartConsensus(chainHash, wallet);
-
-                return true;
-            }
-
-            return false;
+            StartConsensus(chainHash, wallet);
         }
 
         // 注册应用链对象
-        public AppChainState RegisterAppBlockChain(UInt160 chainHash, Blockchain blockchain)
+        public AppChainState RegisterAppChain(UInt160 chainHash, Blockchain blockchain)
         {
             AppChainState state = Blockchain.Root.Store.GetAppChains().TryGet(chainHash);
 
@@ -101,7 +189,7 @@ namespace Zoro.AppChain
                 throw new InvalidOperationException();
             }
 
-            AppBlockChains[chainHash] = blockchain;
+            appBlockchains[chainHash] = blockchain;
 
             return state;
         }
@@ -115,7 +203,7 @@ namespace Zoro.AppChain
             }
             else
             {
-                if (AppBlockChains.TryGetValue(chainHash, out Blockchain blockchain))
+                if (appBlockchains.TryGetValue(chainHash, out Blockchain blockchain))
                 {
                     return blockchain;
                 }
@@ -138,7 +226,7 @@ namespace Zoro.AppChain
 
         public LocalNode[] GetAppChainLocalNodes()
         {
-            LocalNode[] array = AppLocalNodes.Values.ToArray();
+            LocalNode[] array = appLocalNodes.Values.ToArray();
 
             return array;
         }
@@ -153,7 +241,7 @@ namespace Zoro.AppChain
                 throw new InvalidOperationException();
             }
 
-            AppLocalNodes[chainHash] = localNode;
+            appLocalNodes[chainHash] = localNode;
 
             return state;
         }
@@ -167,7 +255,7 @@ namespace Zoro.AppChain
             }
             else
             {
-                if (AppLocalNodes.TryGetValue(chainHash, out LocalNode localNode))
+                if (appLocalNodes.TryGetValue(chainHash, out LocalNode localNode))
                 {
                     return localNode;
                 }
@@ -198,7 +286,7 @@ namespace Zoro.AppChain
                 throw new InvalidOperationException();
             }
 
-            AppSystems[chainHash] = chain;
+            appSystems[chainHash] = chain;
         }
 
         // 根据链的Hash，获取ZoroSystem对象
@@ -210,7 +298,7 @@ namespace Zoro.AppChain
             }
             else
             {
-                if (AppSystems.TryGetValue(chainHash, out ZoroSystem chain))
+                if (appSystems.TryGetValue(chainHash, out ZoroSystem chain))
                 {
                     return chain;
                 }
@@ -219,29 +307,22 @@ namespace Zoro.AppChain
             return null;
         }
 
-
         // 根据应用链的Hash，获取应用链的ZoroChain对象
         public bool GetAppSystem(UInt160 chainHash, out ZoroSystem chain)
         {
-            return AppSystems.TryGetValue(chainHash, out chain);
-        }
-
-        // 根据应用链的Hash，获取应用链的ZoroSystem对象
-        public bool GetActorSystem(UInt160 chainHash, out ZoroActorSystem system)
-        {
-            return AppActorSystems.TryGetValue(chainHash, out system);
+            return appSystems.TryGetValue(chainHash, out chain);
         }
 
         // 停止所有的应用链
         public void StopAllAppChains()
         {
-            ZoroActorSystem[] appchains = AppActorSystems.Values.ToArray();
-            if (appchains.Length > 0)
+            ZoroSystem[] systems = appSystems.Values.ToArray();
+            if (systems.Length > 0)
             {
-                AppActorSystems.Clear();
-                foreach (var system in appchains)
+                appSystems.Clear();
+                foreach (var system in systems)
                 {
-                    system.Dispose();
+                    StopZoroSystem(system.ChainHash);
                 }
             }
         }
@@ -249,11 +330,13 @@ namespace Zoro.AppChain
         // 停止某个应用链
         public bool StopAppChainSystem(UInt160 chainHash)
         {
-            if (AppActorSystems.TryRemove(chainHash, out ZoroActorSystem appchainSystem))
+            if (appSystems.TryRemove(chainHash, out ZoroSystem system))
             {
-                appchainSystem.Dispose();
+                StopZoroSystem(system.ChainHash);
 
-                AppLocalNodes.TryRemove(chainHash, out LocalNode localNode);
+                appLocalNodes.TryRemove(chainHash, out LocalNode _);
+
+                appBlockchains.TryRemove(chainHash, out Blockchain _);
 
                 return true;
             }

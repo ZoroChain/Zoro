@@ -16,7 +16,7 @@ namespace Zoro.AppChain
     class AppChainEventHandler
     {
         private Wallet wallet;
-        private AppChainManager appchainMgr;
+        private ZoroChainSystem zorochainMgr;
 
         private int port = AppChainSettings.Default.Port;
         private int wsport = AppChainSettings.Default.WsPort;
@@ -29,23 +29,62 @@ namespace Zoro.AppChain
 
         private IPAddress myIPAddress;
 
-        public AppChainEventHandler(AppChainManager mgr)
+        public AppChainEventHandler(ZoroChainSystem mgr)
         {
-            appchainMgr = mgr;
+            zorochainMgr = mgr;
 
             Blockchain.AppChainNofity += OnAppChainEvent;
         }
-    
+
+        // 输出日志
+        private void Log(string message, LogLevel level = LogLevel.Info)
+        {
+            PluginManager.Singleton.Log(nameof(ZoroChainSystem), level, message, UInt160.Zero);
+        }
+
         // 设置钱包
         public void SetWallet(Wallet wallet)
         {
             this.wallet = wallet;
         }
 
-        // 输出日志
-        private void Log(string message, LogLevel level = LogLevel.Info)
+        // 根链或者应用链被启动
+        public void OnBlockChainStarted(UInt160 chainHash, int port, int wsport)
         {
-            PluginManager.Singleton.Log(nameof(AppChainManager), level, message, UInt160.Zero);
+            listeningPorts.Add(port);
+            listeningWsPorts.Add(wsport);
+
+            // 在根链启动后，获取应用链列表，启动应用链
+            if (chainHash.Equals(UInt160.Zero) && CheckAppChainPort())
+            {
+                // 获取本地IP地址
+                myIPAddress = GetMyIPAddress();
+
+                // 打印调试信息
+                string str = "NetworkType:" + networkType + " MyIPAddress:";
+                str += myIPAddress?.ToString() ?? "null";
+                Log(str);
+
+                // 获取应用链列表
+                IEnumerable<AppChainState> appchains = Blockchain.Root.Store.GetAppChains().Find().OrderBy(p => p.Value.Timestamp).Select(p => p.Value);
+
+                foreach (var state in appchains)
+                {
+                    // 判断是否是关注的应用链
+                    if (IsInterestedChainName(state.Name.ToLower()) || IsInterestedChainHash(state.Hash))
+                    {
+                        // 检查种子节点是否有效
+                        if (CheckSeedList(state))
+                        {
+                            StartAppChain(state);
+                        }
+                        else
+                        {
+                            Log($"The appchain's seedlist is invalid, name={state.Name} hash={state.Hash}", LogLevel.Warning);
+                        }
+                    }
+                }
+            }
         }
 
         // 处理应用链相关的通知事件
@@ -96,7 +135,7 @@ namespace Zoro.AppChain
         private void OnChangeValidators(AppChainState state)
         {
             // 通知正在运行的应用链对象，更新共识节点公钥
-            Blockchain blockchain = appchainMgr.GetBlockchain(state.Hash);
+            Blockchain blockchain = zorochainMgr.GetBlockchain(state.Hash);
             if (blockchain != null)
             {
                 // 先更改Blockchain的StandbyValidators，再开启共识服务
@@ -116,7 +155,7 @@ namespace Zoro.AppChain
                         Log($"Starting consensus service, name={name} hash={hashString}");
 
                         // 启动共识服务
-                        appchainMgr.StartAppChainConsensus(hashString, wallet);
+                        zorochainMgr.StartConsensus(state.Hash, wallet);
                     }
                     else
                     {
@@ -131,51 +170,12 @@ namespace Zoro.AppChain
         private void OnChangeSeedList(AppChainState state)
         {
             // 通知正在运行的应用链对象，更新种子节点地址
-            LocalNode localNode = appchainMgr.GetLocalNode(state.Hash);
+            LocalNode localNode = zorochainMgr.GetLocalNode(state.Hash);
             if (localNode != null)
             {
                 Log($"Change appchain seedlist, name={state.Name} hash={state.Hash.ToString()}");
 
                 localNode.ChangeSeedList(state.SeedList);
-            }
-        }
-
-        // 根链或者应用链被启动
-        public void OnBlockChainStarted(UInt160 chainHash, int port, int wsport)
-        {
-            listeningPorts.Add(port);
-            listeningWsPorts.Add(wsport);
-
-            // 在根链启动后，获取应用链列表，启动应用链
-            if (chainHash.Equals(UInt160.Zero) && CheckAppChainPort())
-            {
-                // 获取本地IP地址
-                myIPAddress = GetMyIPAddress();
-
-                // 打印调试信息
-                string str = "NetworkType:" + networkType + " MyIPAddress:";
-                str += myIPAddress?.ToString() ?? "null";
-                Log(str);
-
-                // 获取应用链列表
-                IEnumerable<AppChainState> appchains = Blockchain.Root.Store.GetAppChains().Find().OrderBy(p => p.Value.Timestamp).Select(p => p.Value);
-
-                foreach (var state in appchains)
-                {
-                    // 判断是否是关注的应用链
-                    if (IsInterestedChainName(state.Name.ToLower()) || IsInterestedChainHash(state.Hash))
-                    {
-                        // 检查种子节点是否有效
-                        if (CheckSeedList(state))
-                        {
-                            StartAppChain(state);
-                        }
-                        else
-                        {
-                            Log($"The appchain's seedlist is invalid, name={state.Name} hash={state.Hash}", LogLevel.Warning);
-                        }
-                    }
-                }
             }
         }
 
@@ -192,7 +192,7 @@ namespace Zoro.AppChain
             }
 
             // 启动应用链
-            bool succeed = appchainMgr.StartAppChain(hashString, listenPort, listenWsPort);
+            bool succeed = zorochainMgr.StartAppChain(hashString, listenPort, listenWsPort);
 
             if (succeed)
             {
@@ -225,7 +225,7 @@ namespace Zoro.AppChain
                     Log($"Starting consensus service, name={name} hash={hashString}");
 
                     // 启动共识服务
-                    appchainMgr.StartAppChainConsensus(hashString, wallet);
+                    zorochainMgr.StartConsensus(state.Hash, wallet);
                 }
             }
         }
@@ -235,7 +235,7 @@ namespace Zoro.AppChain
             if (wallet != null)
             {
                 // 获取应用链的ZoroSytem
-                if (appchainMgr.GetAppSystem(state.Hash, out ZoroSystem system))
+                if (zorochainMgr.GetAppSystem(state.Hash, out ZoroSystem system))
                 {
                     // 判断是否已经开启了共识服务
                     if (system.HasConsensusService)
@@ -243,7 +243,7 @@ namespace Zoro.AppChain
                         Log($"Stopping consensus service, name={state.Name} hash={state.Hash}");
 
                         // 停止共识服务
-                        system.ActorSystem.StopConsensus();
+                        zorochainMgr.StopConsensus(state.Hash);
                     }
                 }
             }

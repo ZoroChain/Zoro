@@ -13,14 +13,13 @@ namespace Zoro
     public sealed class ZoroSystem : UntypedActor
     {
         public class ChainStarted { public UInt160 ChainHash; public int Port; public int WsPort; }
-        public class ChainStopped { public UInt160 ChainHash; }
 
         public class Start { public int Port = 0; public int WsPort = 0; public int MinDesiredConnections = Peer.DefaultMinDesiredConnections; public int MaxConnections = Peer.DefaultMaxConnections; }
+        public class GracefulStop { public TimeSpan Timeout; };
         public class StartConsensus { public Wallet Wallet; };
         public class StopConsensus { };
 
         public UInt160 ChainHash { get; private set; }
-        public ZoroActorSystem ActorSystem { get; private set; }
 
         public IActorRef Blockchain { get; }
         public IActorRef LocalNode { get; }
@@ -39,10 +38,9 @@ namespace Zoro
             }
         }
 
-        public ZoroSystem(ZoroActorSystem actorSystem, Store store, UInt160 chainHash)
+        public ZoroSystem(Store store, UInt160 chainHash)
         {
             ChainHash = chainHash;
-            ActorSystem = actorSystem;
 
             if (chainHash.Equals(UInt160.Zero))
             {
@@ -53,7 +51,7 @@ namespace Zoro
             }
             else
             {
-                AppChainManager.Singleton.RegisterAppSystem(chainHash, this);
+                ZoroChainSystem.Singleton.RegisterAppSystem(chainHash, this);
             }
 
             Blockchain = Context.ActorOf(Ledger.Blockchain.Props(this, store, chainHash), $"Blockchain");
@@ -64,29 +62,6 @@ namespace Zoro
         public IActorRef ActorOf(Props props, string name = null)
         {
             return Context.ActorOf(props, name);
-        }
-
-        public void Stop(IActorRef actor)
-        {
-            Context.Stop(actor);
-        }
-
-        private void _StartConsensus(Wallet wallet)
-        {
-            if (Consensus == null)
-            {
-                Consensus = Context.ActorOf(ConsensusService.Props(this, wallet, ChainHash), $"ConsensusService");
-                Consensus.Tell(new ConsensusService.Start());
-            }
-        }
-
-        private void _StopConsensus()
-        {
-            if (Consensus != null)
-            {
-                Context.Stop(Consensus);
-                Consensus = null;
-            }
         }
 
         private void StartNode(int port, int wsPort, int minDesiredConnections, int maxConnections)
@@ -108,7 +83,31 @@ namespace Zoro
             });
 
             // 向应用链管理器发送事件通知
-            AppChainManager.Singleton.OnBlockChainStarted(ChainHash, port, wsPort);
+            ZoroChainSystem.Singleton.OnBlockChainStarted(ChainHash, port, wsPort);
+        }
+
+        private bool _GracefulStop(TimeSpan timeout)
+        {
+            IActorRef system = ZoroChainSystem.Singleton.GetChainActor(ChainHash);
+            return system?.GracefulStop(timeout).Result ?? false;
+        }
+
+        private void _StartConsensus(Wallet wallet)
+        {
+            if (Consensus == null)
+            {
+                Consensus = Context.ActorOf(ConsensusService.Props(this, wallet, ChainHash), $"ConsensusService");
+                Consensus.Tell(new ConsensusService.Start());
+            }
+        }
+
+        private void _StopConsensus()
+        {
+            if (Consensus != null)
+            {
+                Context.Stop(Consensus);
+                Consensus = null;
+            }
         }
 
         protected override void OnReceive(object message)
@@ -117,6 +116,9 @@ namespace Zoro
             {
                 case Start start:
                     StartNode(start.Port, start.WsPort, start.MinDesiredConnections, start.MaxConnections);
+                    break;
+                case GracefulStop stop:
+                    Sender.Tell(_GracefulStop(stop.Timeout));
                     break;
                 case StartConsensus startConsensus:
                     _StartConsensus(startConsensus.Wallet);
@@ -127,20 +129,9 @@ namespace Zoro
             }
         }
 
-        protected override void PostStop()
+        public static Props Props(Store store, UInt160 chainHash)
         {
-            base.PostStop();
-
-            // 向插件发送消息通知
-            PluginManager.Singleton.SendMessage(new ChainStopped
-            {
-                ChainHash = ChainHash
-            });
-        }
-
-        public static Props Props(ZoroActorSystem actorSystem, Store store, UInt160 chainHash)
-        {
-            return Akka.Actor.Props.Create(() => new ZoroSystem(actorSystem, store, chainHash));
+            return Akka.Actor.Props.Create(() => new ZoroSystem(store, chainHash));
         }
     }
 }

@@ -69,12 +69,12 @@ namespace Zoro.Network.P2P
                 }
                 else
                 {
-                    AppChainState state = AppChainManager.Singleton.RegisterAppChainLocalNode(chainHash, this);
+                    AppChainState state = ZoroChainSystem.Singleton.RegisterAppChainLocalNode(chainHash, this);
 
                     this.SeedList = state.SeedList;
                 }
 
-                this.Blockchain = AppChainManager.Singleton.AskBlockchain(chainHash);
+                this.Blockchain = ZoroChainSystem.Singleton.AskBlockchain(chainHash);
             }
         }
 
