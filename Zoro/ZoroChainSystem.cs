@@ -55,11 +55,11 @@ namespace Zoro
              // 创建根链Actor对象
             CreateZoroSystem(UInt160.Zero, store);
 
-            eventHandler = new AppChainEventHandler(MyIPAddress);
-
             // 获取IP地址
             string networkType = Settings.Default.NetworkType;
             MyIPAddress = GetMyIPAddress(networkType);
+
+            eventHandler = new AppChainEventHandler(MyIPAddress);
 
             // 打印调试信息
             string str = "NetworkType:" + networkType + " MyIPAddress:";
