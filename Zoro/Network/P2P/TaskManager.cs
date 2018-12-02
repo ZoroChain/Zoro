@@ -274,24 +274,16 @@ namespace Zoro.Network.P2P
                 case TaskManager.RestartTasks _:
                     return true;
                 case TaskManager.NewTask task:
-                    return IsHighPriority(task.Payload.Type);
+                    if (task.Payload.Type == InventoryType.Block || task.Payload.Type == InventoryType.Consensus)
+                        return true;
+                    return false;
                 case TaskManager.NewGroupTask tasks:
-                    return IsHighPriority(tasks.Payload.Type);
+                    if (tasks.Payload.Type == InventoryType.Block || tasks.Payload.Type == InventoryType.Consensus)
+                        return true;
+                    return false;
                 default:
                     return false;
             }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        bool IsHighPriority(InventoryType type)
-        {
-            if (type == InventoryType.Block)
-                return state.HasFlag(PriorityState.Block);
-            if (type == InventoryType.Consensus)
-                return state.HasFlag(PriorityState.Consensus);
-            if (type == InventoryType.TX)
-                return state.HasFlag(PriorityState.Transaction);
-            return false;
         }
     }
 }

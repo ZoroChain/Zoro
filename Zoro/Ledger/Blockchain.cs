@@ -923,14 +923,12 @@ namespace Zoro.Ledger
             switch (message)
             {
                 case Header[] _:
+                case Block _:
+                case ConsensusPayload _:
                 case Terminated _:
                     return true;
-                case Block _:
-                    return state.HasFlag(PriorityState.Block);
-                case ConsensusPayload _:
-                    return state.HasFlag(PriorityState.Consensus);
                 case Transaction _:
-                    return state.HasFlag(PriorityState.Transaction);
+                    return false;
                 default:
                     return false;
             }
