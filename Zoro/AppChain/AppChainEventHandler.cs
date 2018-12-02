@@ -47,12 +47,11 @@ namespace Zoro.AppChain
         // 根链或者应用链被启动
         public void OnBlockChainStarted(UInt160 chainHash, int port, int wsport)
         {
-            listeningPorts.Add(port);
-            listeningWsPorts.Add(wsport);
-
             // 在根链启动后，获取应用链列表，启动应用链
             if (chainHash.Equals(UInt160.Zero) && CheckAppChainPort())
             {
+                AddListeningPort(port, wsport);
+
                 // 获取应用链列表
                 IEnumerable<AppChainState> appchains = Blockchain.Root.Store.GetAppChains().Find().OrderBy(p => p.Value.Timestamp).Select(p => p.Value);
 
@@ -184,6 +183,8 @@ namespace Zoro.AppChain
 
             if (succeed)
             {
+                AddListeningPort(listenPort, listenWsPort);
+
                 Log($"Starting appchain, name={name} hash={hashString} port={listenPort} wsport={listenWsPort}");
 
                 // 启动应用链的共识服务
@@ -288,6 +289,13 @@ namespace Zoro.AppChain
             }
 
             return wsport;
+        }
+
+        // 记录正在使用的端口号
+        private void AddListeningPort(int port, int wsport)
+        {
+            if (port > 0) listeningPorts.Add(port);
+            if (wsport > 0) listeningWsPorts.Add(wsport);
         }
 
         // 如果本地节点是应用链的种子节点，则返回该种子节点的端口号
