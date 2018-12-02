@@ -27,6 +27,7 @@ namespace Zoro.Consensus
         private readonly ConsensusContext context;
         private readonly ZoroSystem system;
         private readonly Wallet wallet;
+        private ICancelable timer_token;
         private DateTime block_received_time;
 
         private readonly UInt160 chainHash;
@@ -75,7 +76,8 @@ namespace Zoro.Consensus
 
         private void ChangeTimer(TimeSpan delay)
         {
-            Context.System.Scheduler.ScheduleTellOnce(delay, Self, new Timer
+            timer_token.CancelIfNotNull();
+            timer_token = Context.System.Scheduler.ScheduleTellOnceCancelable(delay, Self, new Timer
             {
                 Height = context.BlockIndex,
                 ViewNumber = context.ViewNumber
