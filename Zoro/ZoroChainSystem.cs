@@ -244,6 +244,9 @@ namespace Zoro
                 Thread.Sleep(10);
             }
 
+            // 等待Blockchain完成初始化
+            blockchain.WaitForStartUpEvent();
+
             return blockchain;
         }
 

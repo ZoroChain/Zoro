@@ -158,6 +158,7 @@ namespace Zoro.Ledger
         public static event EventHandler<AppChainEventArgs> AppChainNofity;
 
         public static readonly int MemPoolRelayCount = Settings.Default.MemPoolRelayCount;
+        private readonly ManualResetEvent startupEvent = new ManualResetEvent(false);
 
         public UInt160 ChainHash { get; }
 
@@ -231,7 +232,15 @@ namespace Zoro.Ledger
                 {
                     UpdateCurrentSnapshot();
                 }
+
+                startupEvent.Set();
             }
+        }
+
+        // 等待初始化工作完成
+        public void WaitForStartUpEvent()
+        {
+            startupEvent.WaitOne();
         }
 
         public bool ContainsBlock(UInt256 hash)
