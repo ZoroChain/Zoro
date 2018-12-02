@@ -44,8 +44,8 @@ namespace Zoro.Ledger
         public IEnumerator<Transaction> GetEnumerator()
         {
             return
-                _mem_pool_fee.Select(p => p.Value.Transaction)
-                .Concat(_mem_pool_free.Select(p => p.Value.Transaction))
+                _mem_pool_fee.Values.OrderBy(p => p.Timestamp).Select(p => p.Transaction)
+                .Concat(_mem_pool_free.Values.OrderBy(p => p.Timestamp).Select(p => p.Transaction))
                 .GetEnumerator();
         }
 
