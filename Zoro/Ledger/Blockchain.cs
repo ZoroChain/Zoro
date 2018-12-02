@@ -136,6 +136,7 @@ namespace Zoro.Ledger
             }
         }
 
+        private static readonly object lockObj = new object();
         private readonly ZoroSystem system;
         private readonly List<UInt256> header_index = new List<UInt256>();
         private uint stored_header_count = 0;
@@ -177,27 +178,27 @@ namespace Zoro.Ledger
             this.Store = store;
             store.Blockchain = this;
 
-            if (chainHash.Equals(UInt160.Zero))
+            lock (lockObj)
             {
-                if (root != null)
-                    throw new InvalidOperationException();
+                if (chainHash.Equals(UInt160.Zero))
+                {
+                    if (root != null)
+                        throw new InvalidOperationException();
 
-                root = this;
-                Name = "Root";
-                StandbyValidators = GetStandbyValidators();
-            }
-            else
-            {
-                AppChainState state = ZoroChainSystem.Singleton.RegisterAppChain(chainHash, this);
+                    root = this;
+                    Name = "Root";
+                    StandbyValidators = GetStandbyValidators();
+                }
+                else
+                {
+                    AppChainState state = ZoroChainSystem.Singleton.RegisterAppChain(chainHash, this);
 
-                Name = state.Name;
-                StandbyValidators = GetStandbyValidators();
-            }
+                    Name = state.Name;
+                    StandbyValidators = GetStandbyValidators();
+                }
 
-            GenesisBlock.RebuildMerkleRoot();
+                GenesisBlock.RebuildMerkleRoot();
 
-            //lock (GetType())
-            {
                 header_index.AddRange(store.GetHeaderHashList().Find().OrderBy(p => (uint)p.Key).SelectMany(p => p.Value.Hashes));
                 stored_header_count += (uint)header_index.Count;
                 if (stored_header_count == 0)
@@ -794,6 +795,7 @@ namespace Zoro.Ledger
         {
             if (ChainHash.Equals(UInt160.Zero))
             {
+                // 根链的共识节点在json文件中配置，不能随意更改
                 return Settings.Default.StandbyValidators.OfType<string>().Select(p => ECPoint.DecodePoint(p.HexToBytes(), ECCurve.Secp256r1)).ToArray();
             }
             else
@@ -801,6 +803,7 @@ namespace Zoro.Ledger
                 if (snapshot == null)
                     snapshot = GetSnapshot();
 
+                // 先查询应用链数据库里的记录
                 AppChainState appchainState = snapshot.AppChainState.Get();
 
                 if (appchainState != null && appchainState.Hash != null)
@@ -808,6 +811,7 @@ namespace Zoro.Ledger
                     return appchainState.StandbyValidators;
                 }
 
+                // 如果应用链数据库里还没有对应的记录，再查询根链数据库里的记录
                 AppChainState state = Root.Store.GetAppChains().TryGet(ChainHash);
 
                 return state.StandbyValidators;

@@ -20,6 +20,7 @@ namespace Zoro.Network.P2P
 
         public const uint ProtocolVersion = 0;
 
+        private static readonly object lockObj = new object();
         private readonly ZoroSystem system;
         internal readonly ConcurrentDictionary<IActorRef, RemoteNode> RemoteNodes = new ConcurrentDictionary<IActorRef, RemoteNode>();
 
@@ -52,7 +53,7 @@ namespace Zoro.Network.P2P
 
         public LocalNode(ZoroSystem system, UInt160 chainHash)
         {
-            //lock (GetType())
+            lock (lockObj)
             {
                 this.system = system;
                 this.ChainHash = chainHash;
