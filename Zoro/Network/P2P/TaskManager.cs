@@ -25,8 +25,9 @@ namespace Zoro.Network.P2P
         private static readonly int MaxKnownHashCount = Settings.Default.MaxTaskHashCount;
 
         private readonly ZoroSystem system;
+        private const int MaxConncurrentTasks = 3;
         private readonly HashSet<UInt256> knownHashes = new HashSet<UInt256>();
-        private readonly HashSet<UInt256> globalTasks = new HashSet<UInt256>();
+        private readonly Dictionary<UInt256, int> globalTasks = new Dictionary<UInt256, int>();
         private readonly Dictionary<IActorRef, TaskSession> sessions = new Dictionary<IActorRef, TaskSession>();
         private readonly ICancelable timer = Context.System.Scheduler.ScheduleTellRepeatedlyCancelable(TimerInterval, TimerInterval, Context.Self, new Timer(), ActorRefs.NoSender);
 
@@ -63,7 +64,7 @@ namespace Zoro.Network.P2P
             if (knownHashes.Contains(hash))
                 return;
 
-            bool isRunningTask = globalTasks.Contains(hash);
+            bool isRunningTask = globalTasks.ContainsKey(hash);
             if (payload.Type == InventoryType.Block && isRunningTask)
                 session.AvailableTasks.Add(hash);
 
@@ -72,7 +73,7 @@ namespace Zoro.Network.P2P
                 RequestTasks(session);
                 return;
             }
-            globalTasks.Add(hash);
+            IncrementGlobalTask(hash);
             session.Tasks[hash] = DateTime.UtcNow;
             Sender.Tell(Message.Create("getdata", InvPayload.Create(payload.Type, hash)));
         }
@@ -89,16 +90,20 @@ namespace Zoro.Network.P2P
             HashSet<UInt256> hashes = new HashSet<UInt256>(payload.Hashes);
             hashes.ExceptWith(knownHashes);
             if (payload.Type == InventoryType.Block)
-                session.AvailableTasks.UnionWith(hashes.Where(p => globalTasks.Contains(p)));
-            hashes.ExceptWith(globalTasks);
+                session.AvailableTasks.UnionWith(hashes.Where(p => globalTasks.ContainsKey(p)));
+
+            hashes.ExceptWith(globalTasks.Keys);
             if (hashes.Count == 0)
             {
                 RequestTasks(session);
                 return;
             }
-            globalTasks.UnionWith(hashes);
+
             foreach (UInt256 hash in hashes)
+            {
+                IncrementGlobalTask(hash);
                 session.Tasks[hash] = DateTime.UtcNow;
+            }
 
             if (hashes.Count == 1)
             {
@@ -153,7 +158,8 @@ namespace Zoro.Network.P2P
         private void OnRestartTasks(InvGroupPayload payload)
         {
             knownHashes.ExceptWith(payload.Hashes);
-            globalTasks.ExceptWith(payload.Hashes);
+            foreach (UInt256 hash in payload.Hashes)
+                globalTasks.Remove(hash);
             foreach (InvGroupPayload group in InvGroupPayload.CreateGroup(payload.Type, payload.Hashes))
                 system.LocalNode.Tell(Message.Create("getdatagroup", group));
         }
@@ -171,12 +177,41 @@ namespace Zoro.Network.P2P
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void DecrementGlobalTask(UInt256 hash)
+        {
+            if (globalTasks.ContainsKey(hash))
+            {
+                if (globalTasks[hash] == 1)
+                    globalTasks.Remove(hash);
+                else
+                    globalTasks[hash]--;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool IncrementGlobalTask(UInt256 hash)
+        {
+            if (!globalTasks.ContainsKey(hash))
+            {
+                globalTasks[hash] = 1;
+                return true;
+            }
+            if (globalTasks[hash] >= MaxConncurrentTasks)
+                return false;
+
+            globalTasks[hash]++;
+
+            return true;
+        }
+
         private void OnTerminated(IActorRef actor)
         {
             if (!sessions.TryGetValue(actor, out TaskSession session))
                 return;
             sessions.Remove(actor);
-            globalTasks.ExceptWith(session.Tasks.Keys);
+            foreach (UInt256 hash in session.Tasks.Keys)
+                DecrementGlobalTask(hash);
         }
 
         private void OnTimer()
@@ -185,8 +220,8 @@ namespace Zoro.Network.P2P
                 foreach (var task in session.Tasks.ToArray())
                     if (DateTime.UtcNow - task.Value > TaskTimeout)
                     {
-                        globalTasks.Remove(task.Key);
-                        session.Tasks.Remove(task.Key);
+                        if (session.Tasks.Remove(task.Key) && task.Key != UInt256.Zero)
+                            DecrementGlobalTask(task.Key);
                     }
             foreach (TaskSession session in sessions.Values)
                 RequestTasks(session);
@@ -214,11 +249,14 @@ namespace Zoro.Network.P2P
                 session.AvailableTasks.ExceptWith(knownHashes);
                 session.AvailableTasks.RemoveWhere(p => blockchain.ContainsBlock(p));
                 HashSet<UInt256> hashes = new HashSet<UInt256>(session.AvailableTasks);
-                hashes.ExceptWith(globalTasks);
                 if (hashes.Count > 0)
                 {
+                    foreach (UInt256 hash in hashes.ToArray())
+                    {
+                        if (!IncrementGlobalTask(hash))
+                            hashes.Remove(hash);
+                    }
                     session.AvailableTasks.ExceptWith(hashes);
-                    globalTasks.UnionWith(hashes);
                     foreach (UInt256 hash in hashes)
                         session.Tasks[hash] = DateTime.UtcNow;
                     foreach (InvGroupPayload group in InvGroupPayload.CreateGroup(InventoryType.Block, hashes.ToArray()))
@@ -237,7 +275,7 @@ namespace Zoro.Network.P2P
                 for (uint i = blockchain.Height + 1; i <= blockchain.HeaderHeight; i++)
                 {
                     hash = blockchain.GetBlockHash(i);
-                    if (!knownHashes.Contains(hash) && !globalTasks.Contains(hash))
+                    if (!knownHashes.Contains(hash) && !globalTasks.ContainsKey(hash))
                     {
                         hash = blockchain.GetBlockHash(i - 1);
                         break;
