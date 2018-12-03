@@ -4,7 +4,7 @@ using Akka.IO;
 using Zoro.Cryptography;
 using Zoro.IO;
 using Zoro.IO.Actors;
-using Zoro.Ledger;
+using Zoro.Plugins;
 using Zoro.Network.P2P.Payloads;
 using System;
 using System.Collections.Generic;
@@ -172,6 +172,7 @@ namespace Zoro.Network.P2P
                 string assemblyName = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name;
                 if (!version.UserAgent.Contains(assemblyName))
                 {
+                    Log($"The useragent in version message is unidentified:{version.UserAgent} [{Remote.Address}]", LogLevel.Warning);
                     Disconnect(true);
                     return;
                 }
@@ -179,16 +180,19 @@ namespace Zoro.Network.P2P
             // 检查ChainHash是否一致
             if (version.ChainHash != localNode.ChainHash)
             {
+                Log($"The chainhash {version.ChainHash} in version message is incompatible, local chainHash:{localNode.ChainHash} [{Remote.Address}]", LogLevel.Warning);
                 Disconnect(true);
                 return;
             }
             if (version.Nonce == LocalNode.Nonce)
             {
+                Log($"The nonce value in version message is duplicated:[{Remote.Address}]", LogLevel.Warning);
                 Disconnect(true);
                 return;
             }
             if (localNode.RemoteNodes.Values.Where(p => p != this).Any(p => p.Remote.Address.Equals(Remote.Address) && p.Version?.Nonce == version.Nonce))
             {
+                Log($"Duplicate connection detected:[{Remote.Address}]", LogLevel.Warning);
                 Disconnect(true);
                 return;
             }
@@ -197,7 +201,7 @@ namespace Zoro.Network.P2P
 
         protected override void PostStop()
         {
-            localNode.Blockchain.Log($"OnStop RemoteNode {localNode.Blockchain.Name} {Remote}");
+            Log($"OnStop RemoteNode {localNode.Blockchain.Name} {Remote}");
             localNode.RemoteNodes.TryRemove(Self, out _);
             base.PostStop();
         }
@@ -207,11 +211,16 @@ namespace Zoro.Network.P2P
             return Akka.Actor.Props.Create(() => new RemoteNode(system, connection, remote, local, localNode)).WithMailbox("remote-node-mailbox");
         }
 
+        protected override void Log(string message, LogLevel level = LogLevel.Info)
+        {
+            PluginManager.Singleton?.Log(nameof(RemoteNode), level, message, localNode.ChainHash);
+        }
+
         private void SendMessage(Message message)
         {
             ack = false;
             SendData(ByteString.FromBytes(message.ToArray()));
-            localNode.Blockchain.Log($"send:{message.Command} {message.Size} [{Remote.Address}]", Plugins.LogLevel.Debug);
+            Log($"send:{message.Command} {message.Size} [{Remote.Address}]", Plugins.LogLevel.Debug);
         }
 
         protected override SupervisorStrategy SupervisorStrategy()

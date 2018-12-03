@@ -4,6 +4,7 @@ using System;
 using System.Net;
 using System.Net.WebSockets;
 using System.Threading;
+using Zoro.Plugins;
 
 namespace Zoro.Network.P2P
 {
@@ -84,6 +85,7 @@ namespace Zoro.Network.P2P
             switch (message)
             {
                 case Timer _:
+                    Log($"communication timeout:[{Remote.Address}]", LogLevel.Warning);
                     Disconnect(true);
                     break;
                 case Ack _:
@@ -108,6 +110,7 @@ namespace Zoro.Network.P2P
             }
             catch
             {
+                Log($"error occurred when parse message:[{Remote.Address}]", LogLevel.Warning);
                 Disconnect(true);
             }
         }
@@ -135,5 +138,7 @@ namespace Zoro.Network.P2P
                     failure: ex => new Tcp.ErrorClosed(ex.Message));
             }
         }
+
+        protected abstract void Log(string message, LogLevel level = LogLevel.Info);
     }
 }
