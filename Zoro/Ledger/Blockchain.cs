@@ -707,6 +707,10 @@ namespace Zoro.Ledger
                 }
                 foreach (IPersistencePlugin plugin in PluginManager.PersistencePlugins)
                     plugin.OnPersist(snapshot);
+
+                if (system.Consensus == null)
+                    Log($"Commit Snapshot:{block.Index}, tx:{block.Transactions.Length}");
+
                 snapshot.Commit();
             }
             UpdateCurrentSnapshot();
