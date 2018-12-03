@@ -40,12 +40,6 @@ namespace Zoro.Persistence
             return block;
         }
 
-        public static IEnumerable<ValidatorState> GetEnrollments(this IPersistence persistence)
-        {
-            HashSet<ECPoint> sv = new HashSet<ECPoint>(Blockchain.Root.StandbyValidators);
-            return persistence.Validators.Find().Select(p => p.Value).Where(p => p.Registered || sv.Contains(p.PublicKey));
-        }
-
         public static Header GetHeader(this IPersistence persistence, uint index)
         {
             UInt256 hash = persistence.Blockchain.GetBlockHash(index);
@@ -108,19 +102,6 @@ namespace Zoro.Persistence
                         outputs.Add(tx.Outputs[i]);
             }
             return outputs;
-        }
-
-        public static bool IsDoubleSpend(this IPersistence persistence, Transaction tx)
-        {
-            if (tx.Inputs.Length == 0) return false;
-            foreach (var group in tx.Inputs.GroupBy(p => p.PrevHash))
-            {
-                UnspentCoinState state = persistence.UnspentCoins.TryGet(group.Key);
-                if (state == null) return true;
-                if (group.Any(p => p.PrevIndex >= state.Items.Length || state.Items[p.PrevIndex].HasFlag(CoinState.Spent)))
-                    return true;
-            }
-            return false;
         }
     }
 }

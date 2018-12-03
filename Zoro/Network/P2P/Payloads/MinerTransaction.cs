@@ -30,8 +30,6 @@ namespace Zoro.Network.P2P.Payloads
             base.OnDeserialized();
             if (Inputs.Length != 0)
                 throw new FormatException();
-            if (Outputs.Any(p => p.AssetId != Blockchain.UtilityToken.Hash))
-                throw new FormatException();
         }
 
         protected override void SerializeExclusiveData(BinaryWriter writer)

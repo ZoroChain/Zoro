@@ -41,8 +41,6 @@ namespace Zoro.Network.P2P.Payloads
         {
             get
             {
-                if (AssetType == AssetType.GoverningToken || AssetType == AssetType.UtilityToken)
-                    return Fixed8.Zero;
                 return base.SystemFee;
             }
         }
@@ -60,8 +58,6 @@ namespace Zoro.Network.P2P.Payloads
             Amount = reader.ReadSerializable<Fixed8>();
             Precision = reader.ReadByte();
             Owner = ECPoint.DeserializeFrom(reader, ECCurve.Secp256r1);
-            if (Owner.IsInfinity && AssetType != AssetType.GoverningToken && AssetType != AssetType.UtilityToken)
-                throw new FormatException();
             Admin = reader.ReadSerializable<UInt160>();
         }
 
@@ -74,10 +70,6 @@ namespace Zoro.Network.P2P.Payloads
         protected override void OnDeserialized()
         {
             base.OnDeserialized();
-            if (AssetType == AssetType.GoverningToken && !Hash.Equals(Blockchain.GoverningToken.Hash))
-                throw new FormatException();
-            if (AssetType == AssetType.UtilityToken && !Hash.Equals(Blockchain.UtilityToken.Hash))
-                throw new FormatException();
         }
 
         protected override void SerializeExclusiveData(BinaryWriter writer)

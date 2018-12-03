@@ -14,12 +14,10 @@ namespace Zoro.Persistence
         DataCache<UInt160, AppChainState> IPersistence.AppChains => GetAppChains();
         DataCache<UInt256, UnspentCoinState> IPersistence.UnspentCoins => GetUnspentCoins();
         DataCache<UInt256, SpentCoinState> IPersistence.SpentCoins => GetSpentCoins();
-        DataCache<ECPoint, ValidatorState> IPersistence.Validators => GetValidators();
         DataCache<UInt256, AssetState> IPersistence.Assets => GetAssets();
         DataCache<UInt160, ContractState> IPersistence.Contracts => GetContracts();
         DataCache<StorageKey, StorageItem> IPersistence.Storages => GetStorages();
         DataCache<UInt32Wrapper, HeaderHashList> IPersistence.HeaderHashList => GetHeaderHashList();
-        MetaDataCache<ValidatorsCountState> IPersistence.ValidatorsCount => GetValidatorsCount();
         MetaDataCache<HashIndexState> IPersistence.BlockHashIndex => GetBlockHashIndex();
         MetaDataCache<HashIndexState> IPersistence.HeaderHashIndex => GetHeaderHashIndex();
         MetaDataCache<AppChainState> IPersistence.AppChainState => GetAppChainState();
@@ -30,12 +28,10 @@ namespace Zoro.Persistence
         public abstract DataCache<UInt160, AppChainState> GetAppChains();
         public abstract DataCache<UInt256, UnspentCoinState> GetUnspentCoins();
         public abstract DataCache<UInt256, SpentCoinState> GetSpentCoins();
-        public abstract DataCache<ECPoint, ValidatorState> GetValidators();
         public abstract DataCache<UInt256, AssetState> GetAssets();
         public abstract DataCache<UInt160, ContractState> GetContracts();
         public abstract DataCache<StorageKey, StorageItem> GetStorages();
         public abstract DataCache<UInt32Wrapper, HeaderHashList> GetHeaderHashList();
-        public abstract MetaDataCache<ValidatorsCountState> GetValidatorsCount();
         public abstract MetaDataCache<HashIndexState> GetBlockHashIndex();
         public abstract MetaDataCache<HashIndexState> GetHeaderHashIndex();
         public abstract MetaDataCache<AppChainState> GetAppChainState();

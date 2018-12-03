@@ -63,11 +63,6 @@ namespace Zoro.Network.RPC
                                 case UInt160 asset_id_160: //NEP-5 balance
                                     json["balance"] = wallet.GetAvailable(asset_id_160).ToString();
                                     break;
-                                case UInt256 asset_id_256: //Global Assets balance
-                                    IEnumerable<Coin> coins = wallet.GetCoins().Where(p => !p.State.HasFlag(CoinState.Spent) && p.Output.AssetId.Equals(asset_id_256));
-                                    json["balance"] = coins.Sum(p => p.Output.Value).ToString();
-                                    json["confirmed"] = coins.Where(p => p.State.HasFlag(CoinState.Confirmed)).Sum(p => p.Output.Value).ToString();
-                                    break;
                             }
                             return json;
                         }
@@ -298,12 +293,10 @@ namespace Zoro.Network.RPC
                             using (Snapshot snapshot = blockchain.GetSnapshot())
                             {
                                 var validators = snapshot.GetValidators();
-                                return snapshot.GetEnrollments().Select(p =>
+                                return validators.Select(p =>
                                 {
                                     JObject validator = new JObject();
-                                    validator["publickey"] = p.PublicKey.ToString();
-                                    validator["votes"] = p.Votes.ToString();
-                                    validator["active"] = validators.Contains(p.PublicKey);
+                                    validator["publickey"] = p.ToString();
                                     return validator;
                                 }).ToArray();
                             }

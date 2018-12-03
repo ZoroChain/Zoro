@@ -210,7 +210,7 @@ namespace Zoro.Consensus
             Fixed8 amount_netfee = Block.CalculateNetFee(transactions);
             TransactionOutput[] outputs = amount_netfee == Fixed8.Zero ? new TransactionOutput[0] : new[] { new TransactionOutput
             {
-                AssetId = Blockchain.UtilityToken.Hash,
+                AssetId = UInt256.Zero,
                 Value = amount_netfee,
                 ScriptHash = wallet.GetChangeAddress()
             } };

@@ -94,8 +94,6 @@ namespace Zoro.Ledger
         private Dictionary<CultureInfo, string> _names;
         public string GetName(CultureInfo culture = null)
         {
-            if (AssetType == AssetType.GoverningToken) return "NEO";
-            if (AssetType == AssetType.UtilityToken) return "NeoGas";
             if (_names == null)
             {
                 JObject name_obj;

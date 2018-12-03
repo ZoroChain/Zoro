@@ -9,17 +9,6 @@ namespace Zoro.Network.P2P.Payloads
 {
     public class IssueTransaction : Transaction
     {
-        public override Fixed8 SystemFee
-        {
-            get
-            {
-                if (Version >= 1) return Fixed8.Zero;
-                if (Outputs.All(p => p.AssetId == Blockchain.GoverningToken.Hash || p.AssetId == Blockchain.UtilityToken.Hash))
-                    return Fixed8.Zero;
-                return base.SystemFee;
-            }
-        }
-
         public IssueTransaction()
             : base(TransactionType.IssueTransaction)
         {
@@ -44,17 +33,6 @@ namespace Zoro.Network.P2P.Payloads
 
         public override bool Verify(Snapshot snapshot, IEnumerable<Transaction> mempool)
         {
-            if (!base.Verify(snapshot, mempool)) return false;
-            TransactionResult[] results = GetTransactionResults()?.Where(p => p.Amount < Fixed8.Zero).ToArray();
-            if (results == null) return false;
-            foreach (TransactionResult r in results)
-            {
-                AssetState asset = snapshot.Assets.TryGet(r.AssetId);
-                if (asset == null) return false;
-                if (asset.Amount < Fixed8.Zero) continue;
-                Fixed8 quantity_issued = asset.Available + mempool.OfType<IssueTransaction>().Where(p => p != this).SelectMany(p => p.Outputs).Where(p => p.AssetId == r.AssetId).Sum(p => p.Value);
-                if (asset.Amount - quantity_issued < -r.Amount) return false;
-            }
             return true;
         }
     }

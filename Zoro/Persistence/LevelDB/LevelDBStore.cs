@@ -85,19 +85,9 @@ namespace Zoro.Persistence.LevelDB
             return new DbCache<UInt256, UnspentCoinState>(db, null, null, Prefixes.ST_Coin);
         }
 
-        public override DataCache<ECPoint, ValidatorState> GetValidators()
-        {
-            return new DbCache<ECPoint, ValidatorState>(db, null, null, Prefixes.ST_Validator);
-        }
-
         public override DataCache<UInt32Wrapper, HeaderHashList> GetHeaderHashList()
         {
             return new DbCache<UInt32Wrapper, HeaderHashList>(db, null, null, Prefixes.IX_HeaderHashList);
-        }
-
-        public override MetaDataCache<ValidatorsCountState> GetValidatorsCount()
-        {
-            return new DbMetaDataCache<ValidatorsCountState>(db, null, null, Prefixes.IX_ValidatorsCount);
         }
 
         public override MetaDataCache<HashIndexState> GetBlockHashIndex()

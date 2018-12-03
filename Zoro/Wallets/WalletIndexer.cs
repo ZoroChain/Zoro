@@ -164,50 +164,15 @@ namespace Zoro.Wallets
                 {
                     if (coins_tracked.TryGetValue(input, out Coin coin))
                     {
-                        if (coin.Output.AssetId.Equals(Blockchain.GoverningToken.Hash))
-                        {
-                            coin.State |= CoinState.Spent | CoinState.Confirmed;
-                            batch.Put(SliceBuilder.Begin(DataEntryPrefix.ST_Coin).Add(input), SliceBuilder.Begin().Add(coin.Output).Add((byte)coin.State));
-                        }
-                        else
-                        {
-                            accounts_tracked[coin.Output.ScriptHash].Remove(input);
-                            coins_tracked.Remove(input);
-                            batch.Delete(DataEntryPrefix.ST_Coin, input);
-                        }
+                        accounts_tracked[coin.Output.ScriptHash].Remove(input);
+                        coins_tracked.Remove(input);
+                        batch.Delete(DataEntryPrefix.ST_Coin, input);
                         accounts_changed.Add(coin.Output.ScriptHash);
                     }
                 }
                 switch (tx)
                 {
                     case MinerTransaction _:
-                    case ContractTransaction _:
-#pragma warning disable CS0612
-                    case PublishTransaction _:
-#pragma warning restore CS0612
-                        break;
-                    case ClaimTransaction tx_claim:
-                        foreach (CoinReference claim in tx_claim.Claims)
-                        {
-                            if (coins_tracked.TryGetValue(claim, out Coin coin))
-                            {
-                                accounts_tracked[coin.Output.ScriptHash].Remove(claim);
-                                coins_tracked.Remove(claim);
-                                batch.Delete(DataEntryPrefix.ST_Coin, claim);
-                                accounts_changed.Add(coin.Output.ScriptHash);
-                            }
-                        }
-                        break;
-#pragma warning disable CS0612
-                    case EnrollmentTransaction tx_enrollment:
-                        if (accounts_tracked.ContainsKey(tx_enrollment.ScriptHash))
-                            accounts_changed.Add(tx_enrollment.ScriptHash);
-                        break;
-                    case RegisterTransaction tx_register:
-                        if (accounts_tracked.ContainsKey(tx_register.OwnerScriptHash))
-                            accounts_changed.Add(tx_register.OwnerScriptHash);
-                        break;
-#pragma warning restore CS0612
                     default:
                         foreach (UInt160 hash in tx.Witnesses.Select(p => p.ScriptHash))
                             if (accounts_tracked.ContainsKey(hash))

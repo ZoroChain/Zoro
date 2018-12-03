@@ -494,7 +494,7 @@ namespace Zoro.SmartContract
             if (Trigger != TriggerType.Application) return false;
             InvocationTransaction tx = (InvocationTransaction)engine.ScriptContainer;
             AssetType asset_type = (AssetType)(byte)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
-            if (!Enum.IsDefined(typeof(AssetType), asset_type) || asset_type == AssetType.CreditFlag || asset_type == AssetType.DutyFlag || asset_type == AssetType.GoverningToken || asset_type == AssetType.UtilityToken)
+            if (!Enum.IsDefined(typeof(AssetType), asset_type) || asset_type == AssetType.CreditFlag || asset_type == AssetType.DutyFlag)
                 return false;
             if (engine.CurrentContext.EvaluationStack.Peek().GetByteArray().Length > 1024)
                 return false;

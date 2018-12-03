@@ -34,41 +34,10 @@ namespace Zoro.Ledger
         public static readonly uint SecondsPerBlock = Settings.Default.SecondsPerBlock;
         public static readonly uint MaxSecondsPerBlock = Settings.Default.MaxSecondsPerBlock;
         public const uint DecrementInterval = 2000000;
-        public const uint MaxValidators = 1024;
         public static readonly uint[] GenerationAmount = { 8, 7, 6, 5, 4, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
         public static readonly TimeSpan TimePerBlock = TimeSpan.FromSeconds(SecondsPerBlock);
         public ECPoint[] StandbyValidators { get; private set; }
         public string Name { get; private set; }
-
-#pragma warning disable CS0612
-        public static readonly RegisterTransaction GoverningToken = new RegisterTransaction
-        {
-            AssetType = AssetType.GoverningToken,
-            Name = "[{\"lang\":\"zh-CN\",\"name\":\"小蚁股\"},{\"lang\":\"en\",\"name\":\"AntShare\"}]",
-            Amount = Fixed8.FromDecimal(100000000),
-            Precision = 0,
-            Owner = ECCurve.Secp256r1.Infinity,
-            Admin = (new[] { (byte)OpCode.PUSHT }).ToScriptHash(),
-            Attributes = new TransactionAttribute[0],
-            Inputs = new CoinReference[0],
-            Outputs = new TransactionOutput[0],
-            Witnesses = new Witness[0]
-        };
-
-        public static readonly RegisterTransaction UtilityToken = new RegisterTransaction
-        {
-            AssetType = AssetType.UtilityToken,
-            Name = "[{\"lang\":\"zh-CN\",\"name\":\"小蚁币\"},{\"lang\":\"en\",\"name\":\"AntCoin\"}]",
-            Amount = Fixed8.FromDecimal(GenerationAmount.Sum(p => p) * DecrementInterval),
-            Precision = 8,
-            Owner = ECCurve.Secp256r1.Infinity,
-            Admin = (new[] { (byte)OpCode.PUSHF }).ToScriptHash(),
-            Attributes = new TransactionAttribute[0],
-            Inputs = new CoinReference[0],
-            Outputs = new TransactionOutput[0],
-            Witnesses = new Witness[0]
-        };
-#pragma warning restore CS0612
 
         private Block _genesisBlock = null;
 
@@ -78,9 +47,6 @@ namespace Zoro.Ledger
             {
                 if (_genesisBlock == null)
                 {
-                    GoverningToken.ChainHash = ChainHash;
-                    UtilityToken.ChainHash = ChainHash;
-
                     _genesisBlock = new Block
                     {
                         PrevHash = UInt256.Zero,
@@ -104,31 +70,6 @@ namespace Zoro.Ledger
                                 Outputs = new TransactionOutput[0],
                                 Witnesses = new Witness[0]
                             },
-                            GoverningToken,
-                            UtilityToken,
-                            new IssueTransaction
-                            {
-                                ChainHash = ChainHash,
-                                Attributes = new TransactionAttribute[0],
-                                Inputs = new CoinReference[0],
-                                Outputs = new[]
-                                {
-                                    new TransactionOutput
-                                    {
-                                        AssetId = GoverningToken.Hash,
-                                        Value = GoverningToken.Amount,
-                                        ScriptHash = Contract.CreateMultiSigRedeemScript(StandbyValidators.Length / 2 + 1, StandbyValidators).ToScriptHash()
-                                    }
-                                },
-                                Witnesses = new[]
-                                {
-                                    new Witness
-                                    {
-                                        InvocationScript = new byte[0],
-                                        VerificationScript = new[] { (byte)OpCode.PUSHT }
-                                    }
-                                }
-                            }
                         }
                     };
                 }
@@ -558,118 +499,9 @@ namespace Zoro.Ledger
                     {
                         Items = Enumerable.Repeat(CoinState.Confirmed, tx.Outputs.Length).ToArray()
                     });
-                    foreach (TransactionOutput output in tx.Outputs)
-                    {
-                        AccountState account = snapshot.Accounts.GetAndChange(output.ScriptHash, () => new AccountState(output.ScriptHash));
-                        if (account.Balances.ContainsKey(output.AssetId))
-                            account.Balances[output.AssetId] += output.Value;
-                        else
-                            account.Balances[output.AssetId] = output.Value;
-                        if (output.AssetId.Equals(GoverningToken.Hash) && account.Votes.Length > 0)
-                        {
-                            foreach (ECPoint pubkey in account.Votes)
-                                snapshot.Validators.GetAndChange(pubkey, () => new ValidatorState(pubkey)).Votes += output.Value;
-                            snapshot.ValidatorsCount.GetAndChange().Votes[account.Votes.Length - 1] += output.Value;
-                        }
-                    }
-                    foreach (var group in tx.Inputs.GroupBy(p => p.PrevHash))
-                    {
-                        TransactionState tx_prev = snapshot.Transactions[group.Key];
-                        foreach (CoinReference input in group)
-                        {
-                            snapshot.UnspentCoins.GetAndChange(input.PrevHash).Items[input.PrevIndex] |= CoinState.Spent;
-                            TransactionOutput out_prev = tx_prev.Transaction.Outputs[input.PrevIndex];
-                            AccountState account = snapshot.Accounts.GetAndChange(out_prev.ScriptHash);
-                            if (out_prev.AssetId.Equals(GoverningToken.Hash))
-                            {
-                                snapshot.SpentCoins.GetAndChange(input.PrevHash, () => new SpentCoinState
-                                {
-                                    TransactionHash = input.PrevHash,
-                                    TransactionHeight = tx_prev.BlockIndex,
-                                    Items = new Dictionary<ushort, uint>()
-                                }).Items.Add(input.PrevIndex, block.Index);
-                                if (account.Votes.Length > 0)
-                                {
-                                    foreach (ECPoint pubkey in account.Votes)
-                                    {
-                                        ValidatorState validator = snapshot.Validators.GetAndChange(pubkey);
-                                        validator.Votes -= out_prev.Value;
-                                        if (!validator.Registered && validator.Votes.Equals(Fixed8.Zero))
-                                            snapshot.Validators.Delete(pubkey);
-                                    }
-                                    snapshot.ValidatorsCount.GetAndChange().Votes[account.Votes.Length - 1] -= out_prev.Value;
-                                }
-                            }
-                            account.Balances[out_prev.AssetId] -= out_prev.Value;
-                        }
-                    }
                     List<ApplicationExecutionResult> execution_results = new List<ApplicationExecutionResult>();
                     switch (tx)
                     {
-#pragma warning disable CS0612
-                        case RegisterTransaction tx_register:
-                            snapshot.Assets.Add(tx.Hash, new AssetState
-                            {
-                                AssetId = tx_register.Hash,
-                                AssetType = tx_register.AssetType,
-                                Name = tx_register.Name,
-                                Amount = tx_register.Amount,
-                                Available = Fixed8.Zero,
-                                Precision = tx_register.Precision,
-                                Fee = Fixed8.Zero,
-                                FeeAddress = new UInt160(),
-                                Owner = tx_register.Owner,
-                                Admin = tx_register.Admin,
-                                Issuer = tx_register.Admin,
-                                Expiration = block.Index + 2 * 2000000,
-                                IsFrozen = false
-                            });
-                            break;
-#pragma warning restore CS0612
-                        case IssueTransaction _:
-                            foreach (TransactionResult result in tx.GetTransactionResults().Where(p => p.Amount < Fixed8.Zero))
-                                snapshot.Assets.GetAndChange(result.AssetId).Available -= result.Amount;
-                            break;
-                        case ClaimTransaction _:
-                            foreach (CoinReference input in ((ClaimTransaction)tx).Claims)
-                            {
-                                if (snapshot.SpentCoins.TryGet(input.PrevHash)?.Items.Remove(input.PrevIndex) == true)
-                                    snapshot.SpentCoins.GetAndChange(input.PrevHash);
-                            }
-                            break;
-#pragma warning disable CS0612
-                        case EnrollmentTransaction tx_enrollment:
-                            snapshot.Validators.GetAndChange(tx_enrollment.PublicKey, () => new ValidatorState(tx_enrollment.PublicKey)).Registered = true;
-                            break;
-#pragma warning restore CS0612
-                        case StateTransaction tx_state:
-                            foreach (StateDescriptor descriptor in tx_state.Descriptors)
-                                switch (descriptor.Type)
-                                {
-                                    case StateType.Account:
-                                        ProcessAccountStateDescriptor(descriptor, snapshot);
-                                        break;
-                                    case StateType.Validator:
-                                        ProcessValidatorStateDescriptor(descriptor, snapshot);
-                                        break;
-                                }
-                            break;
-#pragma warning disable CS0612
-                        case PublishTransaction tx_publish:
-                            snapshot.Contracts.GetOrAdd(tx_publish.ScriptHash, () => new ContractState
-                            {
-                                Script = tx_publish.Script,
-                                ParameterList = tx_publish.ParameterList,
-                                ReturnType = tx_publish.ReturnType,
-                                ContractProperties = (ContractPropertyState)Convert.ToByte(tx_publish.NeedStorage),
-                                Name = tx_publish.Name,
-                                CodeVersion = tx_publish.CodeVersion,
-                                Author = tx_publish.Author,
-                                Email = tx_publish.Email,
-                                Description = tx_publish.Description
-                            });
-                            break;
-#pragma warning restore CS0612
                         case InvocationTransaction tx_invocation:
                             using (ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, tx_invocation, snapshot.Clone(), tx_invocation.Gas, true))
                             {
@@ -723,50 +555,7 @@ namespace Zoro.Ledger
             base.PostStop();
             currentSnapshot?.Dispose();
             Store?.Dispose();
-        }
-
-        internal static void ProcessAccountStateDescriptor(StateDescriptor descriptor, Snapshot snapshot)
-        {
-            UInt160 hash = new UInt160(descriptor.Key);
-            AccountState account = snapshot.Accounts.GetAndChange(hash, () => new AccountState(hash));
-            switch (descriptor.Field)
-            {
-                case "Votes":
-                    Fixed8 balance = account.GetBalance(GoverningToken.Hash);
-                    foreach (ECPoint pubkey in account.Votes)
-                    {
-                        ValidatorState validator = snapshot.Validators.GetAndChange(pubkey);
-                        validator.Votes -= balance;
-                        if (!validator.Registered && validator.Votes.Equals(Fixed8.Zero))
-                            snapshot.Validators.Delete(pubkey);
-                    }
-                    ECPoint[] votes = descriptor.Value.AsSerializableArray<ECPoint>().Distinct().ToArray();
-                    if (votes.Length != account.Votes.Length)
-                    {
-                        ValidatorsCountState count_state = snapshot.ValidatorsCount.GetAndChange();
-                        if (account.Votes.Length > 0)
-                            count_state.Votes[account.Votes.Length - 1] -= balance;
-                        if (votes.Length > 0)
-                            count_state.Votes[votes.Length - 1] += balance;
-                    }
-                    account.Votes = votes;
-                    foreach (ECPoint pubkey in account.Votes)
-                        snapshot.Validators.GetAndChange(pubkey, () => new ValidatorState(pubkey)).Votes += balance;
-                    break;
-            }
-        }
-
-        internal static void ProcessValidatorStateDescriptor(StateDescriptor descriptor, Snapshot snapshot)
-        {
-            ECPoint pubkey = ECPoint.DecodePoint(descriptor.Key, ECCurve.Secp256r1);
-            ValidatorState validator = snapshot.Validators.GetAndChange(pubkey, () => new ValidatorState(pubkey));
-            switch (descriptor.Field)
-            {
-                case "Registered":
-                    validator.Registered = BitConverter.ToBoolean(descriptor.Value, 0);
-                    break;
-            }
-        }
+        }        
 
         public static Props Props(ZoroSystem system, Store store, UInt160 chainHash)
         {

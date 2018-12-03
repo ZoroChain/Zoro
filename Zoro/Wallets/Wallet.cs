@@ -181,16 +181,6 @@ namespace Zoro.Wallets
             return privateKey;
         }
 
-        public IEnumerable<Coin> GetUnclaimedCoins()
-        {
-            IEnumerable<UInt160> accounts = GetAccounts().Where(p => !p.Lock && !p.WatchOnly).Select(p => p.ScriptHash);
-            IEnumerable<Coin> coins = GetCoins(accounts);
-            coins = coins.Where(p => p.Output.AssetId.Equals(Blockchain.GoverningToken.Hash));
-            coins = coins.Where(p => p.State.HasFlag(CoinState.Confirmed) && p.State.HasFlag(CoinState.Spent));
-            coins = coins.Where(p => !p.State.HasFlag(CoinState.Claimed) && !p.State.HasFlag(CoinState.Frozen));
-            return coins;
-        }
-
         public virtual WalletAccount Import(X509Certificate2 cert)
         {
             byte[] privateKey;
@@ -224,30 +214,11 @@ namespace Zoro.Wallets
             if (tx.Outputs == null) tx.Outputs = new TransactionOutput[0];
             if (tx.Attributes == null) tx.Attributes = new TransactionAttribute[0];
             fee += tx.SystemFee;
-            var pay_total = (typeof(T) == typeof(IssueTransaction) ? new TransactionOutput[0] : tx.Outputs).GroupBy(p => p.AssetId, (k, g) => new
+            var pay_total = tx.Outputs.GroupBy(p => p.AssetId, (k, g) => new
             {
                 AssetId = k,
                 Value = g.Sum(p => p.Value)
             }).ToDictionary(p => p.AssetId);
-            if (fee > Fixed8.Zero)
-            {
-                if (pay_total.ContainsKey(Blockchain.UtilityToken.Hash))
-                {
-                    pay_total[Blockchain.UtilityToken.Hash] = new
-                    {
-                        AssetId = Blockchain.UtilityToken.Hash,
-                        Value = pay_total[Blockchain.UtilityToken.Hash].Value + fee
-                    };
-                }
-                else
-                {
-                    pay_total.Add(Blockchain.UtilityToken.Hash, new
-                    {
-                        AssetId = Blockchain.UtilityToken.Hash,
-                        Value = fee
-                    });
-                }
-            }
             var pay_coins = pay_total.Select(p => new
             {
                 AssetId = p.Key,
@@ -292,11 +263,6 @@ namespace Zoro.Wallets
             }).ToArray();
             Transaction tx;
             if (attributes == null) attributes = new List<TransactionAttribute>();
-            if (cOutputs.Length == 0)
-            {
-                tx = new ContractTransaction();
-            }
-            else
             {
                 UInt160[] accounts = from == null ? GetAccounts().Where(p => !p.Lock && !p.WatchOnly).Select(p => p.ScriptHash).ToArray() : new[] { from };
                 HashSet<UInt160> sAttributes = new HashSet<UInt160>();
