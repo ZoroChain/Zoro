@@ -24,30 +24,38 @@ namespace Zoro.Consensus
         private static readonly uint MaxSecondsPerBlock = Settings.Default.MaxSecondsPerBlock;
         private static readonly TimeSpan MaxTimeSpanPerBlock = TimeSpan.FromSeconds(MaxSecondsPerBlock);
 
-        private readonly ConsensusContext context;
-        private readonly ZoroSystem system;
-        private readonly Wallet wallet;
+        private readonly IConsensusContext context;
+        private readonly IActorRef localNode;
+        private readonly IActorRef taskManager;
+
         private ICancelable timer_token;
         private DateTime block_received_time;
 
         private readonly UInt160 chainHash;
-        private readonly LocalNode localNode;
         private readonly Blockchain blockchain;
+        private readonly LocalNode localNodeObj;
 
-        public ConsensusService(ZoroSystem system, Wallet wallet, UInt160 chainHash)
+        public ConsensusService(IActorRef localNode, IActorRef taskManager, Wallet wallet, UInt160 chainHash)
         {
-            this.system = system;
-            this.wallet = wallet;
             this.chainHash = chainHash;
+            this.localNode = localNode;
+            this.taskManager = taskManager;
             this.blockchain = ZoroChainSystem.Singleton.AskBlockchain(chainHash);
-            this.localNode = ZoroChainSystem.Singleton.AskLocalNode(chainHash);
+            this.localNodeObj = ZoroChainSystem.Singleton.AskLocalNode(chainHash);
             this.context = new ConsensusContext(blockchain, wallet);
+        }
+
+        public ConsensusService(IActorRef localNode, IActorRef taskManager, IConsensusContext context)
+        {
+            this.localNode = localNode;
+            this.taskManager = taskManager;
+            this.context = context;
         }
 
         private bool AddTransaction(Transaction tx, bool verify)
         {
-            if (context.Snapshot.ContainsTransaction(tx.Hash) ||
-                (verify && !tx.Verify(context.Snapshot, context.Transactions.Values)) ||
+            if (context.ContainsTransaction(tx.Hash) ||
+                (verify && !context.VerifyTransaction(tx)) ||
                 !PluginManager.Singleton.CheckPolicy(tx))
             {
                 Log($"reject tx: {tx.Hash}{Environment.NewLine}{tx.ToArray().ToHexString()}", LogLevel.Warning);
@@ -62,7 +70,7 @@ namespace Zoro.Consensus
                     Log($"send prepare response");
                     context.State |= ConsensusState.SignatureSent;
                     context.SignHeader();
-                    system.LocalNode.Tell(new LocalNode.SendDirectly { Inventory = context.MakePrepareResponse(context.Signatures[context.MyIndex]) });
+                    localNode.Tell(new LocalNode.SendDirectly { Inventory = context.MakePrepareResponse(context.Signatures[context.MyIndex]) });
                     CheckSignatures();
                 }
                 else
@@ -105,7 +113,7 @@ namespace Zoro.Consensus
             {
                 Block block = context.CreateBlock();
                 Log($"relay block: {block.Hash}");
-                system.LocalNode.Tell(new LocalNode.Relay { Inventory = block });
+                localNode.Tell(new LocalNode.Relay { Inventory = block });
                 context.State |= ConsensusState.BlockSent;
             }
         }
@@ -123,7 +131,7 @@ namespace Zoro.Consensus
             if (context.MyIndex == context.PrimaryIndex)
             {
                 context.State |= ConsensusState.Primary;
-                TimeSpan span = DateTime.UtcNow - block_received_time;
+                TimeSpan span = TimeProvider.Current.UtcNow - block_received_time;
                 if (span >= Blockchain.TimePerBlock)
                     ChangeTimer(TimeSpan.Zero);
                 else
@@ -152,16 +160,15 @@ namespace Zoro.Consensus
 
         private void OnConsensusPayload(ConsensusPayload payload)
         {
-            if (context.Snapshot == null) return;
             if (context.State.HasFlag(ConsensusState.BlockSent)) return;
             if (payload.ValidatorIndex == context.MyIndex) return;
             if (payload.Version != ConsensusContext.Version)
                 return;
             if (payload.PrevHash != context.PrevHash || payload.BlockIndex != context.BlockIndex)
             {
-                if (context.Snapshot.Height + 1 < payload.BlockIndex)
+                if (context.BlockIndex + 1 < payload.BlockIndex)
                 {
-                    Log($"chain sync: expected={payload.BlockIndex} current: {context.Snapshot.Height} nodes={localNode.ConnectedCount}", LogLevel.Warning);
+                    Log($"chain sync: expected={payload.BlockIndex} current={context.BlockIndex - 1} nodes={localNodeObj.ConnectedCount}", LogLevel.Warning);
                 }
                 if (payload.BlockIndex == context.BlockIndex && payload.PrevHash != context.PrevHash)
                 {
@@ -198,7 +205,7 @@ namespace Zoro.Consensus
         private void OnPersistCompleted(Block block)
         {
             Log($"persist block: {block.Hash}");
-            block_received_time = DateTime.UtcNow;
+            block_received_time = TimeProvider.Current.UtcNow;
             InitializeConsensus(0);
         }
 
@@ -208,7 +215,7 @@ namespace Zoro.Consensus
             if (payload.ValidatorIndex != context.PrimaryIndex) return;
             Log($"{nameof(OnPrepareRequestReceived)}: height={payload.BlockIndex} view={message.ViewNumber} index={payload.ValidatorIndex} tx={message.TransactionHashes.Length}");
             if (!context.State.HasFlag(ConsensusState.Backup)) return;
-            if (payload.Timestamp <= context.Snapshot.GetHeader(context.PrevHash).Timestamp || payload.Timestamp > DateTime.UtcNow.AddMinutes(10).ToTimestamp())
+            if (payload.Timestamp <= context.PrevHeader.Timestamp || payload.Timestamp > TimeProvider.Current.UtcNow.AddMinutes(10).ToTimestamp())
             {
                 Log($"Timestamp incorrect: {payload.Timestamp}", LogLevel.Warning);
                 return;
@@ -250,7 +257,7 @@ namespace Zoro.Consensus
             if (context.Transactions.Count < context.TransactionHashes.Length)
             {
                 UInt256[] hashes = context.TransactionHashes.Where(i => !context.Transactions.ContainsKey(i)).ToArray();
-                system.TaskManager.Tell(new TaskManager.RestartTasks
+                taskManager.Tell(new TaskManager.RestartTasks
                 {
                     Payload = InvGroupPayload.Create(InventoryType.TX, hashes)
                 });
@@ -314,7 +321,7 @@ namespace Zoro.Consensus
             if (context.State.HasFlag(ConsensusState.Primary) && !context.State.HasFlag(ConsensusState.RequestSent))
             {
                 // MemoryPool里没有交易请求，并且没有到最长出块时间
-                if (blockchain.GetMemoryPool().Count() == 0 && DateTime.UtcNow - block_received_time < MaxTimeSpanPerBlock)
+                if (blockchain.GetMemoryPool().Count() == 0 && TimeProvider.Current.UtcNow - block_received_time < MaxTimeSpanPerBlock)
                 {
                     // 等待下一次出块时间再判断是否需要出块
                     ChangeTimer(Blockchain.TimePerBlock);
@@ -327,11 +334,11 @@ namespace Zoro.Consensus
                     context.SignHeader();
                 }
                 Log($"send prepare request: height={timer.Height} view={timer.ViewNumber} tx={context.TransactionHashes.Length}");
-                system.LocalNode.Tell(new LocalNode.SendDirectly { Inventory = context.MakePrepareRequest() });
+                localNode.Tell(new LocalNode.SendDirectly { Inventory = context.MakePrepareRequest() });
                 if (context.TransactionHashes.Length > 1)
                 {
                     foreach (InvGroupPayload payload in InvGroupPayload.CreateGroup(InventoryType.TX, context.TransactionHashes.Skip(1).ToArray()))
-                        system.LocalNode.Tell(Message.Create("invgroup", payload));
+                        localNode.Tell(Message.Create("invgroup", payload));
                 }
                 SetNextTimer(timer.ViewNumber + 1);
             }
@@ -358,9 +365,9 @@ namespace Zoro.Consensus
             base.PostStop();
         }
 
-        public static Props Props(ZoroSystem system, Wallet wallet, UInt160 chainHash)
+        public static Props Props(IActorRef localNode, IActorRef taskManager, Wallet wallet, UInt160 chainHash)
         {
-            return Akka.Actor.Props.Create(() => new ConsensusService(system, wallet, chainHash)).WithMailbox("consensus-service-mailbox");
+            return Akka.Actor.Props.Create(() => new ConsensusService(localNode, taskManager, wallet, chainHash)).WithMailbox("consensus-service-mailbox");
         }
 
         private void RequestChangeView()
@@ -384,7 +391,7 @@ namespace Zoro.Consensus
 
             Log($"request change view: height={context.BlockIndex} view={context.ViewNumber} nv={context.ExpectedView[context.MyIndex]} state={context.State}");
             SetNextTimer(context.ExpectedView[context.MyIndex]);
-            system.LocalNode.Tell(new LocalNode.SendDirectly { Inventory = context.MakeChangeView() });
+            localNode.Tell(new LocalNode.SendDirectly { Inventory = context.MakeChangeView() });
             CheckExpectedView(context.ExpectedView[context.MyIndex]);
         }
 
