@@ -19,8 +19,8 @@ GAS 伴随着每个新区块的生成而产生。GAS 初期总量为零，伴随
 * NEO的持有者可以发起Claim交易，按照自己持有NEO的比例来认领这些GAS
 
 ### Claim GAS的代码流程
-* 在构造`ClaimTransaction`交易对象
-  * 在Output项里用`Snapshot.CalculateBonus`计算可获得的GAS金额，
+* 构造`ClaimTransaction`交易对象
+  * 在Output项里用`Snapshot.CalculateBonus`计算可获得的GAS金额
   * 用`Wallet.GetUnclaimedCoins()`函数获得未行权的货币来源，并设定到`Claims`变量里
   * `Wallet.GetUnclaimedCoins`函数内部，通过`Wallet.GetCoins`获得和钱包账户有关的所有货币信息
   * `Wallet.GetCoins`函数内部，通过`WalletIndex`里的记录得到所有未行权的货币来源

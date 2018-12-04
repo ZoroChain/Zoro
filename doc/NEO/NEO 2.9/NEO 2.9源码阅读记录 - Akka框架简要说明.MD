@@ -9,7 +9,7 @@
 * Actor收发的网络消息，可以用一个任意的C#对象来定义
 * Actor的主要函数有
   * `Tell(message)` 投递一个消息
-  * `Ask(message)` 投递一个消息，并询问该消息的处理结果
+  * `Ask(message)` 投递一个消息，并等待该消息的处理结果
   * `OnReceive(message)` 消息处理函数
 * Actor的主要成员有
   * `Sender` 消息的发送方
@@ -33,7 +33,7 @@
 
 * NEO 2.9中的ActorSystem
   * `NeoSystem` 类里创建了ActorSystem
-  * `NeoSystem` 构造函数里会创建Blockchain，LocalNode，TaskManager
+  * `NeoSystem` 构造函数里会创建Blockchain，LocalNode，TaskManager的Actor对象
   * `StartConsensus` 创建ConsensusService对象，发Start消息，启动共识服务
   * `StartNode` 发Start消息，启动LocalNode
   * `StartRpc` 创建RpcServer对象，启动RPC服务

@@ -44,11 +44,14 @@ NEO采用基于DBFT机制的共识算法，相关的技术文档可参考<http:/
 
 ### ConsensusService
 * 开启服务后，会处理本地节点接收的共识请求
-* 开启共识处理服务的方法
-  * 在cli的config.json中可以配置本地节点是否要开启共识处理 
+* 开启共识处理服务的两种方法
+  * 在cli启动前配置开启共识
+    * 在cli的config.json中可以配置本地节点是否要开启共识处理 
     * 要开启共识的节点必须先开启钱包，可以在"UnlockWallet"里用"Path"字段指定钱包文件的位置，"Password"字段指定钱包的密码
     * 把"UnlockWallet"里"StartConsensus"字段配置为true，表示开启共识服务
-  * 在cli的shell中输入指令"start consensus"
+  * 在cli启动运行后开启共识
+    * 在cli的config.json中配置好钱包的相关参数，其中"StartConsensus"字段配置为false，表示在cli启动时不开启共识服务
+    * 等cli启动运行后，在cli的shell中输入指令"start consensus"
 * 共识处理流程
   * RPCServer接收到"sendrawtransaction"消息后，通过`Blockchain.Ask`将该交易数据发给`Blockchain`处理
   * `Blockchain`收到后，会验证该交易，并保存到`mem_pool`里，同时广播给其他远程节点
