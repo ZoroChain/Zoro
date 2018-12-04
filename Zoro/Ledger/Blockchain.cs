@@ -225,6 +225,7 @@ namespace Zoro.Ledger
                     Persist(GenesisBlock);
                     if (!chainHash.Equals(UInt160.Zero))
                     {
+                        // 在应用链首次启动运行时，要在应用链的数据库里保存该应用链的AppChainState
                         SaveAppChainState();
                     }
                 }
@@ -804,6 +805,7 @@ namespace Zoro.Ledger
 
         private void SaveAppChainState()
         {
+            // 取出根链数据库里记录的State
             AppChainState state = Root.Store.GetAppChains().TryGet(ChainHash);
 
             if (state == null)
@@ -811,6 +813,7 @@ namespace Zoro.Ledger
                 throw new InvalidOperationException();
             }
 
+            // 记录到应用链的数据库里
             using (Snapshot snapshot = GetSnapshot())
             {
                 snapshot.AppChainState.GetAndChange().CopyFrom(state);
