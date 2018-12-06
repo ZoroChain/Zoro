@@ -128,7 +128,7 @@ namespace Zoro.Plugins
         public JObject ProcessRpcMethod(HttpContext context, string method, JArray _params)
         {
             JObject result = null;
-            foreach (IRpcPlugin plugin in PluginManager.Singleton.RpcPlugins)
+            foreach (IRpcPlugin plugin in RpcPlugins)
             {
                 result = plugin.OnProcess(context, method, _params);
                 if (result != null) break;
