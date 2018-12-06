@@ -1,4 +1,4 @@
-# NEO 2.9源码阅读记录 - Akka框架简要说明
+# NEO中使用的Akka框架简要说明
 ### Akka框架的简要说明
 * Akka是一套基于Actor模型的，适用于高并发的分布式系统的消息通信框架程序
 * Akka是用Scala语言开发，同时提供Java和Scala两种接口

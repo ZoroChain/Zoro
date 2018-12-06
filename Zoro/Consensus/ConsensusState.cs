@@ -3,7 +3,7 @@
 namespace Zoro.Consensus
 {
     [Flags]
-    internal enum ConsensusState : byte
+    public enum ConsensusState : byte
     {
         Initial = 0x00,
         Primary = 0x01,

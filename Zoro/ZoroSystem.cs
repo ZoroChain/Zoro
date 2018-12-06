@@ -90,7 +90,7 @@ namespace Zoro
         {
             if (Consensus == null)
             {
-                Consensus = Context.ActorOf(ConsensusService.Props(this, wallet, ChainHash), $"ConsensusService");
+                Consensus = Context.ActorOf(ConsensusService.Props(LocalNode, TaskManager, wallet, ChainHash), $"ConsensusService");
                 Consensus.Tell(new ConsensusService.Start());
             }
         }
