@@ -29,11 +29,11 @@ Zoro 目前还处在设计开发中，所以根链和应用链之间可以设计
 
 ### 1、AppChainX 上的用户 AccountX 要将他在 AppChainX 上的 XCC 跨链转到 RootChain 上的 Account2 账户中：
 * AccountX 先在 AppChainX 上发起一笔交易，将 XCC 存到 AppChainX 上的 XBank 中；
-* AppChainX 的共识机制在确认交易该交易后便往根链发起一笔交易，调用根链的 RBank 往 Account2 账户转一笔 XCC；为保证足够安全，根链的交易可以读取 AppChainX 的数据去验证 AccountX 的交易，验证通过后才转钱，`但是每个节点上应用链的同步状态无法保证，验证也不能确保通过`；
+* AppChainX 的共识机制在确认该交易后便往根链发起一笔交易，调用根链的 RBank 往 Account2 账户转一笔 XCC；为保证足够安全，根链的交易可以读取 AppChainX 的数据去验证 AccountX 的交易，验证通过后才转钱，`但是每个节点上应用链的同步状态无法保证，验证也不能确保通过`；
 
 ### 2、AppChainX 上的用户 AccountX 要将他在 AppChainX 上的 XCC 兑换成 AppChainY 上的 YCC 发到 AccountY 账户里：
 * AccountX 先在 AppChainX 上发起一笔交易，将 XCC 存到 AppChainX 上的 XBank 中；
-* AppChainX 的共识机制在确认交易该交易后便往根链发起一笔交易，调用根链的 RBank 往 AccountX 在根链的账户转一笔 XCC，这样 AccountX 在根链拥有了 XCC；
+* AppChainX 的共识机制在确认该交易后便往根链发起一笔交易，调用根链的 RBank 往 AccountX 在根链的账户转一笔 XCC，这样 AccountX 在根链拥有了 XCC；
 * AccountX 在根链上的 Bancor 交易所将 XCC 兑换成 YCC（这里需要先兑换成 BCP，再用 BCP 购买 YCC）；
 * AccountX 将自己在根链上买到的 YCC 转到 RBank 中；
 * AppChainY 的共识机制会监控根链数据，发现根链有 YCC 转到 RBank 的交易，则当做跨链处理，便向 AppChainY 发起一笔交易，从 YBank 中转出一笔 YCC 给指定的账户 AccountY。
