@@ -69,10 +69,3 @@ NEO采用基于DBFT机制的共识算法，相关的技术文档可参考<http:/
   * `SignAndRelay:`将共识消息包签名后广播出去
   * `OnPrepareRequestReceived:`收到并处理议长广播的需要共识的交易数据，只有议员会执行
   * `OnPrepareResponseReceived:`收到并处理议员广播的区块头签名数据
-* 疑问
-  * `BlockChain`的`GetConsensusAddress`函数没看懂
-    * Contract.CreateMultiSigRedeemScript(validators.Length - (validators.Length - 1) / 3, validators).ToScriptHash();
-  * `SignAndRelay`函数没看懂
-  * `CheckSignatures`函数没看懂
-  * 每次更换视图时，共识过程的最长处理时间增加一倍？
-    * `timer.Change(TimeSpan.FromSeconds(Blockchain.SecondsPerBlock << (view_number + 1)), Timeout.InfiniteTimeSpan);`

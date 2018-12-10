@@ -17,7 +17,7 @@ namespace Zoro.Network.RPC
 {
     public class RpcHandler
     {
-        private Wallet wallet;
+        protected Wallet wallet;
 
         public RpcHandler()
         {

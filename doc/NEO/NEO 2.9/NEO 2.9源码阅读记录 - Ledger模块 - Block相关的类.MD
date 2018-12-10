@@ -2,13 +2,13 @@
 ### BlockBase
 * 继承自`IVerifiable`，可通过`GetScriptHashesForVerifying`获取用于验证签名的脚本Hash
 * 主要成员:
-  * MerkleRoot : 该区块中所有交易的Merkle树的根	
+  * MerkleRoot : 该区块中所有交易的Merkle树的根节点Hash	
+  	* Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash值，这里的MerkleRoot就是根节点的Hash，可以用来校验交易数据是否发生损坏或被篡改。    	
+    * 将Block中所有Transaction作为最底层的叶子节点，按照Merkle树（类似二叉树）的生成算法，从叶子节点开始，每两个节点生成一个父节点，并将这两个节点的Hash合并后生成这个父节点的Hash。如此逐层向上，直至构建完整个Merkle树。
+    * 该变量的生成代码:
     ```
-	该变量的生成代码:
-	MerkeRoot = MerkleTree.ComputeRoot(Transactions.Select(p => p.Hash).ToArray());
+    MerkeRoot = MerkleTree.ComputeRoot(Transactions.Select(p => p.Hash).ToArray());
     ```
-	将Block中所有Transaction作为最底层的叶子节点，按照Merkle树（类似二叉树）的生成算法，从叶子节点开始，每两个节点生成一个父节点，并将这两个节点的Hash合并后生成这个父节点的Hash。如此逐层向上，直至构建完整个Merkle树。
-    * Merkle树，可以理解为二叉树，其中每个节点有一个对应的Hash值，这里的MerkleRoot就是根节点的Hash。
   * Timestamp : 生成该区块时的时间戳
   * ConsensusData : Nonce
 	```
