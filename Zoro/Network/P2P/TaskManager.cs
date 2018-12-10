@@ -31,6 +31,9 @@ namespace Zoro.Network.P2P
         private readonly Dictionary<IActorRef, TaskSession> sessions = new Dictionary<IActorRef, TaskSession>();
         private readonly ICancelable timer = Context.System.Scheduler.ScheduleTellRepeatedlyCancelable(TimerInterval, TimerInterval, Context.Self, new Timer(), ActorRefs.NoSender);
 
+        private readonly UInt256 HeaderTaskHash = UInt256.Zero;
+        private bool HasHeaderTask => globalTasks.ContainsKey(HeaderTaskHash);
+
         private readonly UInt160 chainHash;
         private readonly Blockchain blockchain;
 
@@ -47,7 +50,8 @@ namespace Zoro.Network.P2P
         {
             if (!sessions.TryGetValue(Sender, out TaskSession session))
                 return;
-            session.Tasks.Remove(UInt256.Zero);
+            session.Tasks.Remove(HeaderTaskHash);
+            DecrementGlobalTask(HeaderTaskHash);
             RequestTasks(session);
         }
 
@@ -220,7 +224,7 @@ namespace Zoro.Network.P2P
                 foreach (var task in session.Tasks.ToArray())
                     if (DateTime.UtcNow - task.Value > TaskTimeout)
                     {
-                        if (session.Tasks.Remove(task.Key) && task.Key != UInt256.Zero)
+                        if (session.Tasks.Remove(task.Key))
                             DecrementGlobalTask(task.Key);
                     }
             foreach (TaskSession session in sessions.Values)
@@ -264,9 +268,10 @@ namespace Zoro.Network.P2P
                     return;
                 }
             }
-            if (!HeaderTask && blockchain.HeaderHeight < session.Version.StartHeight)
+            if ((!HasHeaderTask || globalTasks[HeaderTaskHash] < MaxConncurrentTasks) && blockchain.HeaderHeight < session.Version.StartHeight)
             {
-                session.Tasks[UInt256.Zero] = DateTime.UtcNow;
+                session.Tasks[HeaderTaskHash] = DateTime.UtcNow;
+                IncrementGlobalTask(HeaderTaskHash);
                 session.RemoteNode.Tell(Message.Create("getheaders", GetBlocksPayload.Create(blockchain.CurrentHeaderHash)));
             }
             else if (blockchain.Height < session.Version.StartHeight)
