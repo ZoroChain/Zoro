@@ -146,7 +146,6 @@ namespace Zoro.Network.P2P.Payloads
         public virtual UInt160[] GetScriptHashesForVerifying(Snapshot snapshot)
         {
             HashSet<UInt160> hashes = new HashSet<UInt160>(Attributes.Where(p => p.Usage == TransactionAttributeUsage.Script).Select(p => new UInt160(p.Data)));
-            hashes.Add(Detail.From);
             return hashes.OrderBy(p => p).ToArray();
         }
 

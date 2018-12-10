@@ -15,13 +15,20 @@ namespace Zoro.Network.P2P.Payloads
 
         public int Size => AssetId.Size + To.Size + From.Size + Value.Size;
 
+        public TransactionDetail()
+        {
+            AssetId = UInt256.Zero;
+            From = UInt160.Zero;
+            To = UInt160.Zero;
+            Value = Fixed8.Zero;
+        }
+
         void ISerializable.Deserialize(BinaryReader reader)
         {
             this.AssetId = reader.ReadSerializable<UInt256>();
             this.From = reader.ReadSerializable<UInt160>();
             this.To = reader.ReadSerializable<UInt160>();
             this.Value = reader.ReadSerializable<Fixed8>();
-            if (Value <= Fixed8.Zero) throw new FormatException();
         }
 
         void ISerializable.Serialize(BinaryWriter writer)

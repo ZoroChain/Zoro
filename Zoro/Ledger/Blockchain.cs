@@ -65,6 +65,7 @@ namespace Zoro.Ledger
                             {
                                 ChainHash = ChainHash,
                                 Nonce = 2083236893,
+                                Detail = new TransactionDetail(),
                                 Attributes = new TransactionAttribute[0],
                                 Witnesses = new Witness[0]
                             },
