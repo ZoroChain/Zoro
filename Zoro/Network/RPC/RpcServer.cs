@@ -23,7 +23,6 @@ namespace Zoro.Network.RPC
 {
     public sealed class RpcServer : RpcHandler, IDisposable
     {
-        private Wallet wallet;
         private IWebHost host;
 
         public RpcServer(Wallet wallet = null)
@@ -58,11 +57,6 @@ namespace Zoro.Network.RPC
                 host.Dispose();
                 host = null;
             }
-        }
-
-        public void OpenWallet(Wallet wallet)
-        {
-            this.wallet = wallet;
         }
 
         private async Task ProcessAsync(HttpContext context)

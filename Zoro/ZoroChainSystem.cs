@@ -88,6 +88,10 @@ namespace Zoro
         // 设置钱包
         public void SetWallet(Wallet wallet)
         {
+            rpcserver?.SetWallet(wallet);
+
+            pluginmgr.SetWallet(wallet);
+
             eventHandler.SetWallet(wallet);
         }
 
