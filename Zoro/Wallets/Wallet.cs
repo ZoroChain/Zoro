@@ -22,9 +22,7 @@ namespace Zoro.Wallets
 
         public abstract string Name { get; }
         public abstract Version Version { get; }
-        public abstract uint WalletHeight { get; }
 
-        public abstract void ApplyTransaction(Transaction tx);
         public abstract bool Contains(UInt160 scriptHash);
         public abstract WalletAccount CreateAccount(byte[] privateKey);
         public abstract WalletAccount CreateAccount(Contract contract, KeyPair key = null);
@@ -32,7 +30,7 @@ namespace Zoro.Wallets
         public abstract bool DeleteAccount(UInt160 scriptHash);
         public abstract WalletAccount GetAccount(UInt160 scriptHash);
         public abstract IEnumerable<WalletAccount> GetAccounts();
-        public abstract IEnumerable<Coin> GetCoins(IEnumerable<UInt160> accounts);
+        public abstract IEnumerable<Coin> GetCoins(UInt160 chainHash, IEnumerable<UInt160> accounts);
         public abstract IEnumerable<UInt256> GetTransactions();
 
         public WalletAccount CreateAccount()
@@ -57,33 +55,6 @@ namespace Zoro.Wallets
         {
         }
 
-        public IEnumerable<Coin> FindUnspentCoins(params UInt160[] from)
-        {
-            IEnumerable<UInt160> accounts = from.Length > 0 ? from : GetAccounts().Where(p => !p.Lock && !p.WatchOnly).Select(p => p.ScriptHash);
-            return GetCoins(accounts).Where(p => p.State.HasFlag(CoinState.Confirmed) && !p.State.HasFlag(CoinState.Spent) && !p.State.HasFlag(CoinState.Frozen));
-        }
-
-        public virtual Coin[] FindUnspentCoins(UInt256 asset_id, Fixed8 amount, params UInt160[] from)
-        {
-            return FindUnspentCoins(FindUnspentCoins(from), asset_id, amount);
-        }
-
-        protected static Coin[] FindUnspentCoins(IEnumerable<Coin> unspents, UInt256 asset_id, Fixed8 amount)
-        {
-            Coin[] unspents_asset = unspents.Where(p => p.Output.AssetId == asset_id).ToArray();
-            Fixed8 sum = unspents_asset.Sum(p => p.Output.Value);
-            if (sum < amount) return null;
-            if (sum == amount) return unspents_asset;
-            Coin[] unspents_ordered = unspents_asset.OrderByDescending(p => p.Output.Value).ToArray();
-            int i = 0;
-            while (unspents_ordered[i].Output.Value <= amount)
-                amount -= unspents_ordered[i++].Output.Value;
-            if (amount == Fixed8.Zero)
-                return unspents_ordered.Take(i).ToArray();
-            else
-                return unspents_ordered.Take(i).Concat(new[] { unspents_ordered.Last(p => p.Output.Value >= amount) }).ToArray();
-        }
-
         public WalletAccount GetAccount(ECPoint pubkey)
         {
             return GetAccount(Contract.CreateSignatureRedeemScript(pubkey).ToScriptHash());
@@ -91,7 +62,7 @@ namespace Zoro.Wallets
 
         public Fixed8 GetAvailable(UInt256 asset_id)
         {
-            return FindUnspentCoins().Where(p => p.Output.AssetId.Equals(asset_id)).Sum(p => p.Output.Value);
+            return Fixed8.Zero;
         }
 
         public BigDecimal GetAvailable(UIntBase asset_id)
@@ -125,7 +96,7 @@ namespace Zoro.Wallets
 
         public Fixed8 GetBalance(UInt256 asset_id)
         {
-            return GetCoins(GetAccounts().Select(p => p.ScriptHash)).Where(p => !p.State.HasFlag(CoinState.Spent) && p.Output.AssetId.Equals(asset_id)).Sum(p => p.Output.Value);
+            return Fixed8.Zero;
         }
 
         public virtual UInt160 GetChangeAddress()
@@ -141,9 +112,9 @@ namespace Zoro.Wallets
             return account?.ScriptHash;
         }
 
-        public IEnumerable<Coin> GetCoins()
+        public IEnumerable<Coin> GetCoins(UInt160 chainHash)
         {
-            return GetCoins(GetAccounts().Select(p => p.ScriptHash));
+            return GetCoins(chainHash, GetAccounts().Select(p => p.ScriptHash));
         }
 
         public static byte[] GetPrivateKeyFromNEP2(string nep2, string passphrase, int N = 16384, int r = 8, int p = 8)
@@ -211,56 +182,12 @@ namespace Zoro.Wallets
 
         public T MakeTransaction<T>(T tx, UInt160 from = null, UInt160 change_address = null, Fixed8 fee = default(Fixed8)) where T : Transaction
         {
-            if (tx.Outputs == null) tx.Outputs = new TransactionOutput[0];
             if (tx.Attributes == null) tx.Attributes = new TransactionAttribute[0];
-            fee += tx.SystemFee;
-            var pay_total = tx.Outputs.GroupBy(p => p.AssetId, (k, g) => new
-            {
-                AssetId = k,
-                Value = g.Sum(p => p.Value)
-            }).ToDictionary(p => p.AssetId);
-            var pay_coins = pay_total.Select(p => new
-            {
-                AssetId = p.Key,
-                Unspents = from == null ? FindUnspentCoins(p.Key, p.Value.Value) : FindUnspentCoins(p.Key, p.Value.Value, from)
-            }).ToDictionary(p => p.AssetId);
-            if (pay_coins.Any(p => p.Value.Unspents == null)) return null;
-            var input_sum = pay_coins.Values.ToDictionary(p => p.AssetId, p => new
-            {
-                p.AssetId,
-                Value = p.Unspents.Sum(q => q.Output.Value)
-            });
-            if (change_address == null) change_address = GetChangeAddress();
-            List<TransactionOutput> outputs_new = new List<TransactionOutput>(tx.Outputs);
-            foreach (UInt256 asset_id in input_sum.Keys)
-            {
-                if (input_sum[asset_id].Value > pay_total[asset_id].Value)
-                {
-                    outputs_new.Add(new TransactionOutput
-                    {
-                        AssetId = asset_id,
-                        Value = input_sum[asset_id].Value - pay_total[asset_id].Value,
-                        ScriptHash = change_address
-                    });
-                }
-            }
-            tx.Inputs = pay_coins.Values.SelectMany(p => p.Unspents).Select(p => p.Reference).ToArray();
-            tx.Outputs = outputs_new.ToArray();
             return tx;
         }
 
-        public Transaction MakeTransaction(Blockchain blockchain, List<TransactionAttribute> attributes, IEnumerable<TransferOutput> outputs, UInt160 from = null, UInt160 change_address = null, Fixed8 fee = default(Fixed8))
+        public Transaction MakeTransaction(Blockchain blockchain, List<TransactionAttribute> attributes, UInt160 from = null, UInt160 change_address = null, Fixed8 fee = default(Fixed8))
         {
-            var cOutputs = outputs.Where(p => !p.IsGlobalAsset).GroupBy(p => new
-            {
-                AssetId = (UInt160)p.AssetId,
-                Account = p.ScriptHash
-            }, (k, g) => new
-            {
-                k.AssetId,
-                Value = g.Aggregate(BigInteger.Zero, (x, y) => x + y.Value.Value),
-                k.Account
-            }).ToArray();
             Transaction tx;
             if (attributes == null) attributes = new List<TransactionAttribute>();
             {
@@ -268,49 +195,6 @@ namespace Zoro.Wallets
                 HashSet<UInt160> sAttributes = new HashSet<UInt160>();
                 using (ScriptBuilder sb = new ScriptBuilder())
                 {
-                    foreach (var output in cOutputs)
-                    {
-                        var balances = new List<(UInt160 Account, BigInteger Value)>();
-                        foreach (UInt160 account in accounts)
-                        {
-                            byte[] script;
-                            using (ScriptBuilder sb2 = new ScriptBuilder())
-                            {
-                                sb2.EmitAppCall(output.AssetId, "balanceOf", account);
-                                script = sb2.ToArray();
-                            }
-                            ApplicationEngine engine = ApplicationEngine.Run(script, blockchain);
-                            if (engine.State.HasFlag(VMState.FAULT)) return null;
-                            balances.Add((account, engine.ResultStack.Pop().GetBigInteger()));
-                        }
-                        BigInteger sum = balances.Aggregate(BigInteger.Zero, (x, y) => x + y.Value);
-                        if (sum < output.Value) return null;
-                        if (sum != output.Value)
-                        {
-                            balances = balances.OrderByDescending(p => p.Value).ToList();
-                            BigInteger amount = output.Value;
-                            int i = 0;
-                            while (balances[i].Value <= amount)
-                                amount -= balances[i++].Value;
-                            if (amount == BigInteger.Zero)
-                                balances = balances.Take(i).ToList();
-                            else
-                                balances = balances.Take(i).Concat(new[] { balances.Last(p => p.Value >= amount) }).ToList();
-                            sum = balances.Aggregate(BigInteger.Zero, (x, y) => x + y.Value);
-                        }
-                        sAttributes.UnionWith(balances.Select(p => p.Account));
-                        for (int i = 0; i < balances.Count; i++)
-                        {
-                            BigInteger value = balances[i].Value;
-                            if (i == 0)
-                            {
-                                BigInteger change = sum - output.Value;
-                                if (change > 0) value -= change;
-                            }
-                            sb.EmitAppCall(output.AssetId, "transfer", balances[i].Account, output.Account, value);
-                            sb.Emit(OpCode.THROWIFNOT);
-                        }
-                    }
                     byte[] nonce = new byte[8];
                     rand.NextBytes(nonce);
                     sb.Emit(OpCode.RET, nonce);
@@ -327,8 +211,6 @@ namespace Zoro.Wallets
                 }));
             }
             tx.Attributes = attributes.ToArray();
-            tx.Inputs = new CoinReference[0];
-            tx.Outputs = outputs.Where(p => p.IsGlobalAsset).Select(p => p.ToTxOutput()).ToArray();
             tx.Witnesses = new Witness[0];
             if (tx is InvocationTransaction itx)
             {
@@ -340,8 +222,6 @@ namespace Zoro.Wallets
                     Script = itx.Script,
                     Gas = InvocationTransaction.GetGas(engine.GasConsumed),
                     Attributes = itx.Attributes,
-                    Inputs = itx.Inputs,
-                    Outputs = itx.Outputs
                 };
             }
             tx = MakeTransaction(tx, from, change_address, fee);

@@ -6,36 +6,39 @@ using System.IO;
 
 namespace Zoro.Network.P2P.Payloads
 {
-    public class TransactionOutput : ISerializable
+    public class TransactionDetail : ISerializable
     {
         public UInt256 AssetId;
+        public UInt160 From;
+        public UInt160 To;
         public Fixed8 Value;
-        public UInt160 ScriptHash;
 
-        public int Size => AssetId.Size + Value.Size + ScriptHash.Size;
+        public int Size => AssetId.Size + To.Size + From.Size + Value.Size;
 
         void ISerializable.Deserialize(BinaryReader reader)
         {
             this.AssetId = reader.ReadSerializable<UInt256>();
+            this.From = reader.ReadSerializable<UInt160>();
+            this.To = reader.ReadSerializable<UInt160>();
             this.Value = reader.ReadSerializable<Fixed8>();
             if (Value <= Fixed8.Zero) throw new FormatException();
-            this.ScriptHash = reader.ReadSerializable<UInt160>();
         }
 
         void ISerializable.Serialize(BinaryWriter writer)
         {
             writer.Write(AssetId);
+            writer.Write(From);
+            writer.Write(To);
             writer.Write(Value);
-            writer.Write(ScriptHash);
         }
 
-        public JObject ToJson(ushort index)
+        public JObject ToJson()
         {
             JObject json = new JObject();
-            json["n"] = index;
             json["asset"] = AssetId.ToString();
             json["value"] = Value.ToString();
-            json["address"] = ScriptHash.ToAddress();
+            json["from"] = From.ToAddress();
+            json["to"] = To.ToAddress();
             return json;
         }
     }

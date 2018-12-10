@@ -2,7 +2,6 @@ using Zoro.Cryptography;
 using Zoro.IO;
 using Zoro.IO.Caching;
 using Zoro.IO.Json;
-using Zoro.Ledger;
 using Zoro.Persistence;
 using Zoro.SmartContract;
 using Neo.VM;
@@ -29,9 +28,9 @@ namespace Zoro.Network.P2P.Payloads
 
         public readonly TransactionType Type;
         public byte Version;
+        public TransactionDetail Detail;
         public TransactionAttribute[] Attributes;
-        public CoinReference[] Inputs;
-        public TransactionOutput[] Outputs;
+
         public Witness[] Witnesses { get; set; }
 
         private UInt256 _hash = null;
@@ -66,39 +65,7 @@ namespace Zoro.Network.P2P.Payloads
             }
         }
 
-        private IReadOnlyDictionary<CoinReference, TransactionOutput> _references;
-        public IReadOnlyDictionary<CoinReference, TransactionOutput> References
-        {
-            get
-            {
-                if (_references == null)
-                {
-                    Dictionary<CoinReference, TransactionOutput> dictionary = new Dictionary<CoinReference, TransactionOutput>();
-                    Blockchain blockchain = ZoroChainSystem.Singleton.GetBlockchain(this.ChainHash);
-                    if (blockchain != null)
-                    {
-                        foreach (var group in Inputs.GroupBy(p => p.PrevHash))
-                        {
-                            Transaction tx = blockchain.Store.GetTransaction(group.Key);
-                            if (tx == null) return null;
-                            foreach (var reference in group.Select(p => new
-                            {
-                                Input = p,
-                                Output = tx.Outputs[p.PrevIndex]
-                            }))
-                            {
-                                dictionary.Add(reference.Input, reference.Output);
-                            }
-                        }
-                    }
-
-                    _references = dictionary;
-                }
-                return _references;
-            }
-        }
-
-        public virtual int Size => sizeof(TransactionType) + sizeof(byte) + Attributes.GetVarSize() + Inputs.GetVarSize() + Outputs.GetVarSize() + Witnesses.GetVarSize();
+        public virtual int Size => sizeof(TransactionType) + sizeof(byte) + Attributes.GetVarSize() + Witnesses.GetVarSize();
 
         public virtual Fixed8 SystemFee => Fixed8.Zero;
 
@@ -151,8 +118,7 @@ namespace Zoro.Network.P2P.Payloads
             Version = reader.ReadByte();
             DeserializeExclusiveData(reader);
             Attributes = reader.ReadSerializableArray<TransactionAttribute>(MaxTransactionAttributes);
-            Inputs = reader.ReadSerializableArray<CoinReference>();
-            Outputs = reader.ReadSerializableArray<TransactionOutput>(ushort.MaxValue + 1);
+            Detail = reader.ReadSerializable<TransactionDetail>();
         }
 
         public bool Equals(Transaction other)
@@ -179,37 +145,9 @@ namespace Zoro.Network.P2P.Payloads
 
         public virtual UInt160[] GetScriptHashesForVerifying(Snapshot snapshot)
         {
-            if (References == null) throw new InvalidOperationException();
-            HashSet<UInt160> hashes = new HashSet<UInt160>(Inputs.Select(p => References[p].ScriptHash));
-            hashes.UnionWith(Attributes.Where(p => p.Usage == TransactionAttributeUsage.Script).Select(p => new UInt160(p.Data)));
-            foreach (var group in Outputs.GroupBy(p => p.AssetId))
-            {
-                AssetState asset = snapshot.Assets.TryGet(group.Key);
-                if (asset == null) throw new InvalidOperationException();
-                if (asset.AssetType.HasFlag(AssetType.DutyFlag))
-                {
-                    hashes.UnionWith(group.Select(p => p.ScriptHash));
-                }
-            }
+            HashSet<UInt160> hashes = new HashSet<UInt160>(Attributes.Where(p => p.Usage == TransactionAttributeUsage.Script).Select(p => new UInt160(p.Data)));
+            hashes.Add(Detail.From);
             return hashes.OrderBy(p => p).ToArray();
-        }
-
-        public IEnumerable<TransactionResult> GetTransactionResults()
-        {
-            if (References == null) return null;
-            return References.Values.Select(p => new
-            {
-                p.AssetId,
-                p.Value
-            }).Concat(Outputs.Select(p => new
-            {
-                p.AssetId,
-                Value = -p.Value
-            })).GroupBy(p => p.AssetId, (k, g) => new TransactionResult
-            {
-                AssetId = k,
-                Amount = g.Sum(p => p.Value)
-            }).Where(p => p.Amount != Fixed8.Zero);
         }
 
         protected virtual void OnDeserialized()
@@ -232,8 +170,7 @@ namespace Zoro.Network.P2P.Payloads
             writer.Write(Version);
             SerializeExclusiveData(writer);
             writer.Write(Attributes);
-            writer.Write(Inputs);
-            writer.Write(Outputs);
+            writer.Write(Detail);
         }
 
         public virtual JObject ToJson()
@@ -244,8 +181,7 @@ namespace Zoro.Network.P2P.Payloads
             json["type"] = Type;
             json["version"] = Version;
             json["attributes"] = Attributes.Select(p => p.ToJson()).ToArray();
-            json["vin"] = Inputs.Select(p => p.ToJson()).ToArray();
-            json["vout"] = Outputs.Select((p, i) => p.ToJson((ushort)i)).ToArray();
+            json["info"] = Detail.ToJson();
             json["sys_fee"] = SystemFee.ToString();
             json["net_fee"] = NetworkFee.ToString();
             json["scripts"] = Witnesses.Select(p => p.ToJson()).ToArray();

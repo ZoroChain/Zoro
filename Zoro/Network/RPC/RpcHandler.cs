@@ -274,16 +274,6 @@ namespace Zoro.Network.RPC
                             }) ?? new StorageItem();
                             return item.Value?.ToHexString();
                         }
-                    case "gettxout":
-                        {
-                            Blockchain blockchain = GetTargetChain(_params[0]);
-                            if (blockchain == null)
-                                throw new RpcException(-100, "Unknown blockchain");
-
-                            UInt256 hash = UInt256.Parse(_params[1].AsString());
-                            ushort index = (ushort)_params[2].AsNumber();
-                            return blockchain.Store.GetUnspent(hash, index)?.ToJson(index);
-                        }
                     case "getvalidators":
                         {
                             Blockchain blockchain = GetTargetChain(_params[0]);
@@ -309,11 +299,6 @@ namespace Zoro.Network.RPC
                             json["useragent"] = LocalNode.UserAgent;
                             return json;
                         }
-                    case "getwalletheight":
-                        if (wallet == null)
-                            throw new RpcException(-400, "Access denied.");
-                        else
-                            return (wallet.WalletHeight > 0) ? wallet.WalletHeight - 1 : 0;
                     case "invoke":
                         {
                             UInt160 script_hash = UInt160.Parse(_params[1].AsString());

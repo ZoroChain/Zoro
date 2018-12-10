@@ -1,33 +1,17 @@
-﻿using Zoro.Ledger;
-using Zoro.Network.P2P.Payloads;
-using System;
+﻿using System;
 
 namespace Zoro.Wallets
 {
     public class Coin : IEquatable<Coin>
     {
-        public CoinReference Reference;
-        public TransactionOutput Output;
-        public CoinState State;
-
-        private string _address = null;
-        public string Address
-        {
-            get
-            {
-                if (_address == null)
-                {
-                    _address = Output.ScriptHash.ToAddress();
-                }
-                return _address;
-            }
-        }
+        public UInt256 AssetId;
+        public Fixed8 Balance;
 
         public bool Equals(Coin other)
         {
             if (ReferenceEquals(this, other)) return true;
             if (other is null) return false;
-            return Reference.Equals(other.Reference);
+            return AssetId.Equals(other.AssetId) && Balance.Equals(other.Balance);
         }
 
         public override bool Equals(object obj)
@@ -37,7 +21,7 @@ namespace Zoro.Wallets
 
         public override int GetHashCode()
         {
-            return Reference.GetHashCode();
+            return AssetId.GetHashCode() + Balance.GetHashCode();
         }
     }
 }

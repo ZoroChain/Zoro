@@ -8,7 +8,6 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using UserWallet = Zoro.Wallets.SQLite.UserWallet;
 
 namespace Zoro.Wallets.NEP6
 {
@@ -16,7 +15,6 @@ namespace Zoro.Wallets.NEP6
     {
         public override event EventHandler<WalletTransactionEventArgs> WalletTransaction;
 
-        private readonly WalletIndexer indexer;
         private readonly string path;
         private string password;
         private string name;
@@ -28,11 +26,9 @@ namespace Zoro.Wallets.NEP6
 
         public override string Name => name;
         public override Version Version => version;
-        public override uint WalletHeight => indexer.IndexHeight;
 
-        public NEP6Wallet(WalletIndexer indexer, string path, string name = null)
+        public NEP6Wallet(string path, string name = null)
         {
-            this.indexer = indexer;
             this.path = path;
             if (File.Exists(path))
             {
@@ -46,7 +42,6 @@ namespace Zoro.Wallets.NEP6
                 this.Scrypt = ScryptParameters.FromJson(wallet["scrypt"]);
                 this.accounts = ((JArray)wallet["accounts"]).Select(p => NEP6Account.FromJson(p, this)).ToDictionary(p => p.ScriptHash);
                 this.extra = wallet["extra"];
-                indexer.RegisterAccounts(accounts.Keys);
             }
             else
             {
@@ -56,7 +51,6 @@ namespace Zoro.Wallets.NEP6
                 this.accounts = new Dictionary<UInt160, NEP6Account>();
                 this.extra = JObject.Null;
             }
-            indexer.WalletTransaction += WalletIndexer_WalletTransaction;
         }
 
         private void AddAccount(NEP6Account account, bool is_import)
@@ -84,27 +78,8 @@ namespace Zoro.Wallets.NEP6
                     }
                     account.Extra = account_old.Extra;
                 }
-                else
-                {
-                    indexer.RegisterAccounts(new[] { account.ScriptHash }, is_import ? 0 : Blockchain.Root.Height);
-                }
                 accounts[account.ScriptHash] = account;
             }
-        }
-
-        public override void ApplyTransaction(Transaction tx)
-        {
-            lock (unconfirmed)
-            {
-                unconfirmed[tx.Hash] = tx;
-            }
-            WalletTransaction?.Invoke(this, new WalletTransactionEventArgs
-            {
-                Transaction = tx,
-                RelatedAccounts = tx.Witnesses.Select(p => p.ScriptHash).Union(tx.Outputs.Select(p => p.ScriptHash)).Where(p => Contains(p)).ToArray(),
-                Height = null,
-                Time = DateTime.UtcNow.ToTimestamp()
-            });
         }
 
         public override bool Contains(UInt160 scriptHash)
@@ -175,21 +150,11 @@ namespace Zoro.Wallets.NEP6
             {
                 removed = accounts.Remove(scriptHash);
             }
-            if (removed)
-            {
-                indexer.UnregisterAccounts(new[] { scriptHash });
-            }
             return removed;
         }
 
         public override void Dispose()
-        {
-            indexer.WalletTransaction -= WalletIndexer_WalletTransaction;
-        }
-
-        public override Coin[] FindUnspentCoins(UInt256 asset_id, Fixed8 amount, UInt160[] from)
-        {
-            return FindUnspentCoins(FindUnspentCoins(from).ToArray().Where(p => GetAccount(p.Output.ScriptHash).Contract.Script.IsSignatureContract()), asset_id, amount) ?? base.FindUnspentCoins(asset_id, amount, from);
+        {            
         }
 
         public override WalletAccount GetAccount(UInt160 scriptHash)
@@ -210,51 +175,19 @@ namespace Zoro.Wallets.NEP6
             }
         }
 
-        public override IEnumerable<Coin> GetCoins(IEnumerable<UInt160> accounts)
+        public override IEnumerable<Coin> GetCoins(UInt160 chainHash, IEnumerable<UInt160> accounts)
         {
-            if (unconfirmed.Count == 0)
-                return indexer.GetCoins(accounts);
-            else
-                return GetCoinsInternal();
-            IEnumerable<Coin> GetCoinsInternal()
+            Coin[] coins = new Coin[0];
+
+            HashSet<UInt160> accounts_set = new HashSet<UInt160>(accounts);
+            foreach (Coin coin in coins)
             {
-                HashSet<CoinReference> inputs;
-                Coin[] coins_unconfirmed;
-                lock (unconfirmed)
-                {
-                    inputs = new HashSet<CoinReference>(unconfirmed.Values.SelectMany(p => p.Inputs));
-                    coins_unconfirmed = unconfirmed.Values.Select(tx => tx.Outputs.Select((o, i) => new Coin
-                    {
-                        Reference = new CoinReference
-                        {
-                            PrevHash = tx.Hash,
-                            PrevIndex = (ushort)i
-                        },
-                        Output = o,
-                        State = CoinState.Unconfirmed
-                    })).SelectMany(p => p).ToArray();
-                }
-                foreach (Coin coin in indexer.GetCoins(accounts))
-                {
-                    if (inputs.Contains(coin.Reference))
-                    {
-                        continue;
-                    }
-                    yield return coin;
-                }
-                HashSet<UInt160> accounts_set = new HashSet<UInt160>(accounts);
-                foreach (Coin coin in coins_unconfirmed)
-                {
-                    if (accounts_set.Contains(coin.Output.ScriptHash))
-                        yield return coin;
-                }
+                yield return coin;
             }
         }
 
         public override IEnumerable<UInt256> GetTransactions()
         {
-            foreach (UInt256 hash in indexer.GetTransactions(accounts.Keys))
-                yield return hash;
             lock (unconfirmed)
             {
                 foreach (UInt256 hash in unconfirmed.Keys)
@@ -325,22 +258,6 @@ namespace Zoro.Wallets.NEP6
         internal void Lock()
         {
             password = null;
-        }
-
-        public static NEP6Wallet Migrate(WalletIndexer indexer, string path, string db3path, string password)
-        {
-            using (UserWallet wallet_old = UserWallet.Open(indexer, db3path, password))
-            {
-                NEP6Wallet wallet_new = new NEP6Wallet(indexer, path, wallet_old.Name);
-                using (wallet_new.Unlock(password))
-                {
-                    foreach (WalletAccount account in wallet_old.GetAccounts())
-                    {
-                        wallet_new.CreateAccount(account.Contract, account.GetKey());
-                    }
-                }
-                return wallet_new;
-            }
         }
 
         public void Save()

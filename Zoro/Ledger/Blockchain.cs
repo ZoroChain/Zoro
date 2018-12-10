@@ -66,8 +66,6 @@ namespace Zoro.Ledger
                                 ChainHash = ChainHash,
                                 Nonce = 2083236893,
                                 Attributes = new TransactionAttribute[0],
-                                Inputs = new CoinReference[0],
-                                Outputs = new TransactionOutput[0],
                                 Witnesses = new Witness[0]
                             },
                         }
@@ -496,10 +494,6 @@ namespace Zoro.Ledger
                     {
                         BlockIndex = block.Index,
                         Transaction = tx
-                    });
-                    snapshot.UnspentCoins.Add(tx.Hash, new UnspentCoinState
-                    {
-                        Items = Enumerable.Repeat(CoinState.Confirmed, tx.Outputs.Length).ToArray()
                     });
                     List<ApplicationExecutionResult> execution_results = new List<ApplicationExecutionResult>();
                     switch (tx)

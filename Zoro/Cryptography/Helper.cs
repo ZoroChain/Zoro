@@ -117,8 +117,6 @@ namespace Zoro.Cryptography
         internal static bool Test(this BloomFilter filter, Transaction tx)
         {
             if (filter.Check(tx.Hash.ToArray())) return true;
-            if (tx.Outputs.Any(p => filter.Check(p.ScriptHash.ToArray()))) return true;
-            if (tx.Inputs.Any(p => filter.Check(p.ToArray()))) return true;
             if (tx.Witnesses.Any(p => filter.Check(p.ScriptHash.ToArray())))
                 return true;
             return false;

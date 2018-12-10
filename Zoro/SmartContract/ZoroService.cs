@@ -43,10 +43,6 @@ namespace Zoro.SmartContract
             Register("Zoro.Transaction.GetHash", Transaction_GetHash, 1);
             Register("Zoro.Transaction.GetType", Transaction_GetType, 1);
             Register("Zoro.Transaction.GetAttributes", Transaction_GetAttributes, 1);
-            Register("Zoro.Transaction.GetInputs", Transaction_GetInputs, 1);
-            Register("Zoro.Transaction.GetOutputs", Transaction_GetOutputs, 1);
-            Register("Zoro.Transaction.GetReferences", Transaction_GetReferences, 200);
-            Register("Zoro.Transaction.GetUnspentCoins", Transaction_GetUnspentCoins, 200);
             Register("Zoro.Transaction.GetWitnesses", Transaction_GetWitnesses, 200);
             Register("Zoro.InvocationTransaction.GetScript", InvocationTransaction_GetScript, 1);
             Register("Zoro.Witness.GetVerificationScript", Witness_GetVerificationScript, 100);

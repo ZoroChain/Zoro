@@ -51,6 +51,7 @@ namespace Zoro.SmartContract
             Register("Neo.Transaction.GetAttributes", Transaction_GetAttributes, 1);
             Register("Neo.Transaction.GetInputs", Transaction_GetInputs, 1);
             Register("Neo.Transaction.GetOutputs", Transaction_GetOutputs, 1);
+            Register("Neo.Transaction.GetDetail", Transaction_GetDetail, 1);
             Register("Neo.Transaction.GetReferences", Transaction_GetReferences, 200);
             Register("Neo.Transaction.GetUnspentCoins", Transaction_GetUnspentCoins, 200);
             Register("Neo.Transaction.GetWitnesses", Transaction_GetWitnesses, 200);
@@ -63,6 +64,10 @@ namespace Zoro.SmartContract
             Register("Neo.Output.GetAssetId", Output_GetAssetId, 1);
             Register("Neo.Output.GetValue", Output_GetValue, 1);
             Register("Neo.Output.GetScriptHash", Output_GetScriptHash, 1);
+            Register("Neo.TransactionDetail.GetAssetId", TransactionDetail_GetAssetId, 1);
+            Register("Neo.TransactionDetail.GetValue", TransactionDetail_GetValue, 1);
+            Register("Neo.TransactionDetail.GetFrom", TransactionDetail_GetFrom, 1);
+            Register("Neo.TransactionDetail.GetTo", TransactionDetail_GetTo, 1);
             Register("Neo.Account.GetScriptHash", Account_GetScriptHash, 1);
             Register("Neo.Account.GetVotes", Account_GetVotes, 1);
             Register("Neo.Account.GetBalance", Account_GetBalance, 1);
@@ -264,61 +269,36 @@ namespace Zoro.SmartContract
 
         protected bool Transaction_GetInputs(ExecutionEngine engine)
         {
-            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
-            {
-                Transaction tx = _interface.GetInterface<Transaction>();
-                if (tx == null) return false;
-                if (tx.Inputs.Length > ApplicationEngine.MaxArraySize)
-                    return false;
-                engine.CurrentContext.EvaluationStack.Push(tx.Inputs.Select(p => StackItem.FromInterface(p)).ToArray());
-                return true;
-            }
             return false;
         }
 
         protected bool Transaction_GetOutputs(ExecutionEngine engine)
         {
-            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
-            {
-                Transaction tx = _interface.GetInterface<Transaction>();
-                if (tx == null) return false;
-                if (tx.Outputs.Length > ApplicationEngine.MaxArraySize)
-                    return false;
-                engine.CurrentContext.EvaluationStack.Push(tx.Outputs.Select(p => StackItem.FromInterface(p)).ToArray());
-                return true;
-            }
             return false;
         }
 
         protected bool Transaction_GetReferences(ExecutionEngine engine)
         {
-            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
-            {
-                Transaction tx = _interface.GetInterface<Transaction>();
-                if (tx == null) return false;
-                if (tx.Inputs.Length > ApplicationEngine.MaxArraySize)
-                    return false;
-                engine.CurrentContext.EvaluationStack.Push(tx.Inputs.Select(p => StackItem.FromInterface(tx.References[p])).ToArray());
-                return true;
-            }
             return false;
         }
 
         protected bool Transaction_GetUnspentCoins(ExecutionEngine engine)
         {
+            return false;
+        }
+
+        protected bool Transaction_GetDetail(ExecutionEngine engine)
+        {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
                 Transaction tx = _interface.GetInterface<Transaction>();
                 if (tx == null) return false;
-                TransactionOutput[] outputs = Snapshot.GetUnspent(tx.Hash).ToArray();
-                if (outputs.Length > ApplicationEngine.MaxArraySize)
-                    return false;
-                engine.CurrentContext.EvaluationStack.Push(outputs.Select(p => StackItem.FromInterface(p)).ToArray());
+                engine.CurrentContext.EvaluationStack.Push(StackItem.FromInterface(tx.Detail));
                 return true;
             }
             return false;
         }
-
+           
         protected bool Transaction_GetWitnesses(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
@@ -408,35 +388,62 @@ namespace Zoro.SmartContract
 
         protected bool Output_GetAssetId(ExecutionEngine engine)
         {
-            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
-            {
-                TransactionOutput output = _interface.GetInterface<TransactionOutput>();
-                if (output == null) return false;
-                engine.CurrentContext.EvaluationStack.Push(output.AssetId.ToArray());
-                return true;
-            }
             return false;
         }
 
         protected bool Output_GetValue(ExecutionEngine engine)
         {
-            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
-            {
-                TransactionOutput output = _interface.GetInterface<TransactionOutput>();
-                if (output == null) return false;
-                engine.CurrentContext.EvaluationStack.Push(output.Value.GetData());
-                return true;
-            }
             return false;
         }
 
         protected bool Output_GetScriptHash(ExecutionEngine engine)
         {
+            return false;
+        }
+
+        protected bool TransactionDetail_GetAssetId(ExecutionEngine engine)
+        {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
             {
-                TransactionOutput output = _interface.GetInterface<TransactionOutput>();
-                if (output == null) return false;
-                engine.CurrentContext.EvaluationStack.Push(output.ScriptHash.ToArray());
+                TransactionDetail detail = _interface.GetInterface<TransactionDetail>();
+                if (detail == null) return false;
+                engine.CurrentContext.EvaluationStack.Push(detail.AssetId.ToArray());
+                return true;
+            }
+            return false;
+        }
+
+        protected bool TransactionDetail_GetValue(ExecutionEngine engine)
+        {
+            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
+            {
+                TransactionDetail detail = _interface.GetInterface<TransactionDetail>();
+                if (detail == null) return false;
+                engine.CurrentContext.EvaluationStack.Push(detail.Value.GetData());
+                return true;
+            }
+            return false;
+        }
+
+        protected bool TransactionDetail_GetFrom(ExecutionEngine engine)
+        {
+            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
+            {
+                TransactionDetail detail = _interface.GetInterface<TransactionDetail>();
+                if (detail == null) return false;
+                engine.CurrentContext.EvaluationStack.Push(detail.From.ToArray());
+                return true;
+            }
+            return false;
+        }
+
+        protected bool TransactionDetail_GetTo(ExecutionEngine engine)
+        {
+            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
+            {
+                TransactionDetail detail = _interface.GetInterface<TransactionDetail>();
+                if (detail == null) return false;
+                engine.CurrentContext.EvaluationStack.Push(detail.To.ToArray());
                 return true;
             }
             return false;

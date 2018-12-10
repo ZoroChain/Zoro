@@ -76,26 +76,6 @@ namespace Zoro.Persistence
             return Contracts[new UInt160(script_hash)].Script;
         }
 
-        public Dictionary<ushort, SpentCoin> GetUnclaimed(UInt256 hash)
-        {
-            TransactionState tx_state = Transactions.TryGet(hash);
-            if (tx_state == null) return null;
-            SpentCoinState coin_state = SpentCoins.TryGet(hash);
-            if (coin_state != null)
-            {
-                return coin_state.Items.ToDictionary(p => p.Key, p => new SpentCoin
-                {
-                    Output = tx_state.Transaction.Outputs[p.Key],
-                    StartHeight = tx_state.BlockIndex,
-                    EndHeight = p.Value
-                });
-            }
-            else
-            {
-                return new Dictionary<ushort, SpentCoin>();
-            }
-        }
-
         private ECPoint[] _validators = null;
         public ECPoint[] GetValidators()
         {

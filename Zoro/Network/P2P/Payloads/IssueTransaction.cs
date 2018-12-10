@@ -22,12 +22,6 @@ namespace Zoro.Network.P2P.Payloads
         public override UInt160[] GetScriptHashesForVerifying(Snapshot snapshot)
         {
             HashSet<UInt160> hashes = new HashSet<UInt160>(base.GetScriptHashesForVerifying(snapshot));
-            foreach (TransactionResult result in GetTransactionResults().Where(p => p.Amount < Fixed8.Zero))
-            {
-                AssetState asset = snapshot.Assets.TryGet(result.AssetId);
-                if (asset == null) throw new InvalidOperationException();
-                hashes.Add(asset.Issuer);
-            }
             return hashes.OrderBy(p => p).ToArray();
         }
 

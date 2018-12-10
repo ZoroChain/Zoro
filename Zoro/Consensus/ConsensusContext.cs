@@ -211,12 +211,6 @@ namespace Zoro.Consensus
                 mem_pool = plugin.FilterForBlock(mem_pool);
             List<Transaction> transactions = mem_pool.ToList();
             Fixed8 amount_netfee = Block.CalculateNetFee(transactions);
-            TransactionOutput[] outputs = amount_netfee == Fixed8.Zero ? new TransactionOutput[0] : new[] { new TransactionOutput
-            {
-                AssetId = UInt256.Zero,
-                Value = amount_netfee,
-                ScriptHash = wallet.GetChangeAddress()
-            } };
             while (true)
             {
                 ulong nonce = GetNonce();
@@ -224,9 +218,14 @@ namespace Zoro.Consensus
                 {
                     ChainHash = blockchain.ChainHash,
                     Nonce = (uint)(nonce % (uint.MaxValue + 1ul)),
+                    Detail = new TransactionDetail
+                    {
+                        AssetId = UInt256.Zero,
+                        From = UInt160.Zero,
+                        To = wallet.GetChangeAddress(),
+                        Value = amount_netfee
+                    },
                     Attributes = new TransactionAttribute[0],
-                    Inputs = new CoinReference[0],
-                    Outputs = outputs,
                     Witnesses = new Witness[0]
                 };
                 if (!snapshot.ContainsTransaction(tx.Hash))
@@ -258,7 +257,7 @@ namespace Zoro.Consensus
                 return false;
             Transaction tx_gen = Transactions.Values.FirstOrDefault(p => p.Type == TransactionType.MinerTransaction);
             Fixed8 amount_netfee = Block.CalculateNetFee(Transactions.Values);
-            if (tx_gen?.Outputs.Sum(p => p.Value) != amount_netfee) return false;
+            //if (tx_gen?.Outputs.Sum(p => p.Value) != amount_netfee) return false;
             return true;
         }
     }

@@ -25,13 +25,6 @@ namespace Zoro.Network.P2P.Payloads
             this.Nonce = reader.ReadUInt32();
         }
 
-        protected override void OnDeserialized()
-        {
-            base.OnDeserialized();
-            if (Inputs.Length != 0)
-                throw new FormatException();
-        }
-
         protected override void SerializeExclusiveData(BinaryWriter writer)
         {
             writer.Write(Nonce);
