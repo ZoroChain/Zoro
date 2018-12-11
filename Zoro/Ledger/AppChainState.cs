@@ -43,7 +43,7 @@ namespace Zoro.Ledger
         {
             return new AppChainState
             {
-                StateVersion = 1,
+                StateVersion = StateVersion,
                 Hash = Hash,
                 Name = Name,
                 Owner = Owner,

@@ -154,14 +154,14 @@ namespace Zoro.SmartContract
             return true;
         }
 
-        protected bool CheckWitness(ExecutionEngine engine, UInt160 hash)
+        public bool CheckWitness(ExecutionEngine engine, UInt160 hash)
         {
             IVerifiable container = (IVerifiable)engine.ScriptContainer;
             UInt160[] _hashes_for_verifying = container.GetScriptHashesForVerifying(Snapshot);
             return _hashes_for_verifying.Contains(hash);
         }
 
-        protected bool CheckWitness(ExecutionEngine engine, ECPoint pubkey)
+        public bool CheckWitness(ExecutionEngine engine, ECPoint pubkey)
         {
             return CheckWitness(engine, Contract.CreateSignatureRedeemScript(pubkey).ToScriptHash());
         }

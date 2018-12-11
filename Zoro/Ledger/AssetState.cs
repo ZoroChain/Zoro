@@ -17,6 +17,7 @@ namespace Zoro.Ledger
         public UInt256 AssetId;
         public AssetType AssetType;
         public string Name;
+        public string FullName;
         public Fixed8 Amount;
         public Fixed8 Available;
         public byte Precision;
@@ -29,15 +30,22 @@ namespace Zoro.Ledger
         public uint Expiration;
         public bool IsFrozen;
 
-        public override int Size => base.Size + AssetId.Size + sizeof(AssetType) + Name.GetVarSize() + Amount.Size + Available.Size + sizeof(byte) + sizeof(byte) + Fee.Size + FeeAddress.Size + Owner.Size + Admin.Size + Issuer.Size + sizeof(uint) + sizeof(bool);
+        public override int Size => base.Size + AssetId.Size + sizeof(AssetType) + Name.GetVarSize() + FullName.GetVarSize() + Amount.Size + Available.Size + sizeof(byte) + sizeof(byte) + Fee.Size + FeeAddress.Size + Owner.Size + Admin.Size + Issuer.Size + sizeof(uint) + sizeof(bool);
+
+        public AssetState()
+        {
+            StateVersion = 1;
+        }
 
         AssetState ICloneable<AssetState>.Clone()
         {
             return new AssetState
             {
+                StateVersion = StateVersion,
                 AssetId = AssetId,
                 AssetType = AssetType,
                 Name = Name,
+                FullName = FullName,
                 Amount = Amount,
                 Available = Available,
                 Precision = Precision,
@@ -55,10 +63,13 @@ namespace Zoro.Ledger
 
         public override void Deserialize(BinaryReader reader)
         {
-            base.Deserialize(reader);
+            byte version = reader.ReadByte();
+            if (version > StateVersion)
+                throw new FormatException();
             AssetId = reader.ReadSerializable<UInt256>();
             AssetType = (AssetType)reader.ReadByte();
             Name = reader.ReadVarString();
+            FullName = version >= 1 ? reader.ReadVarString() : Name;
             Amount = reader.ReadSerializable<Fixed8>();
             Available = reader.ReadSerializable<Fixed8>();
             Precision = reader.ReadByte();
@@ -77,6 +88,7 @@ namespace Zoro.Ledger
             AssetId = replica.AssetId;
             AssetType = replica.AssetType;
             Name = replica.Name;
+            FullName = replica.FullName;
             Amount = replica.Amount;
             Available = replica.Available;
             Precision = replica.Precision;
@@ -125,6 +137,40 @@ namespace Zoro.Ledger
             }
         }
 
+        private Dictionary<CultureInfo, string> _fullnames;
+        public string GetFullName(CultureInfo culture = null)
+        {
+            if (_fullnames == null)
+            {
+                JObject name_obj;
+                try
+                {
+                    name_obj = JObject.Parse(FullName);
+                }
+                catch (FormatException)
+                {
+                    name_obj = FullName;
+                }
+                if (name_obj is JString)
+                    _fullnames = new Dictionary<CultureInfo, string> { { new CultureInfo("en"), name_obj.AsString() } };
+                else
+                    _fullnames = ((JArray)name_obj).Where(p => p.ContainsProperty("lang") && p.ContainsProperty("fullname")).ToDictionary(p => new CultureInfo(p["lang"].AsString()), p => p["fullname"].AsString());
+            }
+            if (culture == null) culture = CultureInfo.CurrentCulture;
+            if (_fullnames.TryGetValue(culture, out string fullname))
+            {
+                return fullname;
+            }
+            else if (_fullnames.TryGetValue(en, out fullname))
+            {
+                return fullname;
+            }
+            else
+            {
+                return _fullnames.Values.First();
+            }
+        }
+
         private static readonly CultureInfo en = new CultureInfo("en");
 
         public override void Serialize(BinaryWriter writer)
@@ -133,6 +179,7 @@ namespace Zoro.Ledger
             writer.Write(AssetId);
             writer.Write((byte)AssetType);
             writer.WriteVarString(Name);
+            writer.WriteVarString(FullName);
             writer.Write(Amount);
             writer.Write(Available);
             writer.Write(Precision);
@@ -158,6 +205,14 @@ namespace Zoro.Ledger
             catch (FormatException)
             {
                 json["name"] = Name;
+            }
+            try
+            {
+                json["fullname"] = FullName == "" ? null : JObject.Parse(FullName);
+            }
+            catch (FormatException)
+            {
+                json["fullname"] = FullName;
             }
             json["amount"] = Amount.ToString();
             json["available"] = Available.ToString();
