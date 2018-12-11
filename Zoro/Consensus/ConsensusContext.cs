@@ -216,15 +216,10 @@ namespace Zoro.Consensus
                 ulong nonce = GetNonce();
                 MinerTransaction tx = new MinerTransaction
                 {
+                    Version = 1,
                     ChainHash = blockchain.ChainHash,
                     Nonce = (uint)(nonce % (uint.MaxValue + 1ul)),
-                    Detail = new TransactionDetail
-                    {
-                        AssetId = UInt256.Zero,
-                        From = UInt160.Zero,
-                        To = wallet.GetChangeAddress(),
-                        Value = amount_netfee
-                    },
+                    Address = wallet.GetChangeAddress(),
                     Attributes = new TransactionAttribute[0],
                     Witnesses = new Witness[0]
                 };

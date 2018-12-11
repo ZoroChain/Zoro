@@ -28,7 +28,6 @@ namespace Zoro.Network.P2P.Payloads
 
         public readonly TransactionType Type;
         public byte Version;
-        public TransactionDetail Detail;
         public TransactionAttribute[] Attributes;
 
         public Witness[] Witnesses { get; set; }
@@ -118,7 +117,6 @@ namespace Zoro.Network.P2P.Payloads
             Version = reader.ReadByte();
             DeserializeExclusiveData(reader);
             Attributes = reader.ReadSerializableArray<TransactionAttribute>(MaxTransactionAttributes);
-            Detail = reader.ReadSerializable<TransactionDetail>();
         }
 
         public bool Equals(Transaction other)
@@ -169,7 +167,6 @@ namespace Zoro.Network.P2P.Payloads
             writer.Write(Version);
             SerializeExclusiveData(writer);
             writer.Write(Attributes);
-            writer.Write(Detail);
         }
 
         public virtual JObject ToJson()
@@ -180,7 +177,6 @@ namespace Zoro.Network.P2P.Payloads
             json["type"] = Type;
             json["version"] = Version;
             json["attributes"] = Attributes.Select(p => p.ToJson()).ToArray();
-            json["info"] = Detail.ToJson();
             json["sys_fee"] = SystemFee.ToString();
             json["net_fee"] = NetworkFee.ToString();
             json["scripts"] = Witnesses.Select(p => p.ToJson()).ToArray();

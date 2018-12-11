@@ -51,7 +51,6 @@ namespace Zoro.SmartContract
             Register("Neo.Transaction.GetAttributes", Transaction_GetAttributes, 1);
             Register("Neo.Transaction.GetInputs", Transaction_GetInputs, 1);
             Register("Neo.Transaction.GetOutputs", Transaction_GetOutputs, 1);
-            Register("Neo.Transaction.GetDetail", Transaction_GetDetail, 1);
             Register("Neo.Transaction.GetReferences", Transaction_GetReferences, 200);
             Register("Neo.Transaction.GetUnspentCoins", Transaction_GetUnspentCoins, 200);
             Register("Neo.Transaction.GetWitnesses", Transaction_GetWitnesses, 200);
@@ -64,10 +63,6 @@ namespace Zoro.SmartContract
             Register("Neo.Output.GetAssetId", Output_GetAssetId, 1);
             Register("Neo.Output.GetValue", Output_GetValue, 1);
             Register("Neo.Output.GetScriptHash", Output_GetScriptHash, 1);
-            Register("Neo.TransactionDetail.GetAssetId", TransactionDetail_GetAssetId, 1);
-            Register("Neo.TransactionDetail.GetValue", TransactionDetail_GetValue, 1);
-            Register("Neo.TransactionDetail.GetFrom", TransactionDetail_GetFrom, 1);
-            Register("Neo.TransactionDetail.GetTo", TransactionDetail_GetTo, 1);
             Register("Neo.Account.GetScriptHash", Account_GetScriptHash, 1);
             Register("Neo.Account.GetVotes", Account_GetVotes, 1);
             Register("Neo.Account.GetBalance", Account_GetBalance, 1);
@@ -286,18 +281,6 @@ namespace Zoro.SmartContract
         {
             return false;
         }
-
-        protected bool Transaction_GetDetail(ExecutionEngine engine)
-        {
-            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
-            {
-                Transaction tx = _interface.GetInterface<Transaction>();
-                if (tx == null) return false;
-                engine.CurrentContext.EvaluationStack.Push(StackItem.FromInterface(tx.Detail));
-                return true;
-            }
-            return false;
-        }
            
         protected bool Transaction_GetWitnesses(ExecutionEngine engine)
         {
@@ -364,25 +347,11 @@ namespace Zoro.SmartContract
 
         protected bool Input_GetHash(ExecutionEngine engine)
         {
-            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
-            {
-                CoinReference input = _interface.GetInterface<CoinReference>();
-                if (input == null) return false;
-                engine.CurrentContext.EvaluationStack.Push(input.PrevHash.ToArray());
-                return true;
-            }
             return false;
         }
 
         protected bool Input_GetIndex(ExecutionEngine engine)
         {
-            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
-            {
-                CoinReference input = _interface.GetInterface<CoinReference>();
-                if (input == null) return false;
-                engine.CurrentContext.EvaluationStack.Push((int)input.PrevIndex);
-                return true;
-            }
             return false;
         }
 
@@ -398,54 +367,6 @@ namespace Zoro.SmartContract
 
         protected bool Output_GetScriptHash(ExecutionEngine engine)
         {
-            return false;
-        }
-
-        protected bool TransactionDetail_GetAssetId(ExecutionEngine engine)
-        {
-            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
-            {
-                TransactionDetail detail = _interface.GetInterface<TransactionDetail>();
-                if (detail == null) return false;
-                engine.CurrentContext.EvaluationStack.Push(detail.AssetId.ToArray());
-                return true;
-            }
-            return false;
-        }
-
-        protected bool TransactionDetail_GetValue(ExecutionEngine engine)
-        {
-            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
-            {
-                TransactionDetail detail = _interface.GetInterface<TransactionDetail>();
-                if (detail == null) return false;
-                engine.CurrentContext.EvaluationStack.Push(detail.Value.GetData());
-                return true;
-            }
-            return false;
-        }
-
-        protected bool TransactionDetail_GetFrom(ExecutionEngine engine)
-        {
-            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
-            {
-                TransactionDetail detail = _interface.GetInterface<TransactionDetail>();
-                if (detail == null) return false;
-                engine.CurrentContext.EvaluationStack.Push(detail.From.ToArray());
-                return true;
-            }
-            return false;
-        }
-
-        protected bool TransactionDetail_GetTo(ExecutionEngine engine)
-        {
-            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
-            {
-                TransactionDetail detail = _interface.GetInterface<TransactionDetail>();
-                if (detail == null) return false;
-                engine.CurrentContext.EvaluationStack.Push(detail.To.ToArray());
-                return true;
-            }
             return false;
         }
 
