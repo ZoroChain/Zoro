@@ -54,9 +54,13 @@ namespace Zoro.Consensus
 
         private bool AddTransaction(Transaction tx, bool verify)
         {
-            if (context.ContainsTransaction(tx.Hash) ||
-                (verify && !context.VerifyTransaction(tx)) ||
-                !PluginManager.Singleton.CheckPolicy(tx))
+            if (verify && !context.VerifyTransaction(tx))
+            {
+                Log($"Invalid transaction: {tx.Hash}{Environment.NewLine}{tx.ToArray().ToHexString()}", LogLevel.Warning);
+                RequestChangeView();
+                return false;
+            }
+            if (!PluginManager.Singleton.CheckPolicy(tx))
             {
                 Log($"reject tx: {tx.Hash}{Environment.NewLine}{tx.ToArray().ToHexString()}", LogLevel.Warning);
                 RequestChangeView();

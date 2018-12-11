@@ -27,7 +27,7 @@ namespace Zoro.Consensus
 
         Header PrevHeader { get; }
 
-        bool ContainsTransaction(UInt256 hash);
+        bool TransactionExists(UInt256 hash);
         bool VerifyTransaction(Transaction tx);
 
         void ChangeView(ushort view_number);
