@@ -1,5 +1,6 @@
 ﻿using Zoro.IO;
 using Zoro.IO.Json;
+using Zoro.Ledger;
 using Zoro.Wallets;
 using Zoro.Persistence;
 using System;
@@ -77,6 +78,11 @@ namespace Zoro.Network.P2P.Payloads
                 return false;
 
             if (From.Equals(UInt160.Zero) || To.Equals(UInt160.Zero))
+                return false;
+
+            AssetState asset = snapshot.Assets.TryGet(AssetId);
+            if (asset == null) return false;
+            if (asset.Expiration <= snapshot.Height + 1 && asset.AssetType != AssetType.GoverningToken && asset.AssetType != AssetType.UtilityToken)
                 return false;
 
             return base.Verify(snapshot, mempool);

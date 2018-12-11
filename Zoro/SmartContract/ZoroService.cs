@@ -167,6 +167,7 @@ namespace Zoro.SmartContract
                         Name = name,
                         Owner = owner,
                         Timestamp = timestamp,
+                        LastModified = timestamp,
                         SeedList = seedList,
                         StandbyValidators = validators,
                     };
@@ -226,6 +227,7 @@ namespace Zoro.SmartContract
 
             // 将修改保存到应用链的数据库
             state.StandbyValidators = validators;
+            state.LastModified = DateTime.UtcNow.ToTimestamp();
 
             // 添加通知事件，等待上链后处理
             if (Snapshot.PersistingBlock != null)
@@ -274,6 +276,7 @@ namespace Zoro.SmartContract
 
             // 把变更保存到应用链的数据库
             state.SeedList = seedList;
+            state.LastModified = DateTime.UtcNow.ToTimestamp();
 
             // 添加通知事件，等待上链后处理
             if (Snapshot.PersistingBlock != null)

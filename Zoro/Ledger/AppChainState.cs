@@ -16,19 +16,25 @@ namespace Zoro.Ledger
         public string Name;
         public ECPoint Owner;
         public uint Timestamp;
+        public uint LastModified;
         public string[] SeedList;
         public ECPoint[] StandbyValidators;
 
         public override int Size => base.Size + Hash.Size + Name.GetVarSize() + Owner.Size + sizeof(uint) + SeedList.GetVarSize() + StandbyValidators.GetVarSize();
 
-        public AppChainState() { }
+        public AppChainState()
+        {
+            this.StateVersion = 1;
+        }
 
         public AppChainState(UInt160 hash)
         {
+            this.StateVersion = 1;
             this.Hash = hash;
             this.Name = "";
             this.Owner = ECCurve.Secp256r1.Infinity;
             this.Timestamp = 0;
+            this.LastModified = 0;
             this.SeedList = new string[0];
             this.StandbyValidators = new ECPoint[0];
         }
@@ -37,10 +43,12 @@ namespace Zoro.Ledger
         {
             return new AppChainState
             {
+                StateVersion = 1,
                 Hash = Hash,
                 Name = Name,
                 Owner = Owner,
                 Timestamp = Timestamp,
+                LastModified = LastModified,
                 SeedList = SeedList,
                 StandbyValidators = StandbyValidators,
                 _names = _names
@@ -49,11 +57,15 @@ namespace Zoro.Ledger
 
         public override void Deserialize(BinaryReader reader)
         {
-            base.Deserialize(reader);
+            byte version = reader.ReadByte();
+            if (version > StateVersion)
+                throw new FormatException();
+
             Hash = reader.ReadSerializable<UInt160>();
             Name = reader.ReadVarString();
             Owner = ECPoint.DeserializeFrom(reader, ECCurve.Secp256r1);
             Timestamp = reader.ReadUInt32();
+            LastModified = version >= 1 ? reader.ReadUInt32() : Timestamp;
             SeedList = new string[reader.ReadVarInt()];
             for (int i = 0; i < SeedList.Length; i++)
                 SeedList[i] = reader.ReadVarString();
@@ -68,6 +80,7 @@ namespace Zoro.Ledger
             Name = replica.Name;
             Owner = replica.Owner;
             Timestamp = replica.Timestamp;
+            LastModified = replica.LastModified;
             SeedList = replica.SeedList;
             StandbyValidators = replica.StandbyValidators;
             _names = replica._names;
@@ -79,6 +92,7 @@ namespace Zoro.Ledger
             Name = state.Name;
             Owner = state.Owner;
             Timestamp = state.Timestamp;
+            LastModified = state.LastModified;
             SeedList = state.SeedList;
             StandbyValidators = state.StandbyValidators;
             _names = state._names;
@@ -127,6 +141,7 @@ namespace Zoro.Ledger
             writer.WriteVarString(Name);
             writer.Write(Owner);
             writer.Write(Timestamp);
+            writer.Write(LastModified);
             writer.WriteVarStringArray(SeedList);
             writer.Write(StandbyValidators);
         }
@@ -145,6 +160,7 @@ namespace Zoro.Ledger
             }
             json["owner"] = Owner.ToString();
             json["timestamp"] = Timestamp;
+            json["lastmodified"] = LastModified;
             json["seedlist"] = new JArray(SeedList.Select(p => (JObject)p));
             json["validators"] = new JArray(StandbyValidators.Select(p => (JObject)p.ToString()));
             return json;

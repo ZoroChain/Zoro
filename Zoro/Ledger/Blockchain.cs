@@ -39,6 +39,23 @@ namespace Zoro.Ledger
         public ECPoint[] StandbyValidators { get; private set; }
         public string Name { get; private set; }
 
+#pragma warning disable CS0612
+        public static readonly RegisterTransaction UtilityToken = new RegisterTransaction
+        {
+            AssetType = AssetType.UtilityToken,
+            Name = "[{\"lang\":\"zh-CN\",\"name\":\"BlaCat Point\"},{\"lang\":\"en\",\"name\":\"BlaCat Point\"}]",
+            Amount = Fixed8.FromDecimal(2000000000),
+            Precision = 8,
+            Owner = ECCurve.Secp256r1.Infinity,
+            Admin = (new[] { (byte)OpCode.PUSHF }).ToScriptHash(),
+            Attributes = new TransactionAttribute[0],
+            Witnesses = new Witness[0]
+        };
+
+        public static readonly RegisterTransaction BCP = UtilityToken;
+
+#pragma warning restore CS0612
+
         private Block _genesisBlock = null;
 
         public Block GenesisBlock
@@ -47,6 +64,8 @@ namespace Zoro.Ledger
             {
                 if (_genesisBlock == null)
                 {
+                    UtilityToken.ChainHash = ChainHash;
+
                     _genesisBlock = new Block
                     {
                         PrevHash = UInt256.Zero,
@@ -68,6 +87,23 @@ namespace Zoro.Ledger
                                 Attributes = new TransactionAttribute[0],
                                 Witnesses = new Witness[0]
                             },
+                            UtilityToken,
+                            new IssueTransaction
+                            {
+                                ChainHash = ChainHash,
+                                Attributes = new TransactionAttribute[0],
+                                AssetId = UtilityToken.Hash,
+                                Value = UtilityToken.Amount,
+                                ScriptHash = Contract.CreateMultiSigRedeemScript(StandbyValidators.Length / 2 + 1, StandbyValidators).ToScriptHash(),
+                                Witnesses = new[]
+                                {
+                                    new Witness
+                                    {
+                                        InvocationScript = new byte[0],
+                                        VerificationScript = new[] { (byte)OpCode.PUSHT }
+                                    }
+                                }
+                            }
                         }
                     };
                 }
@@ -498,6 +534,29 @@ namespace Zoro.Ledger
                     List<ApplicationExecutionResult> execution_results = new List<ApplicationExecutionResult>();
                     switch (tx)
                     {
+#pragma warning disable CS0612
+                        case RegisterTransaction tx_register:
+                            snapshot.Assets.Add(tx.Hash, new AssetState
+                            {
+                                AssetId = tx_register.Hash,
+                                AssetType = tx_register.AssetType,
+                                Name = tx_register.Name,
+                                Amount = tx_register.Amount,
+                                Available = Fixed8.Zero,
+                                Precision = tx_register.Precision,
+                                Fee = Fixed8.Zero,
+                                FeeAddress = new UInt160(),
+                                Owner = tx_register.Owner,
+                                Admin = tx_register.Admin,
+                                Issuer = tx_register.Admin,
+                                Expiration = block.Index + 2 * 2000000,
+                                IsFrozen = false
+                            });
+                            break;
+#pragma warning restore CS0612
+                        case IssueTransaction tx_issue:
+                            snapshot.Assets.GetAndChange(tx_issue.AssetId).Available -= tx_issue.Value;
+                            break;
                         case InvocationTransaction tx_invocation:
                             using (ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, tx_invocation, snapshot.Clone(), tx_invocation.Gas, true))
                             {
@@ -645,14 +704,15 @@ namespace Zoro.Ledger
                 return false;
             }
 
-            AppChainState state = Root.Store.GetAppChains().TryGet(chainHash);
-            if (state == null)
+            if (Root.Store.GetAppChains().TryGet(chainHash) == null)
                 return false;
 
             // 变更根链数据库里记录的应用链共识节点
             using (Snapshot snapshot = GetSnapshot())
             {
-                snapshot.AppChains.GetAndChange(chainHash).StandbyValidators = validators;
+                AppChainState state = snapshot.AppChains.GetAndChange(chainHash);
+                state.StandbyValidators = validators;
+                state.LastModified = DateTime.UtcNow.ToTimestamp();
                 snapshot.Commit();
             }
             UpdateCurrentSnapshot();
@@ -694,14 +754,15 @@ namespace Zoro.Ledger
                 return false;
             }
 
-            AppChainState state = Root.Store.GetAppChains().TryGet(chainHash);
-            if (state == null)
+            if (Root.Store.GetAppChains().TryGet(chainHash) == null)
                 return false;
 
             // 变更根链数据库里记录的应用链种子节点
             using (Snapshot snapshot = GetSnapshot())
             {
-                snapshot.AppChains.GetAndChange(chainHash).SeedList = seedList;
+                AppChainState state = snapshot.AppChains.GetAndChange(chainHash);
+                state.SeedList = seedList;
+                state.LastModified = DateTime.UtcNow.ToTimestamp();
                 snapshot.Commit();
             }
             UpdateCurrentSnapshot();

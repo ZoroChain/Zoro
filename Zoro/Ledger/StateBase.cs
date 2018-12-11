@@ -8,7 +8,7 @@ namespace Zoro.Ledger
 {
     public abstract class StateBase : ISerializable
     {
-        public const byte StateVersion = 0;
+        public byte StateVersion = 0;
 
         public virtual int Size => sizeof(byte);
 
