@@ -36,7 +36,7 @@ namespace Zoro.Network.P2P.Payloads
             }
         }
 
-        public override int Size => base.Size + sizeof(AssetType) + Name.GetVarSize() + Amount.Size + sizeof(byte) + Owner.Size + Admin.Size;
+        public override int Size => base.Size + sizeof(AssetType) + Name.GetVarSize() + FullName.GetVarSize() + Amount.Size + sizeof(byte) + Owner.Size + Admin.Size;
 
         public override Fixed8 SystemFee
         {

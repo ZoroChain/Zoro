@@ -25,10 +25,10 @@ namespace Zoro.Network.P2P.Payloads
         protected override void DeserializeExclusiveData(BinaryReader reader)
         {
             if (Version > 1) throw new FormatException();
-            this.Nonce = reader.ReadUInt32();
+            Nonce = reader.ReadUInt32();
 
             if (Version >= 1)
-                this.Address = reader.ReadSerializable<UInt160>();
+                Address = reader.ReadSerializable<UInt160>();
         }
 
         protected override void SerializeExclusiveData(BinaryWriter writer)

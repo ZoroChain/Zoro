@@ -42,6 +42,7 @@ namespace Zoro.Ledger
 #pragma warning disable CS0612
         public static readonly RegisterTransaction UtilityToken = new RegisterTransaction
         {
+            Version = 1,
             AssetType = AssetType.UtilityToken,
             Name = "[{\"lang\":\"zh-CN\",\"name\":\"BCP\"},{\"lang\":\"en\",\"name\":\"BCP\"}]",
             FullName = "[{\"lang\":\"zh-CN\",\"name\":\"BlaCat Point\"},{\"lang\":\"en\",\"name\":\"BlaCat Point\"}]",
@@ -89,11 +90,12 @@ namespace Zoro.Ledger
                             UtilityToken,
                             new IssueTransaction
                             {
+                                Version = 1,
                                 ChainHash = ChainHash,
                                 Attributes = new TransactionAttribute[0],
                                 AssetId = UtilityToken.Hash,
                                 Value = UtilityToken.Amount,
-                                ScriptHash = Contract.CreateMultiSigRedeemScript(StandbyValidators.Length / 2 + 1, StandbyValidators).ToScriptHash(),
+                                Address = Contract.CreateMultiSigRedeemScript(StandbyValidators.Length / 2 + 1, StandbyValidators).ToScriptHash(),
                                 Witnesses = new[]
                                 {
                                     new Witness
@@ -560,6 +562,15 @@ namespace Zoro.Ledger
 #pragma warning restore CS0612
                         case IssueTransaction tx_issue:
                             snapshot.Assets.GetAndChange(tx_issue.AssetId).Available -= tx_issue.Value;
+                            AccountState account = snapshot.Accounts.GetAndChange(tx_issue.Address, () => new AccountState(tx_issue.Address));
+                            if (account.Balances.ContainsKey(tx_issue.AssetId))
+                                account.Balances[tx_issue.AssetId] += tx_issue.Value;
+                            else
+                                account.Balances[tx_issue.AssetId] = tx_issue.Value;
+                            break;
+                        case ContractTransaction tx_contract:
+                            NativeNEP5 nativeNEP5 = GetNativeNEP5(tx_contract.AssetId);
+                            nativeNEP5.Transfer(snapshot, tx_contract.From, tx_contract.To, tx_contract.Value);
                             break;
                         case InvocationTransaction tx_invocation:
                             using (ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, tx_invocation, snapshot.Clone(), tx_invocation.Gas, true))
@@ -778,10 +789,15 @@ namespace Zoro.Ledger
         {
             foreach (var assetId in Store.GetAssets().Find().Select(p => p.Value.AssetId))
             {
-                nativeNEP5_Dict.TryAdd(assetId, new NativeNEP5(this, assetId));
+                RegisterNativeNEP5(assetId);
             }
 
             BCPNativeNEP5 = GetNativeNEP5(UtilityToken.Hash);
+        }
+
+        public bool RegisterNativeNEP5(UInt256 assetId)
+        {
+            return nativeNEP5_Dict.TryAdd(assetId, new NativeNEP5(this, assetId));
         }
 
         public NativeNEP5 GetNativeNEP5(UInt256 AssetId)

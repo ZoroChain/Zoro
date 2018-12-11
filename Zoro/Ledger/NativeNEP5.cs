@@ -25,7 +25,7 @@ namespace Zoro.Ledger
             return Fixed8.Zero;
         }
 
-        public bool Transfer(UInt160 from, UInt160 to, Fixed8 value)
+        public bool Transfer(Snapshot snapshot, UInt160 from, UInt160 to, Fixed8 value)
         {
             if (value.Equals(Fixed8.Zero))
                 return false;
@@ -33,28 +33,20 @@ namespace Zoro.Ledger
             if (from.Equals(to))
                 return false;
 
-            using (Snapshot snapshot = blockchain.GetSnapshot())
-            {
-                AccountState accountFrom = snapshot.Accounts.GetAndChange(from);
-                if (accountFrom == null)
-                    return false;
+            AccountState accountFrom = snapshot.Accounts.GetAndChange(from);
+            if (accountFrom == null)
+                return false;
 
-                if (!accountFrom.Balances.TryGetValue(AssetId, out Fixed8 amount) || amount < value)
-                    return false;
+            if (!accountFrom.Balances.TryGetValue(AssetId, out Fixed8 amount) || amount < value)
+                return false;
 
-                accountFrom.Balances[AssetId] = amount - value;
+            accountFrom.Balances[AssetId] = amount - value;
 
-                AccountState accountTo = snapshot.Accounts.GetAndChange(from, () => new AccountState(to));
-
-                if (accountTo.Balances.TryGetValue(AssetId, out Fixed8 balance))
-                {
-                    accountTo.Balances[AssetId] = balance + value;
-                }
-                else
-                {
-                    accountTo.Balances.Add(AssetId, value);
-                }                
-            }
+            AccountState accountTo = snapshot.Accounts.GetAndChange(to, () => new AccountState(to));
+            if (accountTo.Balances.ContainsKey(AssetId))
+                accountTo.Balances[AssetId] += value;
+            else
+                accountTo.Balances[AssetId] = value;
 
             return true;
         }

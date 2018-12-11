@@ -13,7 +13,7 @@ namespace Zoro.Network.P2P.Payloads
 {
     public class ContractTransaction : Transaction
     {
-        private byte[] randomBytes;
+        private byte[] randomBytes = new byte[8];
 
         public UInt256 AssetId;
         public UInt160 From;
@@ -33,13 +33,16 @@ namespace Zoro.Network.P2P.Payloads
 
         protected override void DeserializeExclusiveData(BinaryReader reader)
         {
-            if (Version != 0) throw new FormatException();
+            if (Version > 1) throw new FormatException();
 
-            randomBytes = reader.ReadBytes(8);
-            AssetId = reader.ReadSerializable<UInt256>();
-            From = reader.ReadSerializable<UInt160>();
-            To = reader.ReadSerializable<UInt160>();
-            Value = reader.ReadSerializable<Fixed8>();
+            if (Version > 0)
+            {
+                randomBytes = reader.ReadBytes(8);
+                AssetId = reader.ReadSerializable<UInt256>();
+                From = reader.ReadSerializable<UInt160>();
+                To = reader.ReadSerializable<UInt160>();
+                Value = reader.ReadSerializable<Fixed8>();
+            }
         }
 
         protected override void SerializeExclusiveData(BinaryWriter writer)
@@ -64,9 +67,7 @@ namespace Zoro.Network.P2P.Payloads
 
         public override UInt160[] GetScriptHashesForVerifying(Snapshot snapshot)
         {
-            HashSet<UInt160> hashes = new HashSet<UInt160>(Attributes.Where(p => p.Usage == TransactionAttributeUsage.Script).Select(p => new UInt160(p.Data)));
-            hashes.Add(From);
-            return hashes.OrderBy(p => p).ToArray();
+            return base.GetScriptHashesForVerifying(snapshot).Union(new[] { From }).OrderBy(p => p).ToArray();
         }
 
         public override bool Verify(Snapshot snapshot, IEnumerable<Transaction> mempool)
