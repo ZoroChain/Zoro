@@ -321,7 +321,7 @@ namespace Zoro.AppChain
                             continue;
                         }
                         // 判断节点的IP地址是否和种子节点的IP地址相同
-                        if (myIPAddress.Equals(seed.Address))
+                        if (seed != null && myIPAddress.Equals(seed.Address))
                         {
                             listenPort = seed.Port;
 
@@ -399,6 +399,7 @@ namespace Zoro.AppChain
                 {
                     return false;
                 }
+                if (seed == null) return false;
             }
 
             return true;

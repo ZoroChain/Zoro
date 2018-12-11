@@ -354,7 +354,7 @@ namespace Zoro.SmartContract
             {
                 return false;
             }
-
+            if (seed == null) return false;
             return true;
         }
     }
