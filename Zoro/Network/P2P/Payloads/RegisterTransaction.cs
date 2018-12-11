@@ -17,6 +17,7 @@ namespace Zoro.Network.P2P.Payloads
     {
         public AssetType AssetType;
         public string Name;
+        public string FullName;
         public Fixed8 Amount;
         public byte Precision;
         public ECPoint Owner;
@@ -52,9 +53,10 @@ namespace Zoro.Network.P2P.Payloads
 
         protected override void DeserializeExclusiveData(BinaryReader reader)
         {
-            if (Version != 0) throw new FormatException();
+            if (Version > 1) throw new FormatException();
             AssetType = (AssetType)reader.ReadByte();
             Name = reader.ReadVarString(1024);
+            FullName = Version > 0 ? reader.ReadVarString(1024) : Name;
             Amount = reader.ReadSerializable<Fixed8>();
             Precision = reader.ReadByte();
             Owner = ECPoint.DeserializeFrom(reader, ECCurve.Secp256r1);
@@ -76,6 +78,7 @@ namespace Zoro.Network.P2P.Payloads
         {
             writer.Write((byte)AssetType);
             writer.WriteVarString(Name);
+            writer.WriteVarString(FullName);
             writer.Write(Amount);
             writer.Write(Precision);
             writer.Write(Owner);
@@ -94,6 +97,14 @@ namespace Zoro.Network.P2P.Payloads
             catch (FormatException)
             {
                 json["asset"]["name"] = Name;
+            }
+            try
+            {
+                json["asset"]["fullname"] = FullName == "" ? null : JObject.Parse(FullName);
+            }
+            catch (FormatException)
+            {
+                json["asset"]["fullname"] = FullName;
             }
             json["asset"]["amount"] = Amount.ToString();
             json["asset"]["precision"] = Precision;

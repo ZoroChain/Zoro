@@ -105,6 +105,7 @@ namespace Zoro.SmartContract
             Register("Zoro.AppChain.ChangeSeedList", AppChain_ChangeSeedList);
             Register("Zoro.AppChain.ChangeValidators", AppChain_ChangeValidators);
 
+            Register("Zoro.Blockchain.GetNativeNEP5", Blockchain_GetNativeNEP5);
             Register("Zoro.NativeNEP5.Name", NativeNEP5_Name);
             Register("Zoro.NativeNEP5.Symbol", NativeNEP5_Symbol);
             Register("Zoro.NativeNEP5.Decimals", NativeNEP5_Decimals);
@@ -126,6 +127,11 @@ namespace Zoro.SmartContract
         private bool AppChain_ChangeSeedList(ExecutionEngine engine)
         {
             return appchainService.ChangeSeedList(engine);
+        }
+
+        private bool Blockchain_GetNativeNEP5(ExecutionEngine engine)
+        {
+            return nativeNEP5Service.Retrieve(engine);
         }
 
         private bool NativeNEP5_Name(ExecutionEngine engine)

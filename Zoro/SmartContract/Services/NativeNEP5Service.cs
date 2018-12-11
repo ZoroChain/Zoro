@@ -1,10 +1,6 @@
-﻿using Zoro.Cryptography.ECC;
-using Zoro.Ledger;
+﻿using Zoro.Ledger;
 using Zoro.Persistence;
 using Neo.VM;
-using System;
-using System.Net;
-using System.Text;
 
 namespace Zoro.SmartContract.Services
 {
@@ -18,6 +14,17 @@ namespace Zoro.SmartContract.Services
         {
             Trigger = trigger;
             Snapshot = snapshot;
+        }
+
+        public bool Retrieve(ExecutionEngine engine)
+        {
+            if (Trigger != TriggerType.Application) return false;
+
+            UInt256 hash = new UInt256(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            NativeNEP5 nativeNEP5 = Snapshot.Blockchain.GetNativeNEP5(hash);
+            if (nativeNEP5 == null) return false;
+            engine.CurrentContext.EvaluationStack.Push(StackItem.FromInterface(nativeNEP5));
+            return true;
         }
 
         public bool Name(ExecutionEngine engine)
@@ -38,7 +45,7 @@ namespace Zoro.SmartContract.Services
             UInt256 hash = new UInt256(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
             AssetState asset = Snapshot.Assets.TryGet(hash);
             if (asset == null) return false;
-            engine.CurrentContext.EvaluationStack.Push(asset.Name);
+            engine.CurrentContext.EvaluationStack.Push(asset.FullName);
             return true;
         }
 
@@ -46,6 +53,10 @@ namespace Zoro.SmartContract.Services
         {
             if (Trigger != TriggerType.Application) return false;
 
+            UInt256 hash = new UInt256(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            AssetState asset = Snapshot.Assets.TryGet(hash);
+            if (asset == null) return false;
+            engine.CurrentContext.EvaluationStack.Push((uint)asset.Precision);
             return true;
         }
 
@@ -53,6 +64,10 @@ namespace Zoro.SmartContract.Services
         {
             if (Trigger != TriggerType.Application) return false;
 
+            UInt256 hash = new UInt256(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            AssetState asset = Snapshot.Assets.TryGet(hash);
+            if (asset == null) return false;
+            engine.CurrentContext.EvaluationStack.Push(asset.Amount.GetData());
             return true;
         }
 
@@ -60,6 +75,13 @@ namespace Zoro.SmartContract.Services
         {
             if (Trigger != TriggerType.Application) return false;
 
+            UInt256 hash = new UInt256(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            NativeNEP5 nativeNEP5 = Snapshot.Blockchain.GetNativeNEP5(hash);
+            if (nativeNEP5 == null) return false;
+
+            UInt160 address = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            Fixed8 balance = nativeNEP5.BalanceOf(address);
+            engine.CurrentContext.EvaluationStack.Push(balance.GetData());
             return true;
         }
 
@@ -67,7 +89,19 @@ namespace Zoro.SmartContract.Services
         {
             if (Trigger != TriggerType.Application) return false;
 
-            return true;
+            UInt256 hash = new UInt256(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            NativeNEP5 nativeNEP5 = Snapshot.Blockchain.GetNativeNEP5(hash);
+            if (nativeNEP5 == null) return false;
+
+            UInt160 from = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            UInt160 to = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            Fixed8 value = new Fixed8((long)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger());
+
+            if (!Service.CheckWitness(engine, from))
+                return false;
+
+            bool result = nativeNEP5.Transfer(from, to, value);
+            return result;
         }
     }
 }

@@ -43,7 +43,8 @@ namespace Zoro.Ledger
         public static readonly RegisterTransaction UtilityToken = new RegisterTransaction
         {
             AssetType = AssetType.UtilityToken,
-            Name = "[{\"lang\":\"zh-CN\",\"name\":\"BlaCat Point\"},{\"lang\":\"en\",\"name\":\"BlaCat Point\"}]",
+            Name = "[{\"lang\":\"zh-CN\",\"name\":\"BCP\"},{\"lang\":\"en\",\"name\":\"BCP\"}]",
+            FullName = "[{\"lang\":\"zh-CN\",\"name\":\"BlaCat Point\"},{\"lang\":\"en\",\"name\":\"BlaCat Point\"}]",
             Amount = Fixed8.FromDecimal(2000000000),
             Precision = 8,
             Owner = ECCurve.Secp256r1.Infinity,
@@ -51,8 +52,6 @@ namespace Zoro.Ledger
             Attributes = new TransactionAttribute[0],
             Witnesses = new Witness[0]
         };
-
-        public static readonly RegisterTransaction BCP = UtilityToken;
 
 #pragma warning restore CS0612
 
@@ -134,8 +133,10 @@ namespace Zoro.Ledger
 
         public static readonly int MemPoolRelayCount = Settings.Default.MemPoolRelayCount;
         private readonly ManualResetEvent startupEvent = new ManualResetEvent(false);
+        private readonly ConcurrentDictionary<UInt256, NativeNEP5> nativeNEP5_Dict = new ConcurrentDictionary<UInt256, NativeNEP5>();
 
         public UInt160 ChainHash { get; }
+        public NativeNEP5 BCPNativeNEP5 { get; private set; }
 
         private static Blockchain root;
         public static Blockchain Root
@@ -208,6 +209,8 @@ namespace Zoro.Ledger
                 {
                     UpdateCurrentSnapshot();
                 }
+
+                InitializeNativeNEP5();
 
                 startupEvent.Set();
             }
@@ -541,6 +544,7 @@ namespace Zoro.Ledger
                                 AssetId = tx_register.Hash,
                                 AssetType = tx_register.AssetType,
                                 Name = tx_register.Name,
+                                FullName = tx_register.FullName,
                                 Amount = tx_register.Amount,
                                 Available = Fixed8.Zero,
                                 Precision = tx_register.Precision,
@@ -768,6 +772,24 @@ namespace Zoro.Ledger
             UpdateCurrentSnapshot();
 
             return true;
+        }
+
+        private void InitializeNativeNEP5()
+        {
+            foreach (var assetId in Store.GetAssets().Find().Select(p => p.Value.AssetId))
+            {
+                nativeNEP5_Dict.TryAdd(assetId, new NativeNEP5(this, assetId));
+            }
+
+            BCPNativeNEP5 = GetNativeNEP5(UtilityToken.Hash);
+        }
+
+        public NativeNEP5 GetNativeNEP5(UInt256 AssetId)
+        {
+            if (nativeNEP5_Dict.TryGetValue(AssetId, out NativeNEP5 nativeNEP5))
+                return nativeNEP5;
+
+            return null;
         }
 
         public void Log(string message, LogLevel level = LogLevel.Info)
