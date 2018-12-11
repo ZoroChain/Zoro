@@ -381,6 +381,7 @@ namespace Zoro.Ledger
                 {
                     foreach (var unverifiedBlock in unverifiedBlocks)
                         Self.Tell(unverifiedBlock, ActorRefs.NoSender);
+                    block_cache_unverified.Remove(Height + 1);
                 }
             }
             else
