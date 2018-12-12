@@ -23,19 +23,18 @@ Zoro 目前还处在设计开发中，所以根链和应用链之间可以设计
 # 细化方案
 ## 业务：
 
-根链有 BCP，每个应用链有自己的代币，应用链发行代币合约时需要同时在根链发布，根链上的应用链代币发到 Bank 中，随着跨链转移再释放（因为 Bancor 交易所运行在根链上），应用链和根链可以直接跨链转账，应用链之间要跨链转账的话需要应用链管理者在对方链上发布相应的代币合约去支持，转账过程通过根链间接来完成；
+根链有 BCP，每个应用链有自己的代币，应用链发行的代币需要实现跨链的话必须在根链发布映射代币合约，根链上映射代币发到 Bank 中，随着跨链转移再释放（因为 Bancor 交易所运行在根链上），应用链和根链可以直接跨链转账，应用链之间要跨链转账的话需要应用链管理者在对方链上发布相应的代币合约去支持，转账过程通过根链间接来完成；
 
+* 创建应用链的时候会生成一个多签的公私钥对，根链保存公钥，应用链的共识节点保存私钥，多签账户定期更换或者更换共识节点的时候更换;
+
+* 应用链需要有支持往根链跨链交易的交易类型，根链往应用链的跨链交易也需要可以标记往哪一条链跨链。
 ## 流程：
-
 ### 1、AppChainX 上的用户 AccountX 要将他在 AppChainX 上的 XCC 跨链转到 RootChain 上的 Account2 账户中：
 * AccountX 先在 AppChainX 上发起一笔交易，将 XCC 存到 AppChainX 上的 XBank 中；
-* AppChainX 的共识机制在验证该交易后便往根链发起一笔交易，调用根链的 RBank 往 Account2 账户转一笔 XCC；为保证足够安全，根链的交易可以读取 AppChainX 的数据去验证 AccountX 的交易，验证通过后才转钱，`但是每个节点上应用链的同步状态无法保证，验证也不能确保通过`；
+* AppChainX 的共识机制在验证该交易后便往根链发一笔交易，这笔交易需要共识节点的多签私钥签名，签名数量达到达成共识数量即可，根链根据该笔交易往根链对应账户账户转一笔 XCC；
 
-### 2、AppChainX 上的用户 AccountX 要将他在 AppChainX 上的 XCC 兑换成 AppChainY 上的 YCC 发到 AccountY 账户里：
-* AccountX 先在 AppChainX 上发起一笔交易，将 XCC 存到 AppChainX 上的 XBank 中；
-* AppChainX 的共识机制在验证该交易后便往根链发起一笔交易，调用根链的 RBank 往 AccountX 在根链的账户转一笔 XCC，这样 AccountX 在根链拥有了 XCC；
-* AccountX 在根链上的 Bancor 交易所将 XCC 兑换成 YCC（这里需要先兑换成 BCP，再用 BCP 购买 YCC）；
-* AccountX 将自己在根链上买到的 YCC 转到 RBank 中；
+### 2、根链上的用户 Account1 要将他在根链上的 YCC 转到 AppChainY 上的 AccountY 账户里：
+* Account1 先在根链上发起一笔交易，将根链 YCC 存到 RBank 中；
 * AppChainY 的共识机制会监控根链数据，发现根链有 YCC 转到 RBank 的交易，则当做跨链处理，便向 AppChainY 发起一笔交易，从 YBank 中转出一笔 YCC 给指定的账户 AccountY。
 
 
