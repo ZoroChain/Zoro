@@ -42,7 +42,6 @@ namespace Zoro.Ledger
 #pragma warning disable CS0612
         public static readonly RegisterTransaction UtilityToken = new RegisterTransaction
         {
-            Version = 1,
             AssetType = AssetType.UtilityToken,
             Name = "[{\"lang\":\"zh-CN\",\"name\":\"BCP\"},{\"lang\":\"en\",\"name\":\"BCP\"}]",
             FullName = "[{\"lang\":\"zh-CN\",\"name\":\"BlaCat Point\"},{\"lang\":\"en\",\"name\":\"BlaCat Point\"}]",
@@ -53,7 +52,6 @@ namespace Zoro.Ledger
             Attributes = new TransactionAttribute[0],
             Witnesses = new Witness[0]
         };
-
 #pragma warning restore CS0612
 
         private Block _genesisBlock = null;
@@ -64,8 +62,6 @@ namespace Zoro.Ledger
             {
                 if (_genesisBlock == null)
                 {
-                    UtilityToken.ChainHash = ChainHash;
-
                     _genesisBlock = new Block
                     {
                         PrevHash = UInt256.Zero,
@@ -90,7 +86,6 @@ namespace Zoro.Ledger
                             UtilityToken,
                             new IssueTransaction
                             {
-                                Version = 1,
                                 ChainHash = ChainHash,
                                 Attributes = new TransactionAttribute[0],
                                 AssetId = UtilityToken.Hash,
@@ -523,82 +518,31 @@ namespace Zoro.Ledger
 
             using (Snapshot snapshot = GetSnapshot())
             {
+                Fixed8 sysfeeAmount = Fixed8.Zero;
                 snapshot.PersistingBlock = block;
-                snapshot.Blocks.Add(block.Hash, new BlockState
-                {
-                    SystemFeeAmount = snapshot.GetSysFeeAmount(block.PrevHash) + (long)block.Transactions.Sum(p => p.SystemFee),
-                    TrimmedBlock = block.Trim()
-                });
                 foreach (Transaction tx in block.Transactions)
                 {
-                    snapshot.Transactions.Add(tx.Hash, new TransactionState
+                    if (PrepaySystemFee(snapshot, tx))
                     {
-                        BlockIndex = block.Index,
-                        Transaction = tx
-                    });
-                    List<ApplicationExecutionResult> execution_results = new List<ApplicationExecutionResult>();
-                    switch (tx)
-                    {
-#pragma warning disable CS0612
-                        case RegisterTransaction tx_register:
-                            snapshot.Assets.Add(tx.Hash, new AssetState
-                            {
-                                AssetId = tx_register.Hash,
-                                AssetType = tx_register.AssetType,
-                                Name = tx_register.Name,
-                                FullName = tx_register.FullName,
-                                Amount = tx_register.Amount,
-                                Available = Fixed8.Zero,
-                                Precision = tx_register.Precision,
-                                Fee = Fixed8.Zero,
-                                FeeAddress = new UInt160(),
-                                Owner = tx_register.Owner,
-                                Admin = tx_register.Admin,
-                                Issuer = tx_register.Admin,
-                                Expiration = block.Index + 2 * 2000000,
-                                IsFrozen = false
-                            });
-                            break;
-#pragma warning restore CS0612
-                        case IssueTransaction tx_issue:
-                            snapshot.Assets.GetAndChange(tx_issue.AssetId).Available -= tx_issue.Value;
-                            AccountState account = snapshot.Accounts.GetAndChange(tx_issue.Address, () => new AccountState(tx_issue.Address));
-                            if (account.Balances.ContainsKey(tx_issue.AssetId))
-                                account.Balances[tx_issue.AssetId] += tx_issue.Value;
-                            else
-                                account.Balances[tx_issue.AssetId] = tx_issue.Value;
-                            break;
-                        case ContractTransaction tx_contract:
-                            NativeNEP5 nativeNEP5 = GetNativeNEP5(tx_contract.AssetId);
-                            nativeNEP5.Transfer(snapshot, tx_contract.From, tx_contract.To, tx_contract.Value);
-                            break;
-                        case InvocationTransaction tx_invocation:
-                            using (ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, tx_invocation, snapshot.Clone(), tx_invocation.Gas, true))
-                            {
-                                engine.LoadScript(tx_invocation.Script);
-                                if (engine.Execute())
-                                {
-                                    engine.Service.Commit();
-                                }
-                                execution_results.Add(new ApplicationExecutionResult
-                                {
-                                    Trigger = TriggerType.Application,
-                                    ScriptHash = tx_invocation.Script.ToScriptHash(),
-                                    VMState = engine.State,
-                                    GasConsumed = engine.GasConsumed,
-                                    Stack = engine.ResultStack.ToArray(),
-                                    Notifications = engine.Service.Notifications.ToArray()
-                                });
-                            }
-                            break;
+                        sysfeeAmount += PersistTransaction(block, snapshot, tx);
                     }
-                    if (execution_results.Count > 0)
-                        Distribute(new ApplicationExecuted
-                        {
-                            Transaction = tx,
-                            ExecutionResults = execution_results.ToArray()
-                        });
+                    else
+                    {
+                        Log($"Not enough money to pay transaction fee, block:{block.Index}, tx:{tx.Hash}, fee:{tx.SystemFee}", LogLevel.Warning);
+                    }
                 }
+
+                snapshot.Blocks.Add(block.Hash, new BlockState
+                {
+                    SystemFeeAmount = snapshot.GetSysFeeAmount(block.PrevHash) + sysfeeAmount.GetData(),
+                    TrimmedBlock = block.Trim()
+                });
+
+                if (block.Index > 0 && sysfeeAmount > Fixed8.Zero)
+                {
+                    BCPNativeNEP5.AddBalance(snapshot, block.Transactions[0].GetAccountScriptHash(snapshot), sysfeeAmount);
+                }               
+
                 snapshot.BlockHashIndex.GetAndChange().Hash = block.Hash;
                 snapshot.BlockHashIndex.GetAndChange().Index = block.Index;
                 if (block.Index == header_index.Count)
@@ -619,6 +563,99 @@ namespace Zoro.Ledger
             OnPersistCompleted(block);
         }
 
+        private Fixed8 PersistTransaction(Block block, Snapshot snapshot, Transaction tx)
+        {
+            Fixed8 sysfee = tx.SystemFee;
+
+            snapshot.Transactions.Add(tx.Hash, new TransactionState
+            {
+                BlockIndex = block.Index,
+                Transaction = tx
+            });
+            List<ApplicationExecutionResult> execution_results = new List<ApplicationExecutionResult>();
+            switch (tx)
+            {
+#pragma warning disable CS0612
+                case RegisterTransaction tx_register:
+                    snapshot.Assets.Add(tx.Hash, new AssetState
+                    {
+                        AssetId = tx_register.Hash,
+                        AssetType = tx_register.AssetType,
+                        Name = tx_register.Name,
+                        FullName = tx_register.FullName,
+                        Amount = tx_register.Amount,
+                        Available = Fixed8.Zero,
+                        Precision = tx_register.Precision,
+                        Fee = Fixed8.Zero,
+                        FeeAddress = new UInt160(),
+                        Owner = tx_register.Owner,
+                        Admin = tx_register.Admin,
+                        Issuer = tx_register.Admin,
+                        Expiration = block.Index + 2 * 2000000,
+                        IsFrozen = false
+                    });
+                    break;
+#pragma warning restore CS0612
+                case IssueTransaction tx_issue:
+                    snapshot.Assets.GetAndChange(tx_issue.AssetId).Available -= tx_issue.Value;
+                    AccountState account = snapshot.Accounts.GetAndChange(tx_issue.Address, () => new AccountState(tx_issue.Address));
+                    if (account.Balances.ContainsKey(tx_issue.AssetId))
+                        account.Balances[tx_issue.AssetId] += tx_issue.Value;
+                    else
+                        account.Balances[tx_issue.AssetId] = tx_issue.Value;
+                    break;
+                case ContractTransaction tx_contract:
+                    NativeNEP5 nativeNEP5 = GetNativeNEP5(tx_contract.AssetId);
+                    nativeNEP5.Transfer(snapshot, tx_contract.From, tx_contract.To, tx_contract.Value);
+                    break;
+                case InvocationTransaction tx_invocation:
+                    using (ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, tx_invocation, snapshot.Clone(), tx_invocation.GasLimit))
+                    {
+                        engine.LoadScript(tx_invocation.Script);
+                        if (engine.Execute())
+                        {
+                            engine.Service.Commit();
+                        }
+                        execution_results.Add(new ApplicationExecutionResult
+                        {
+                            Trigger = TriggerType.Application,
+                            ScriptHash = tx_invocation.Script.ToScriptHash(),
+                            VMState = engine.State,
+                            GasConsumed = engine.GasConsumed,
+                            Stack = engine.ResultStack.ToArray(),
+                            Notifications = engine.Service.Notifications.ToArray()
+                        });
+
+                        sysfee = tx_invocation.GetSystemFee(engine.GasConsumed);
+
+                        // refund system fee
+                        BCPNativeNEP5.AddBalance(snapshot, tx.GetAccountScriptHash(snapshot), tx.SystemFee - sysfee);
+                    }
+                    break;
+            }
+
+            if (execution_results.Count > 0)
+            {
+                Distribute(new ApplicationExecuted
+                {
+                    Transaction = tx,
+                    ExecutionResults = execution_results.ToArray()
+                });
+            }
+
+            return sysfee;
+        }
+
+        private bool PrepaySystemFee(Snapshot snapshot, Transaction tx)
+        {
+            if (tx.Type == TransactionType.MinerTransaction) return true;
+            if (tx.SystemFee <= Fixed8.Zero) return true;
+
+            UInt160 scriptHash = tx.GetAccountScriptHash(snapshot);
+
+            return BCPNativeNEP5.SubBalance(snapshot, scriptHash, tx.SystemFee);
+        }
+        
         protected override void PostStop()
         {
             Log($"OnStop Blockchain {Name}");

@@ -1,9 +1,11 @@
 ﻿using Zoro.IO;
 using Zoro.IO.Json;
 using Zoro.Wallets;
+using Zoro.Persistence;
+using Zoro.SmartContract;
 using System;
 using System.IO;
-using System.Linq;
+using Neo.VM;
 
 namespace Zoro.Network.P2P.Payloads
 {
@@ -11,7 +13,7 @@ namespace Zoro.Network.P2P.Payloads
     {
         public uint Nonce;
 
-        public UInt160 Address;
+        public UInt160 Address = (new[] { (byte)OpCode.PUSHF }).ToScriptHash();
 
         public override Fixed8 NetworkFee => Fixed8.Zero;
 
@@ -20,6 +22,7 @@ namespace Zoro.Network.P2P.Payloads
         public MinerTransaction()
             : base(TransactionType.MinerTransaction)
         {
+            Version = 1;
         }
 
         protected override void DeserializeExclusiveData(BinaryReader reader)
@@ -44,6 +47,11 @@ namespace Zoro.Network.P2P.Payloads
             json["nonce"] = Nonce;
             json["address"] = Address.ToAddress();
             return json;
+        }
+
+        public override UInt160 GetAccountScriptHash(Snapshot snapshot)
+        {
+            return Address;
         }
     }
 }

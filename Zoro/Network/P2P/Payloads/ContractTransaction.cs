@@ -15,16 +15,18 @@ namespace Zoro.Network.P2P.Payloads
     {
         private byte[] randomBytes = new byte[8];
 
-        public UInt256 AssetId;
-        public UInt160 From;
-        public UInt160 To;
-        public Fixed8 Value;
+        public UInt256 AssetId = new UInt256();
+        public UInt160 From = new UInt160();
+        public UInt160 To = new UInt160();
+        public Fixed8 Value = Fixed8.Zero;
 
-        public override int Size => base.Size + randomBytes.GetVarSize() + AssetId.Size + From.Size + To.Size + Value.Size;
+        public override int Size => base.Size + randomBytes.GetVarSize() + AssetId.Size + From.Size + To.Size + Value.Size;        
 
         public ContractTransaction()
             : base(TransactionType.ContractTransaction)
         {
+            Version = 1;
+
             using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
             {
                 rng.GetBytes(randomBytes);
@@ -47,22 +49,33 @@ namespace Zoro.Network.P2P.Payloads
 
         protected override void SerializeExclusiveData(BinaryWriter writer)
         {
-            writer.Write(randomBytes);
-            writer.Write(AssetId);
-            writer.Write(From);
-            writer.Write(To);
-            writer.Write(Value);
+            if (Version > 0)
+            {
+                writer.Write(randomBytes);
+                writer.Write(AssetId);
+                writer.Write(From);
+                writer.Write(To);
+                writer.Write(Value);
+            }
         }
 
         public override JObject ToJson()
         {
             JObject json = base.ToJson();
-            json["randomBytes"] = randomBytes.ToString();
-            json["asset"] = AssetId.ToString();
-            json["value"] = Value.ToString();
-            json["from"] = From.ToAddress();
-            json["to"] = To.ToAddress();
+            if (Version > 0)
+            {
+                json["randomBytes"] = randomBytes.ToString();
+                json["asset"] = AssetId.ToString();
+                json["value"] = Value.ToString();
+                json["from"] = From.ToAddress();
+                json["to"] = To.ToAddress();
+            }
             return json;
+        }
+
+        public override UInt160 GetAccountScriptHash(Snapshot snapshot)
+        {
+            return From;
         }
 
         public override UInt160[] GetScriptHashesForVerifying(Snapshot snapshot)

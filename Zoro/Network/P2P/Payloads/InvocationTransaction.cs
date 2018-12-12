@@ -1,45 +1,52 @@
 ﻿using Zoro.IO;
 using Zoro.IO.Json;
+using Zoro.Ledger;
 using Zoro.Persistence;
 using System;
-using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Collections.Generic;
 
 namespace Zoro.Network.P2P.Payloads
 {
     public class InvocationTransaction : Transaction
     {
         public byte[] Script;
-        public Fixed8 Gas;
+        public Fixed8 GasPrice = Fixed8.One;
+        public Fixed8 GasLimit = Fixed8.Zero;
+        public UInt160 ScriptHash = new UInt160();
 
-        public override int Size => base.Size + Script.GetVarSize();
+        public override int Size => base.Size + Script.GetVarSize() + GasPrice.Size + GasLimit.Size + ScriptHash.Size;
 
-        public override Fixed8 SystemFee => Gas;
+        public override Fixed8 SystemFee => GasPrice * GasLimit;
 
         public InvocationTransaction()
             : base(TransactionType.InvocationTransaction)
         {
+            Version = 2;
         }
 
         protected override void DeserializeExclusiveData(BinaryReader reader)
         {
-            if (Version > 1) throw new FormatException();
+            if (Version > 2) throw new FormatException();
             Script = reader.ReadVarBytes(65536);
             if (Script.Length == 0) throw new FormatException();
             if (Version >= 1)
             {
-                Gas = reader.ReadSerializable<Fixed8>();
-                if (Gas < Fixed8.Zero) throw new FormatException();
+                GasLimit = reader.ReadSerializable<Fixed8>();
+                if (GasLimit < Fixed8.Zero) throw new FormatException();
             }
-            else
+            if (Version >= 2)
             {
-                Gas = Fixed8.Zero;
+                GasPrice = reader.ReadSerializable<Fixed8>();
+                if (GasPrice <= Fixed8.Zero) throw new FormatException();
+                ScriptHash = reader.ReadSerializable<UInt160>();
             }
         }
 
-        public static Fixed8 GetGas(Fixed8 consumed)
+        public static Fixed8 GetGasLimit(Fixed8 consumed)
         {
-            Fixed8 gas = consumed - Fixed8.FromDecimal(10);
+            Fixed8 gas = consumed;
             if (gas <= Fixed8.Zero) return Fixed8.Zero;
             return gas.Ceiling();
         }
@@ -48,21 +55,59 @@ namespace Zoro.Network.P2P.Payloads
         {
             writer.WriteVarBytes(Script);
             if (Version >= 1)
-                writer.Write(Gas);
+                writer.Write(GasLimit);
+            if (Version >= 2)
+            {
+                writer.Write(GasPrice);
+                writer.Write(ScriptHash);
+            }
         }
 
         public override JObject ToJson()
         {
             JObject json = base.ToJson();
             json["script"] = Script.ToHexString();
-            json["gas"] = Gas.ToString();
+            json["gas_limit"] = GasLimit.ToString();
+            json["gas_price"] = GasPrice.ToString();
+            json["script_hash"] = ScriptHash.ToString();
             return json;
+        }
+
+        public override UInt160 GetAccountScriptHash(Snapshot snapshot)
+        {
+            return ScriptHash;
+        }
+
+        public override UInt160[] GetScriptHashesForVerifying(Snapshot snapshot)
+        {
+            return base.GetScriptHashesForVerifying(snapshot).Union(new[] { ScriptHash }).OrderBy(p => p).ToArray();
         }
 
         public override bool Verify(Snapshot snapshot, IEnumerable<Transaction> mempool)
         {
-            if (Gas.GetData() % 100000000 != 0) return false;
+            if (ScriptHash.Equals(UInt160.Zero)) return false;
+            if (GasLimit.GetData() % 100000000 != 0) return false;
+            if (GasPrice <= Fixed8.Zero) return false;
+            if (GasLimit > Fixed8.Zero && !CheckGasLimit(snapshot)) return false;
             return base.Verify(snapshot, mempool);
+        }
+
+        private bool CheckGasLimit(Snapshot snapshot)
+        {
+            AccountState account = snapshot.Accounts.TryGet(ScriptHash);
+
+            if (account == null || !account.Balances.TryGetValue(Blockchain.UtilityToken.Hash, out Fixed8 balance))
+                return false;
+
+            if (balance < GasPrice * GasLimit)
+                return false;
+
+            return true;
+        }
+
+        public Fixed8 GetSystemFee(Fixed8 gasConsumed)
+        {
+            return GasPrice * gasConsumed;
         }
     }
 }

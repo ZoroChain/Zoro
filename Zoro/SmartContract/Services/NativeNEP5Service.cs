@@ -10,8 +10,9 @@ namespace Zoro.SmartContract.Services
         protected readonly TriggerType Trigger;
         protected readonly Snapshot Snapshot;
 
-        public NativeNEP5Service(TriggerType trigger, Snapshot snapshot)
+        public NativeNEP5Service(StandardService service, TriggerType trigger, Snapshot snapshot)
         {
+            Service = service;
             Trigger = trigger;
             Snapshot = snapshot;
         }
@@ -64,7 +65,7 @@ namespace Zoro.SmartContract.Services
             UInt256 hash = new UInt256(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
             AssetState asset = Snapshot.Assets.TryGet(hash);
             if (asset == null) return false;
-            engine.CurrentContext.EvaluationStack.Push((uint)asset.Precision);
+            engine.CurrentContext.EvaluationStack.Push((int)asset.Precision);
             return true;
         }
 

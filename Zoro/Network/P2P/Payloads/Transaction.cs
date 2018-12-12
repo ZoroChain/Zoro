@@ -29,7 +29,10 @@ namespace Zoro.Network.P2P.Payloads
         public readonly TransactionType Type;
         public byte Version;
         public TransactionAttribute[] Attributes;
-
+#pragma warning disable CS0612
+        public CoinReference[] Inputs = new CoinReference[0];
+        public TransactionOutput[] Outputs = new TransactionOutput[0];
+#pragma warning restore CS0612
         public Witness[] Witnesses { get; set; }
 
         private UInt256 _hash = null;
@@ -45,6 +48,8 @@ namespace Zoro.Network.P2P.Payloads
             }
         }
 
+        public abstract UInt160 GetAccountScriptHash(Snapshot snapshot);
+
         public UInt160 ChainHash { get; set; }
 
         InventoryType IInventory.InventoryType => InventoryType.TX;
@@ -58,7 +63,7 @@ namespace Zoro.Network.P2P.Payloads
             {
                 if (_network_fee == -Fixed8.Satoshi)
                 {
-                    _network_fee = -SystemFee;
+                    _network_fee = SystemFee;
                 }
                 return _network_fee;
             }
@@ -66,7 +71,7 @@ namespace Zoro.Network.P2P.Payloads
 
         public virtual int Size => sizeof(TransactionType) + sizeof(byte) + Attributes.GetVarSize() + Witnesses.GetVarSize();
 
-        public virtual Fixed8 SystemFee => Fixed8.Zero;
+        public virtual Fixed8 SystemFee => Settings.Default.SystemFee.TryGetValue(Type, out Fixed8 fee) ? fee : Fixed8.Zero;
 
         protected Transaction(TransactionType type)
         {
@@ -117,6 +122,10 @@ namespace Zoro.Network.P2P.Payloads
             Version = reader.ReadByte();
             DeserializeExclusiveData(reader);
             Attributes = reader.ReadSerializableArray<TransactionAttribute>(MaxTransactionAttributes);
+#pragma warning disable CS0612
+            Inputs = reader.ReadSerializableArray<CoinReference>();
+            Outputs = reader.ReadSerializableArray<TransactionOutput>(ushort.MaxValue + 1);
+#pragma warning restore CS0612
         }
 
         public bool Equals(Transaction other)
@@ -167,6 +176,8 @@ namespace Zoro.Network.P2P.Payloads
             writer.Write(Version);
             SerializeExclusiveData(writer);
             writer.Write(Attributes);
+            writer.Write(Inputs);
+            writer.Write(Outputs);
         }
 
         public virtual JObject ToJson()

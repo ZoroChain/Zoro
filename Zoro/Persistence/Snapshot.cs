@@ -102,7 +102,7 @@ namespace Zoro.Persistence
                             if (IsSysCallScript(tx_invocation.Script, "Zoro.AppChain.ChangeValidators"))
                             {
                                 // 运行脚本，但结果不保存到DB
-                                using (ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, tx_invocation, snapshot, tx_invocation.Gas, true))
+                                using (ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, tx_invocation, snapshot, tx_invocation.GasLimit, true))
                                 {
                                     engine.LoadScript(tx_invocation.Script);
                                     if (engine.Execute())

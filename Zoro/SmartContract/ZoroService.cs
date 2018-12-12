@@ -17,8 +17,8 @@ namespace Zoro.SmartContract
         public ZoroService(TriggerType trigger, Snapshot snapshot)
             : base(trigger, snapshot)
         {
-            appchainService = new AppChainService(trigger, snapshot);
-            nativeNEP5Service = new NativeNEP5Service(trigger, snapshot);
+            appchainService = new AppChainService(this, trigger, snapshot);
+            nativeNEP5Service = new NativeNEP5Service(this, trigger, snapshot);
 
             Register("Zoro.Runtime.GetTrigger", Runtime_GetTrigger, 1);
             Register("Zoro.Runtime.CheckWitness", Runtime_CheckWitness, 200);

@@ -46,7 +46,7 @@ namespace Zoro.SmartContract
         #endregion
 
         private const long ratio = 100000;
-        private const long gas_free = 10 * 100000000;
+        private const long gas_free = 0 * 100000000;
         private readonly long gas_amount;
         private long gas_consumed = 0;
         private readonly bool testMode;

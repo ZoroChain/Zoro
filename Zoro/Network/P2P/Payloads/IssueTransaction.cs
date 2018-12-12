@@ -22,7 +22,7 @@ namespace Zoro.Network.P2P.Payloads
         {
             get
             {
-                if (Version >= 1) return Fixed8.Zero;
+                if (Version > 1) return Fixed8.Zero;
                 if (AssetId == Blockchain.UtilityToken.Hash)
                     return Fixed8.Zero;
                 return base.SystemFee;
@@ -32,6 +32,7 @@ namespace Zoro.Network.P2P.Payloads
         public IssueTransaction()
             : base(TransactionType.IssueTransaction)
         {
+            Version = 1;
         }
 
         protected override void DeserializeExclusiveData(BinaryReader reader)
@@ -48,18 +49,36 @@ namespace Zoro.Network.P2P.Payloads
 
         protected override void SerializeExclusiveData(BinaryWriter writer)
         {
-            writer.Write(AssetId);
-            writer.Write(Value);
-            writer.Write(Address);
+            if (Version > 0)
+            {
+                writer.Write(AssetId);
+                writer.Write(Value);
+                writer.Write(Address);
+            }
         }
 
         public override JObject ToJson()
         {
             JObject json = base.ToJson();
-            json["asset"] = AssetId.ToString();
-            json["value"] = Value.ToString();
-            json["address"] = Address.ToAddress();
+            if (Version > 0)
+            {
+                json["asset"] = AssetId.ToString();
+                json["value"] = Value.ToString();
+                json["address"] = Address.ToAddress();
+            }
             return json;
+        }
+
+        public override UInt160 GetAccountScriptHash(Snapshot snapshot)
+        {
+            if (AssetId != null)
+            {
+                AssetState asset = snapshot.Assets.TryGet(AssetId);
+                if (asset == null) throw new InvalidOperationException();
+                return asset.Issuer;
+            }
+
+            return UInt160.Zero;
         }
 
         public override UInt160[] GetScriptHashesForVerifying(Snapshot snapshot)
@@ -77,6 +96,7 @@ namespace Zoro.Network.P2P.Payloads
 
         public override bool Verify(Snapshot snapshot, IEnumerable<Transaction> mempool)
         {
+            if (Version < 1) return false;
             if (!base.Verify(snapshot, mempool)) return false;
             if (Value == null || Value <= Fixed8.Zero) return false;
             if (AssetId == null) return false;

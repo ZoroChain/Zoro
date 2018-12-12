@@ -1,7 +1,6 @@
 ﻿using Zoro.Cryptography.ECC;
 using Zoro.IO;
 using Zoro.IO.Json;
-using Zoro.Ledger;
 using Zoro.Persistence;
 using Zoro.SmartContract;
 using Zoro.Wallets;
@@ -42,6 +41,8 @@ namespace Zoro.Network.P2P.Payloads
         {
             get
             {
+                if (AssetType == AssetType.GoverningToken || AssetType == AssetType.UtilityToken)
+                    return Fixed8.Zero;
                 return base.SystemFee;
             }
         }
@@ -49,6 +50,7 @@ namespace Zoro.Network.P2P.Payloads
         public RegisterTransaction()
             : base(TransactionType.RegisterTransaction)
         {
+            Version = 1;
         }
 
         protected override void DeserializeExclusiveData(BinaryReader reader)
@@ -78,7 +80,8 @@ namespace Zoro.Network.P2P.Payloads
         {
             writer.Write((byte)AssetType);
             writer.WriteVarString(Name);
-            writer.WriteVarString(FullName);
+            if (Version > 0)
+                writer.WriteVarString(FullName);
             writer.Write(Amount);
             writer.Write(Precision);
             writer.Write(Owner);
@@ -116,6 +119,11 @@ namespace Zoro.Network.P2P.Payloads
         public override bool Verify(Snapshot snapshot, IEnumerable<Transaction> mempool)
         {
             return false;
+        }
+
+        public override UInt160 GetAccountScriptHash(Snapshot snapshot)
+        {
+            return null;
         }
     }
 }

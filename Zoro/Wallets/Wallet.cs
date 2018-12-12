@@ -186,7 +186,7 @@ namespace Zoro.Wallets
             return tx;
         }
 
-        public Transaction MakeTransaction(Blockchain blockchain, List<TransactionAttribute> attributes, UInt160 from = null, UInt160 change_address = null, Fixed8 fee = default(Fixed8))
+        public Transaction MakeTransaction(Blockchain blockchain, List<TransactionAttribute> attributes, Fixed8 gasPrice, UInt160 from = null, UInt160 change_address = null, Fixed8 gasLimit = default(Fixed8))
         {
             Transaction tx;
             if (attributes == null) attributes = new List<TransactionAttribute>();
@@ -200,8 +200,9 @@ namespace Zoro.Wallets
                     sb.Emit(OpCode.RET, nonce);
                     tx = new InvocationTransaction
                     {
-                        Version = 1,
-                        Script = sb.ToArray()
+                        Script = sb.ToArray(),
+                        GasPrice = gasPrice,
+                        GasLimit = gasLimit
                     };
                 }
                 attributes.AddRange(sAttributes.Select(p => new TransactionAttribute
@@ -214,17 +215,17 @@ namespace Zoro.Wallets
             tx.Witnesses = new Witness[0];
             if (tx is InvocationTransaction itx)
             {
-                ApplicationEngine engine = ApplicationEngine.Run(itx.Script, Blockchain.Root, itx);
+                ApplicationEngine engine = ApplicationEngine.Run(itx.Script, blockchain, itx, null, true);
                 if (engine.State.HasFlag(VMState.FAULT)) return null;
                 tx = new InvocationTransaction
                 {
                     Version = itx.Version,
                     Script = itx.Script,
-                    Gas = InvocationTransaction.GetGas(engine.GasConsumed),
+                    GasLimit = InvocationTransaction.GetGasLimit(engine.GasConsumed),
                     Attributes = itx.Attributes,
                 };
             }
-            tx = MakeTransaction(tx, from, change_address, fee);
+            tx = MakeTransaction(tx, from, change_address, gasLimit);
             return tx;
         }
 

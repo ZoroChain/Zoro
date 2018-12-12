@@ -459,14 +459,10 @@ namespace Zoro.Network.RPC
             {
                 InvocationTransaction tx = new InvocationTransaction
                 {
-                    Version = 1,
                     ChainHash = blockchain.ChainHash,
                     Script = json["script"].AsString().HexToBytes(),
-                    Gas = Fixed8.Parse(json["gas_consumed"].AsString())
+                    GasLimit = InvocationTransaction.GetGasLimit(Fixed8.Parse(json["gas_consumed"].AsString()))
                 };
-                tx.Gas -= Fixed8.FromDecimal(10);
-                if (tx.Gas < Fixed8.Zero) tx.Gas = Fixed8.Zero;
-                tx.Gas = tx.Gas.Ceiling();
                 tx = wallet.MakeTransaction(tx);
                 if (tx != null)
                 {

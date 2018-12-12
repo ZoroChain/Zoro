@@ -25,30 +25,48 @@ namespace Zoro.Ledger
             return Fixed8.Zero;
         }
 
+        public void AddBalance(Snapshot snapshot, UInt160 address, Fixed8 value)
+        {
+            if (value <= Fixed8.Zero)
+                return;
+
+            AccountState account = snapshot.Accounts.GetAndChange(address, () => new AccountState(address));
+
+            if (account.Balances.ContainsKey(AssetId))
+                account.Balances[AssetId] += value;
+            else
+                account.Balances[AssetId] = value;
+        }
+
+        public bool SubBalance(Snapshot snapshot, UInt160 address, Fixed8 value)
+        {
+            AccountState account = snapshot.Accounts.GetAndChange(address, () => new AccountState(address));
+            if (account == null)
+                return false;
+
+            if (!account.Balances.TryGetValue(AssetId, out Fixed8 amount) || amount < value)
+                return false;
+
+            account.Balances[AssetId] = amount - value;
+
+            return true;
+        }
+
         public bool Transfer(Snapshot snapshot, UInt160 from, UInt160 to, Fixed8 value)
         {
-            if (value.Equals(Fixed8.Zero))
+            if (value <= Fixed8.Zero)
                 return false;
 
             if (from.Equals(to))
                 return false;
 
-            AccountState accountFrom = snapshot.Accounts.GetAndChange(from);
-            if (accountFrom == null)
+            if (!SubBalance(snapshot, from, value))
                 return false;
 
-            if (!accountFrom.Balances.TryGetValue(AssetId, out Fixed8 amount) || amount < value)
-                return false;
-
-            accountFrom.Balances[AssetId] = amount - value;
-
-            AccountState accountTo = snapshot.Accounts.GetAndChange(to, () => new AccountState(to));
-            if (accountTo.Balances.ContainsKey(AssetId))
-                accountTo.Balances[AssetId] += value;
-            else
-                accountTo.Balances[AssetId] = value;
+            AddBalance(snapshot, to, value);
 
             return true;
         }
+
     }
 }

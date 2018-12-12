@@ -18,6 +18,8 @@
       "127.0.0.1:20004"
     ],
     "SystemFee": {
+      "IssueTransaction": 5,
+      "RegisterTransaction": 100
     }
   }
 }
