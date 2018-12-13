@@ -522,6 +522,7 @@ namespace Zoro.Ledger
                 snapshot.PersistingBlock = block;
                 foreach (Transaction tx in block.Transactions)
                 {
+                    // 先预扣手续费，如果余额不够，不执行交易
                     if (PrepaySystemFee(snapshot, tx))
                     {
                         sysfeeAmount += PersistTransaction(block, snapshot, tx);
@@ -626,9 +627,18 @@ namespace Zoro.Ledger
                             Notifications = engine.Service.Notifications.ToArray()
                         });
 
-                        sysfee = tx_invocation.GasPrice * engine.GasConsumed;
+                        // 如果在GAS足够的情况下，脚本发生异常中断，需要退回手续费
+                        if (engine.State.HasFlag(VMState.FAULT) && engine.GasConsumed <= tx_invocation.GasLimit)
+                        {
+                            sysfee = Fixed8.Zero;
+                        }
+                        else
+                        {
+                            //按实际消耗的GAS，计算需要的手续费
+                            sysfee = tx_invocation.GasPrice * engine.GasConsumed;
+                        }
 
-                        // refund system fee
+                        // 退回多扣的手续费
                         BCPNativeNEP5.AddBalance(snapshot, tx.GetAccountScriptHash(snapshot), tx.SystemFee - sysfee);
                     }
                     break;
