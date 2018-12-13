@@ -157,6 +157,8 @@ namespace Zoro.SmartContract
         public bool CheckWitness(ExecutionEngine engine, UInt160 hash)
         {
             IVerifiable container = (IVerifiable)engine.ScriptContainer;
+            if (container == null)
+                return true;
             UInt160[] _hashes_for_verifying = container.GetScriptHashesForVerifying(Snapshot);
             return _hashes_for_verifying.Contains(hash);
         }
