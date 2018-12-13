@@ -824,9 +824,11 @@ namespace Zoro.Ledger
 
         private void InitializeNativeNEP5()
         {
-            foreach (var assetId in Store.GetAssets().Find().Select(p => p.Value.AssetId))
+            Log("RegisterNativeNEP5:");
+            foreach (var asset in Store.GetAssets().Find().Select(p => p.Value))
             {
-                RegisterNativeNEP5(assetId);
+                Log($"{asset.GetName()}, {asset.AssetId}");
+                RegisterNativeNEP5(asset.AssetId);
             }
 
             BCPNativeNEP5 = GetNativeNEP5(UtilityToken.Hash);
