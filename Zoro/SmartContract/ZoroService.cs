@@ -102,18 +102,17 @@ namespace Zoro.SmartContract
             #endregion
 
             Register("Zoro.AppChain.Create", AppChain_Create);
-            Register("Zoro.AppChain.ChangeSeedList", AppChain_ChangeSeedList);
-            Register("Zoro.AppChain.ChangeValidators", AppChain_ChangeValidators);
+            Register("Zoro.AppChain.ChangeSeedList", AppChain_ChangeSeedList, 1000);
+            Register("Zoro.AppChain.ChangeValidators", AppChain_ChangeValidators, 1000);
 
-            Register("Zoro.Blockchain.GetNativeNEP5", Blockchain_GetNativeNEP5);
-            Register("Zoro.Blockchain.RegisterNativeNEP5", Blockchain_RegisterNativeNEP5);
+            Register("Zoro.Blockchain.GetNativeNEP5", Blockchain_GetNativeNEP5, 1);
 
-            Register("Zoro.NativeNEP5.Name", NativeNEP5_Name);
-            Register("Zoro.NativeNEP5.Symbol", NativeNEP5_Symbol);
-            Register("Zoro.NativeNEP5.Decimals", NativeNEP5_Decimals);
-            Register("Zoro.NativeNEP5.TotalSupply", NativeNEP5_TotalSupply);
-            Register("Zoro.NativeNEP5.BalanceOf", NativeNEP5_BalanceOf);
-            Register("Zoro.NativeNEP5.Transfer", NativeNEP5_Transfer);
+            Register("Zoro.NativeNEP5.Name", NativeNEP5_Name, 1);
+            Register("Zoro.NativeNEP5.Symbol", NativeNEP5_Symbol, 1);
+            Register("Zoro.NativeNEP5.Decimals", NativeNEP5_Decimals, 1);
+            Register("Zoro.NativeNEP5.TotalSupply", NativeNEP5_TotalSupply, 1);
+            Register("Zoro.NativeNEP5.BalanceOf", NativeNEP5_BalanceOf, 100);
+            Register("Zoro.NativeNEP5.Transfer", NativeNEP5_Transfer, 1000);
         }
 
         private bool AppChain_Create(ExecutionEngine engine)
@@ -134,11 +133,6 @@ namespace Zoro.SmartContract
         private bool Blockchain_GetNativeNEP5(ExecutionEngine engine)
         {
             return nativeNEP5Service.Retrieve(engine);
-        }
-
-        private bool Blockchain_RegisterNativeNEP5(ExecutionEngine engine)
-        {
-            return nativeNEP5Service.Register(engine);
         }
 
         private bool NativeNEP5_Name(ExecutionEngine engine)

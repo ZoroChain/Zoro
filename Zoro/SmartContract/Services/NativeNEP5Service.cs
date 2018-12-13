@@ -28,14 +28,6 @@ namespace Zoro.SmartContract.Services
             return true;
         }
 
-        public bool Register(ExecutionEngine engine)
-        {
-            if (Trigger != TriggerType.Application) return false;
-
-            UInt256 hash = new UInt256(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
-            return Snapshot.Blockchain.RegisterNativeNEP5(hash);
-        }
-
         public bool Name(ExecutionEngine engine)
         {
             if (Trigger != TriggerType.Application) return false;

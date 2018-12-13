@@ -538,6 +538,8 @@ namespace Zoro.SmartContract
                 api_hash == "Neo.Storage.Put".ToInteropMethodHash() ||
                 api_hash == "AntShares.Storage.Put".ToInteropMethodHash())
                 return ((CurrentContext.EvaluationStack.Peek(1).GetByteArray().Length + CurrentContext.EvaluationStack.Peek(2).GetByteArray().Length - 1) / 1024 + 1) * 1000;
+            if (api_hash == "Zoro.AppChain.Create".ToInteropMethodHash())
+                return 5000L * 100000000L / ratio;
             return 1;
         }
 
