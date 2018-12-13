@@ -19,8 +19,13 @@ namespace Zoro.Network.P2P.Payloads
         public UInt160 From = new UInt160();
         public UInt160 To = new UInt160();
         public Fixed8 Value = Fixed8.Zero;
+        public Fixed8 GasPrice = Fixed8.One;
 
-        public override int Size => base.Size + randomBytes.GetVarSize() + AssetId.Size + From.Size + To.Size + Value.Size;        
+        public readonly static Fixed8 Gas = Fixed8.One;
+
+        public override int Size => base.Size + randomBytes.GetVarSize() + AssetId.Size + From.Size + To.Size + Value.Size + GasPrice.Size;
+
+        public override Fixed8 SystemFee => GasPrice * Gas;
 
         public ContractTransaction()
             : base(TransactionType.ContractTransaction)
@@ -44,6 +49,7 @@ namespace Zoro.Network.P2P.Payloads
                 From = reader.ReadSerializable<UInt160>();
                 To = reader.ReadSerializable<UInt160>();
                 Value = reader.ReadSerializable<Fixed8>();
+                GasPrice = reader.ReadSerializable<Fixed8>();
             }
         }
 
@@ -56,6 +62,7 @@ namespace Zoro.Network.P2P.Payloads
                 writer.Write(From);
                 writer.Write(To);
                 writer.Write(Value);
+                writer.Write(GasPrice);
             }
         }
 
@@ -69,6 +76,7 @@ namespace Zoro.Network.P2P.Payloads
                 json["value"] = Value.ToString();
                 json["from"] = From.ToAddress();
                 json["to"] = To.ToAddress();
+                json["gas_price"] = GasPrice.ToString();
             }
             return json;
         }
@@ -85,7 +93,7 @@ namespace Zoro.Network.P2P.Payloads
 
         public override bool Verify(Snapshot snapshot, IEnumerable<Transaction> mempool)
         {
-            if (Value.Equals(Fixed8.Zero))
+            if (Value <= Fixed8.Zero)
                 return false;
 
             if (From.Equals(To))
@@ -100,6 +108,24 @@ namespace Zoro.Network.P2P.Payloads
                 return false;
 
             return base.Verify(snapshot, mempool);
+        }
+
+        protected override bool CheckBalance(Snapshot snapshot)
+        {
+            Fixed8 amount = SystemFee + Value;
+
+            if (amount <= Fixed8.Zero)
+                return true;
+
+            AccountState account = snapshot.Accounts.TryGet(GetAccountScriptHash(snapshot));
+
+            if (account == null || !account.Balances.TryGetValue(Blockchain.UtilityToken.Hash, out Fixed8 balance))
+                return false;
+
+            if (balance < amount)
+                return false;
+
+            return true;
         }
     }
 }

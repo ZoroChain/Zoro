@@ -626,7 +626,7 @@ namespace Zoro.Ledger
                             Notifications = engine.Service.Notifications.ToArray()
                         });
 
-                        sysfee = tx_invocation.GetSystemFee(engine.GasConsumed);
+                        sysfee = tx_invocation.GasPrice * engine.GasConsumed;
 
                         // refund system fee
                         BCPNativeNEP5.AddBalance(snapshot, tx.GetAccountScriptHash(snapshot), tx.SystemFee - sysfee);

@@ -2,6 +2,7 @@ using Zoro.Cryptography;
 using Zoro.IO;
 using Zoro.IO.Caching;
 using Zoro.IO.Json;
+using Zoro.Ledger;
 using Zoro.Persistence;
 using Zoro.SmartContract;
 using Neo.VM;
@@ -194,8 +195,27 @@ namespace Zoro.Network.P2P.Payloads
             if (Size > MaxTransactionSize) return false;
             if (Attributes.Count(p => p.Usage == TransactionAttributeUsage.ECDH02 || p.Usage == TransactionAttributeUsage.ECDH03) > 1)
                 return false;
+            if (!CheckBalance(snapshot)) return false;
             if (!VerifyReceivingScripts()) return false;
             return this.VerifyWitnesses(snapshot);
+        }
+
+        protected virtual bool CheckBalance(Snapshot snapshot)
+        {
+            Fixed8 sysfee = SystemFee;
+
+            if (sysfee <= Fixed8.Zero)
+                return true;
+
+            AccountState account = snapshot.Accounts.TryGet(GetAccountScriptHash(snapshot));
+
+            if (account == null || !account.Balances.TryGetValue(Blockchain.UtilityToken.Hash, out Fixed8 balance))
+                return false;
+
+            if (balance < sysfee)
+                return false;
+
+            return true;
         }
 
         private bool VerifyReceivingScripts()

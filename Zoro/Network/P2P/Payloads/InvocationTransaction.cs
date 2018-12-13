@@ -88,26 +88,7 @@ namespace Zoro.Network.P2P.Payloads
             if (ScriptHash.Equals(UInt160.Zero)) return false;
             if (GasLimit.GetData() % 100000000 != 0) return false;
             if (GasPrice <= Fixed8.Zero) return false;
-            if (GasLimit > Fixed8.Zero && !CheckGasLimit(snapshot)) return false;
             return base.Verify(snapshot, mempool);
-        }
-
-        private bool CheckGasLimit(Snapshot snapshot)
-        {
-            AccountState account = snapshot.Accounts.TryGet(ScriptHash);
-
-            if (account == null || !account.Balances.TryGetValue(Blockchain.UtilityToken.Hash, out Fixed8 balance))
-                return false;
-
-            if (balance < GasPrice * GasLimit)
-                return false;
-
-            return true;
-        }
-
-        public Fixed8 GetSystemFee(Fixed8 gasConsumed)
-        {
-            return GasPrice * gasConsumed;
         }
     }
 }
