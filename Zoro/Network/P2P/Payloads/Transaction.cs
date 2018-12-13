@@ -29,10 +29,6 @@ namespace Zoro.Network.P2P.Payloads
         public readonly TransactionType Type;
         public byte Version;
         public TransactionAttribute[] Attributes;
-#pragma warning disable CS0612
-        public CoinReference[] Inputs = new CoinReference[0];
-        public TransactionOutput[] Outputs = new TransactionOutput[0];
-#pragma warning restore CS0612
         public Witness[] Witnesses { get; set; }
 
         private UInt256 _hash = null;
@@ -122,10 +118,6 @@ namespace Zoro.Network.P2P.Payloads
             Version = reader.ReadByte();
             DeserializeExclusiveData(reader);
             Attributes = reader.ReadSerializableArray<TransactionAttribute>(MaxTransactionAttributes);
-#pragma warning disable CS0612
-            Inputs = reader.ReadSerializableArray<CoinReference>();
-            Outputs = reader.ReadSerializableArray<TransactionOutput>(ushort.MaxValue + 1);
-#pragma warning restore CS0612
         }
 
         public bool Equals(Transaction other)
@@ -176,8 +168,6 @@ namespace Zoro.Network.P2P.Payloads
             writer.Write(Version);
             SerializeExclusiveData(writer);
             writer.Write(Attributes);
-            writer.Write(Inputs);
-            writer.Write(Outputs);
         }
 
         public virtual JObject ToJson()
