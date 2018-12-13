@@ -51,8 +51,8 @@ namespace Zoro.SmartContract
             Register("Neo.Transaction.GetAttributes", Transaction_GetAttributes, 1);
             Register("Neo.Transaction.GetInputs", Transaction_GetInputs, 1);
             Register("Neo.Transaction.GetOutputs", Transaction_GetOutputs, 1);
-            Register("Neo.Transaction.GetReferences", Transaction_GetReferences, 200);
-            Register("Neo.Transaction.GetUnspentCoins", Transaction_GetUnspentCoins, 200);
+            Register("Neo.Transaction.GetReferences", Transaction_GetReferences, 1);
+            Register("Neo.Transaction.GetUnspentCoins", Transaction_GetUnspentCoins, 1);
             Register("Neo.Transaction.GetWitnesses", Transaction_GetWitnesses, 200);
             Register("Neo.InvocationTransaction.GetScript", InvocationTransaction_GetScript, 1);
             Register("Neo.Witness.GetVerificationScript", Witness_GetVerificationScript, 100);
@@ -131,7 +131,7 @@ namespace Zoro.SmartContract
             Register("AntShares.Transaction.GetAttributes", Transaction_GetAttributes, 1);
             Register("AntShares.Transaction.GetInputs", Transaction_GetInputs, 1);
             Register("AntShares.Transaction.GetOutputs", Transaction_GetOutputs, 1);
-            Register("AntShares.Transaction.GetReferences", Transaction_GetReferences, 200);
+            Register("AntShares.Transaction.GetReferences", Transaction_GetReferences, 1);
             Register("AntShares.Attribute.GetUsage", Attribute_GetUsage, 1);
             Register("AntShares.Attribute.GetData", Attribute_GetData, 1);
             Register("AntShares.Input.GetHash", Input_GetHash, 1);
