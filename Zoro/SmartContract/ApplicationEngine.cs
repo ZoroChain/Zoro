@@ -54,6 +54,7 @@ namespace Zoro.SmartContract
 
         private int stackitem_count = 0;
         private bool is_stackitem_count_strict = true;
+        private int instructions_executed = 0;
 
         public Fixed8 GasConsumed => new Fixed8(gas_consumed);
         public new ZoroService Service => (ZoroService)base.Service;
@@ -542,6 +543,7 @@ namespace Zoro.SmartContract
 
         private bool PostStepInto(OpCode nextOpcode)
         {
+            instructions_executed++;
             if (!CheckStackSize(nextOpcode)) return false;
             return true;
         }
