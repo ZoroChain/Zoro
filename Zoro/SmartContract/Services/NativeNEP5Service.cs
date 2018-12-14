@@ -104,5 +104,24 @@ namespace Zoro.SmartContract.Services
             bool result = nativeNEP5.Transfer(Snapshot, from, to, value);
             return result;
         }
+
+        public bool Transfer_App(ExecutionEngine engine)
+        {
+            if (Trigger != TriggerType.Application) return false;
+
+            UInt256 hash = new UInt256(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            NativeNEP5 nativeNEP5 = Snapshot.Blockchain.GetNativeNEP5(hash);
+            if (nativeNEP5 == null) return false;
+
+            UInt160 from = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            UInt160 to = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            Fixed8 value = new Fixed8((long)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger());
+
+            if (from != engine.CallingContext.ScriptHash.ToScriptHash())
+                return false;
+
+            bool result = nativeNEP5.Transfer(Snapshot, from, to, value);
+            return result;
+        }
     }
 }
