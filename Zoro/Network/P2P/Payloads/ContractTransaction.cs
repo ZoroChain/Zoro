@@ -103,8 +103,7 @@ namespace Zoro.Network.P2P.Payloads
                 return false;
 
             AssetState asset = snapshot.Assets.TryGet(AssetId);
-            if (asset == null) return false;
-            if (asset.Expiration <= snapshot.Height + 1 && asset.AssetType != AssetType.GoverningToken && asset.AssetType != AssetType.UtilityToken)
+            if (asset == null)
                 return false;
 
             return base.Verify(snapshot, mempool);

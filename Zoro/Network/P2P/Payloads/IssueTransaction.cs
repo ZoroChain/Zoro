@@ -105,7 +105,7 @@ namespace Zoro.Network.P2P.Payloads
             AssetState asset = snapshot.Assets.TryGet(AssetId);
             if (asset == null) return false;
             if (asset.Amount < Fixed8.Zero) return false;
-            if (asset.Available < Value) return false;
+            if (asset.Amount - asset.Available < Value) return false;
             return true;
         }
     }

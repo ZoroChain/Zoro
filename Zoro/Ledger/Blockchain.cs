@@ -592,18 +592,23 @@ namespace Zoro.Ledger
                         Owner = tx_register.Owner,
                         Admin = tx_register.Admin,
                         Issuer = tx_register.Admin,
-                        Expiration = block.Index + 2 * 2000000,
+                        BlockIndex = block.Index,
                         IsFrozen = false
                     });
                     break;
 #pragma warning restore CS0612
                 case IssueTransaction tx_issue:
-                    snapshot.Assets.GetAndChange(tx_issue.AssetId).Available -= tx_issue.Value;
-                    AccountState account = snapshot.Accounts.GetAndChange(tx_issue.Address, () => new AccountState(tx_issue.Address));
-                    if (account.Balances.ContainsKey(tx_issue.AssetId))
-                        account.Balances[tx_issue.AssetId] += tx_issue.Value;
-                    else
-                        account.Balances[tx_issue.AssetId] = tx_issue.Value;
+                    // 只能在根链上发行流通BCP
+                    // 暂时不做限制，等实现跨链兑换BCP后再限制
+                    //if (tx_issue.AssetId != UtilityToken.Hash || ChainHash.Equals(UInt160.Zero)) 
+                    {
+                        snapshot.Assets.GetAndChange(tx_issue.AssetId).Available += tx_issue.Value;
+                        AccountState account = snapshot.Accounts.GetAndChange(tx_issue.Address, () => new AccountState(tx_issue.Address));
+                        if (account.Balances.ContainsKey(tx_issue.AssetId))
+                            account.Balances[tx_issue.AssetId] += tx_issue.Value;
+                        else
+                            account.Balances[tx_issue.AssetId] = tx_issue.Value;
+                    }
                     break;
                 case ContractTransaction tx_contract:
                     NativeNEP5 nativeNEP5 = GetNativeNEP5(tx_contract.AssetId);
@@ -837,8 +842,11 @@ namespace Zoro.Ledger
             Log("RegisterNativeNEP5:");
             foreach (var asset in Store.GetAssets().Find().Select(p => p.Value))
             {
-                Log($"{asset.GetName()}, {asset.AssetId}");
-                RegisterNativeNEP5(asset.AssetId);
+                if (asset.AssetType.HasFlag(AssetType.NativeNEP5Token))
+                {
+                    Log($"{asset.GetName()}, {asset.AssetId}");
+                    RegisterNativeNEP5(asset.AssetId);
+                }
             }
 
             BCPNativeNEP5 = GetNativeNEP5(UtilityToken.Hash);

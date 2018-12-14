@@ -511,9 +511,6 @@ namespace Zoro.SmartContract
             if (api_hash == "Neo.Asset.Create".ToInteropMethodHash() ||
                api_hash == "AntShares.Asset.Create".ToInteropMethodHash())
                 return 5000L * 100000000L / ratio;
-            if (api_hash == "Neo.Asset.Renew".ToInteropMethodHash() ||
-                api_hash == "AntShares.Asset.Renew".ToInteropMethodHash())
-                return (byte)CurrentContext.EvaluationStack.Peek(1).GetBigInteger() * 5000L * 100000000L / ratio;
             if (api_hash == "Neo.Contract.Create".ToInteropMethodHash() ||
                 api_hash == "Neo.Contract.Migrate".ToInteropMethodHash() ||
                 api_hash == "AntShares.Contract.Create".ToInteropMethodHash() ||

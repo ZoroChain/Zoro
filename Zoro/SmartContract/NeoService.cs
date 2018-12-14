@@ -68,7 +68,7 @@ namespace Zoro.SmartContract
             Register("Neo.Account.GetBalance", Account_GetBalance, 1);
             Register("Neo.Account.IsStandard", Account_IsStandard, 100);
             Register("Neo.Asset.Create", Asset_Create);
-            Register("Neo.Asset.Renew", Asset_Renew);
+            Register("Neo.Asset.Renew", Asset_Renew, 1);
             Register("Neo.Asset.GetAssetId", Asset_GetAssetId, 1);
             Register("Neo.Asset.GetAssetType", Asset_GetAssetType, 1);
             Register("Neo.Asset.GetAmount", Asset_GetAmount, 1);
@@ -143,7 +143,7 @@ namespace Zoro.SmartContract
             Register("AntShares.Account.GetVotes", Account_GetVotes, 1);
             Register("AntShares.Account.GetBalance", Account_GetBalance, 1);
             Register("AntShares.Asset.Create", Asset_Create);
-            Register("AntShares.Asset.Renew", Asset_Renew);
+            Register("AntShares.Asset.Renew", Asset_Renew, 1);
             Register("AntShares.Asset.GetAssetId", Asset_GetAssetId, 1);
             Register("AntShares.Asset.GetAssetType", Asset_GetAssetType, 1);
             Register("AntShares.Asset.GetAmount", Asset_GetAmount, 1);
@@ -422,18 +422,15 @@ namespace Zoro.SmartContract
             if (Trigger != TriggerType.Application) return false;
             InvocationTransaction tx = (InvocationTransaction)engine.ScriptContainer;
             AssetType asset_type = (AssetType)(byte)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
-            if (!Enum.IsDefined(typeof(AssetType), asset_type) || asset_type == AssetType.CreditFlag || asset_type == AssetType.DutyFlag)
+            if (!Enum.IsDefined(typeof(AssetType), asset_type) || asset_type == AssetType.UtilityToken)
                 return false;
             if (engine.CurrentContext.EvaluationStack.Peek().GetByteArray().Length > 1024)
                 return false;
             string name = Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
             Fixed8 amount = new Fixed8((long)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger());
             if (amount == Fixed8.Zero || amount < -Fixed8.Satoshi) return false;
-            if (asset_type == AssetType.Invoice && amount != -Fixed8.Satoshi)
-                return false;
             byte precision = (byte)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
             if (precision > 8) return false;
-            if (asset_type == AssetType.Share && precision != 0) return false;
             if (amount != -Fixed8.Satoshi && amount.GetData() % (long)Math.Pow(10, 8 - precision) != 0)
                 return false;
             ECPoint owner = ECPoint.DecodePoint(engine.CurrentContext.EvaluationStack.Pop().GetByteArray(), ECCurve.Secp256r1);
@@ -455,7 +452,7 @@ namespace Zoro.SmartContract
                 Owner = owner,
                 Admin = admin,
                 Issuer = issuer,
-                Expiration = Snapshot.Height + 1 + 2000000,
+                BlockIndex = Snapshot.Height + 1,
                 IsFrozen = false
             });
             engine.CurrentContext.EvaluationStack.Push(StackItem.FromInterface(asset));
@@ -464,26 +461,6 @@ namespace Zoro.SmartContract
 
         protected bool Asset_Renew(ExecutionEngine engine)
         {
-            if (Trigger != TriggerType.Application) return false;
-            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
-            {
-                AssetState asset = _interface.GetInterface<AssetState>();
-                if (asset == null) return false;
-                byte years = (byte)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
-                asset = Snapshot.Assets.GetAndChange(asset.AssetId);
-                if (asset.Expiration < Snapshot.Height + 1)
-                    asset.Expiration = Snapshot.Height + 1;
-                try
-                {
-                    asset.Expiration = checked(asset.Expiration + years * 2000000u);
-                }
-                catch (OverflowException)
-                {
-                    asset.Expiration = uint.MaxValue;
-                }
-                engine.CurrentContext.EvaluationStack.Push(asset.Expiration);
-                return true;
-            }
             return false;
         }
 
