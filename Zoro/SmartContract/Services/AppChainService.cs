@@ -98,7 +98,7 @@ namespace Zoro.SmartContract.Services
                     Snapshot.AppChains.Add(hash, state);
 
                     // 添加通知事件，等待上链后处理
-                    if (Snapshot.PersistingBlock != null)
+                    if (engine.ScriptContainer != null)
                         Snapshot.Blockchain.AddAppChainNotification("Create", state);
                 }
 

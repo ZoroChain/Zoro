@@ -27,7 +27,7 @@ namespace Zoro.Ledger
         public ECPoint Owner;
         public UInt160 Admin;
         public UInt160 Issuer;
-        public uint Expiration;
+        public uint BlockIndex;
         public bool IsFrozen;
 
         public override int Size => base.Size + AssetId.Size + sizeof(AssetType) + Name.GetVarSize() + FullName.GetVarSize() + Amount.Size + Available.Size + sizeof(byte) + sizeof(byte) + Fee.Size + FeeAddress.Size + Owner.Size + Admin.Size + Issuer.Size + sizeof(uint) + sizeof(bool);
@@ -55,7 +55,7 @@ namespace Zoro.Ledger
                 Owner = Owner,
                 Admin = Admin,
                 Issuer = Issuer,
-                Expiration = Expiration,
+                BlockIndex = BlockIndex,
                 IsFrozen = IsFrozen,
                 _names = _names
             };
@@ -79,7 +79,7 @@ namespace Zoro.Ledger
             Owner = ECPoint.DeserializeFrom(reader, ECCurve.Secp256r1);
             Admin = reader.ReadSerializable<UInt160>();
             Issuer = reader.ReadSerializable<UInt160>();
-            Expiration = reader.ReadUInt32();
+            BlockIndex = reader.ReadUInt32();
             IsFrozen = reader.ReadBoolean();
         }
 
@@ -98,7 +98,7 @@ namespace Zoro.Ledger
             Owner = replica.Owner;
             Admin = replica.Admin;
             Issuer = replica.Issuer;
-            Expiration = replica.Expiration;
+            BlockIndex = replica.BlockIndex;
             IsFrozen = replica.IsFrozen;
             _names = replica._names;
         }
@@ -189,7 +189,7 @@ namespace Zoro.Ledger
             writer.Write(Owner);
             writer.Write(Admin);
             writer.Write(Issuer);
-            writer.Write(Expiration);
+            writer.Write(BlockIndex);
             writer.Write(IsFrozen);
         }
 
@@ -220,7 +220,7 @@ namespace Zoro.Ledger
             json["owner"] = Owner.ToString();
             json["admin"] = Admin.ToAddress();
             json["issuer"] = Issuer.ToAddress();
-            json["expiration"] = Expiration;
+            json["block_index"] = BlockIndex;
             json["frozen"] = IsFrozen;
             return json;
         }

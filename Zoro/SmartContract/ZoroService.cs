@@ -65,7 +65,7 @@ namespace Zoro.SmartContract
             Register("Zoro.Account.GetBalance", Account_GetBalance, 1);
             Register("Zoro.Account.IsStandard", Account_IsStandard, 100);
             Register("Zoro.Asset.Create", Asset_Create);
-            Register("Zoro.Asset.Renew", Asset_Renew);
+            Register("Zoro.Asset.Renew", Asset_Renew, 1);
             Register("Zoro.Asset.GetAssetId", Asset_GetAssetId, 1);
             Register("Zoro.Asset.GetAssetType", Asset_GetAssetType, 1);
             Register("Zoro.Asset.GetAmount", Asset_GetAmount, 1);
