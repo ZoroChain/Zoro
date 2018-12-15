@@ -116,8 +116,8 @@ namespace Zoro.SmartContract.Services
             UInt160 from = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
             UInt160 to = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
             Fixed8 value = new Fixed8((long)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger());
-
-            if (from != engine.CallingContext.ScriptHash.ToScriptHash())
+            
+            if (from != new UInt160(engine.CurrentContext.ScriptHash))
                 return false;
 
             bool result = nativeNEP5.Transfer(Snapshot, from, to, value);
