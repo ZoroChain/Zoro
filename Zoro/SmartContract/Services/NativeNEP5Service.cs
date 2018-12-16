@@ -100,7 +100,9 @@ namespace Zoro.SmartContract.Services
 
             if (!Service.CheckWitness(engine, from))
                 return false;
-
+            //禁止跳板调用、入口脚本不是当前执行脚本说明是跳板调用
+            if (engine.EntryContext.ScriptHash != engine.CurrentContext.ScriptHash)
+                return false;
             bool result = nativeNEP5.Transfer(Snapshot, from, to, value);
             return result;
         }
