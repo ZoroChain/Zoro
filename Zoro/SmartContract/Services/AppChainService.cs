@@ -152,7 +152,7 @@ namespace Zoro.SmartContract.Services
             state.LastModified = DateTime.UtcNow.ToTimestamp();
 
             // 添加通知事件，等待上链后处理
-            if (Snapshot.PersistingBlock != null)
+            if (engine.ScriptContainer != null)
                 Snapshot.Blockchain.AddAppChainNotification("ChangeValidators", state);
 
             // 设置脚本的返回值
@@ -201,7 +201,7 @@ namespace Zoro.SmartContract.Services
             state.LastModified = DateTime.UtcNow.ToTimestamp();
 
             // 添加通知事件，等待上链后处理
-            if (Snapshot.PersistingBlock != null)
+            if (engine.ScriptContainer != null)
                 Snapshot.Blockchain.AddAppChainNotification("ChangeSeedList", state);
 
             // 设置脚本的返回值
