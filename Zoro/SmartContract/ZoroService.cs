@@ -1,11 +1,6 @@
-﻿using Zoro.Cryptography.ECC;
-using Zoro.Ledger;
-using Zoro.Persistence;
+﻿using Zoro.Persistence;
 using Zoro.SmartContract.Services;
 using Neo.VM;
-using System;
-using System.Net;
-using System.Text;
 
 namespace Zoro.SmartContract
 {
@@ -176,5 +171,13 @@ namespace Zoro.SmartContract
         {
             return nativeNEP5Service.GetTransferState(engine);
         }
+
+        public bool NativeNEP5_Invoke_Notification(ExecutionEngine engine, UInt256 AssetId, StackItem item)
+        {
+            NotifyEventArgs notification = new NotifyEventArgs(engine.ScriptContainer, AssetId, item);
+            InvokeNotification(notification);
+            return true;
+        }
+
     }
 }

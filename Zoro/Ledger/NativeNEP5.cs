@@ -67,20 +67,5 @@ namespace Zoro.Ledger
 
             return true;
         }
-
-        public void SaveTransferState(Snapshot snapshot, UInt256 TransactionHash, UInt160 from, UInt160 to, Fixed8 value)
-        {
-            snapshot.Transfers.GetAndChange(TransactionHash, () => new TransferState
-            {
-                Value = value,
-                From = from,
-                To = to
-            });
-        }
-
-        public TransferState GetTransferState(Snapshot snapshot, UInt256 TransactionHash)
-        {
-            return snapshot.Transfers.TryGet(TransactionHash);
-        }
     }
 }

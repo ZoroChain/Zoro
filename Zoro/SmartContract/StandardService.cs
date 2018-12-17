@@ -182,12 +182,17 @@ namespace Zoro.SmartContract
             return true;
         }
 
+        protected void InvokeNotification(NotifyEventArgs notification)
+        {
+            Notify?.Invoke(this, notification);
+            notifications.Add(notification);
+        }
+
         protected bool Runtime_Notify(ExecutionEngine engine)
         {
             StackItem state = engine.CurrentContext.EvaluationStack.Pop();
             NotifyEventArgs notification = new NotifyEventArgs(engine.ScriptContainer, new UInt160(engine.CurrentContext.ScriptHash), state);
-            Notify?.Invoke(this, notification);
-            notifications.Add(notification);
+            InvokeNotification(notification);
             return true;
         }
 

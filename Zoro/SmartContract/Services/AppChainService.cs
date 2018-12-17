@@ -10,11 +10,11 @@ namespace Zoro.SmartContract.Services
 {
     class AppChainService
     {
-        protected readonly StandardService Service;
+        protected readonly ZoroService Service;
         protected readonly TriggerType Trigger;
         protected readonly Snapshot Snapshot;
 
-        public AppChainService(StandardService service, TriggerType trigger, Snapshot snapshot)
+        public AppChainService(ZoroService service, TriggerType trigger, Snapshot snapshot)
         {
             Service = service;
             Trigger = trigger;
