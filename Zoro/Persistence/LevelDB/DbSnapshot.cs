@@ -18,8 +18,6 @@ namespace Zoro.Persistence.LevelDB
         public override DataCache<UInt160, AccountState> Accounts { get; }
         public override DataCache<UInt160, AppChainState> AppChains { get; }
         public override DataCache<UInt256, TransferState> Transfers { get; }
-        public override DataCache<UInt256, UnspentCoinState> UnspentCoins { get; }
-        public override DataCache<UInt256, SpentCoinState> SpentCoins { get; }
         public override DataCache<UInt256, AssetState> Assets { get; }
         public override DataCache<UInt160, ContractState> Contracts { get; }
         public override DataCache<StorageKey, StorageItem> Storages { get; }
@@ -40,8 +38,6 @@ namespace Zoro.Persistence.LevelDB
             Accounts = new DbCache<UInt160, AccountState>(db, options, batch, Prefixes.ST_Account);
             AppChains = new DbCache<UInt160, AppChainState>(db, options, batch, Prefixes.ST_Appchain);
             Transfers = new DbCache<UInt256, TransferState>(db, options, batch, Prefixes.ST_Transfer);
-            UnspentCoins = new DbCache<UInt256, UnspentCoinState>(db, options, batch, Prefixes.ST_Coin);
-            SpentCoins = new DbCache<UInt256, SpentCoinState>(db, options, batch, Prefixes.ST_SpentCoin);
             Assets = new DbCache<UInt256, AssetState>(db, options, batch, Prefixes.ST_Asset);
             Contracts = new DbCache<UInt160, ContractState>(db, options, batch, Prefixes.ST_Contract);
             Storages = new DbCache<StorageKey, StorageItem>(db, options, batch, Prefixes.ST_Storage);

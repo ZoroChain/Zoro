@@ -12,8 +12,6 @@ namespace Zoro.Persistence
         DataCache<UInt160, AccountState> Accounts { get; }
         DataCache<UInt160, AppChainState> AppChains { get; }
         DataCache<UInt256, TransferState> Transfers { get; }
-        DataCache<UInt256, UnspentCoinState> UnspentCoins { get; }
-        DataCache<UInt256, SpentCoinState> SpentCoins { get; }
         DataCache<UInt256, AssetState> Assets { get; }
         DataCache<UInt160, ContractState> Contracts { get; }
         DataCache<StorageKey, StorageItem> Storages { get; }

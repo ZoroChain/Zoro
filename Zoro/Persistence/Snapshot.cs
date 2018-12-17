@@ -21,8 +21,6 @@ namespace Zoro.Persistence
         public abstract DataCache<UInt160, AccountState> Accounts { get; }
         public abstract DataCache<UInt160, AppChainState> AppChains { get; }
         public abstract DataCache<UInt256, TransferState> Transfers { get; }
-        public abstract DataCache<UInt256, UnspentCoinState> UnspentCoins { get; }
-        public abstract DataCache<UInt256, SpentCoinState> SpentCoins { get; }
         public abstract DataCache<UInt256, AssetState> Assets { get; }
         public abstract DataCache<UInt160, ContractState> Contracts { get; }
         public abstract DataCache<StorageKey, StorageItem> Storages { get; }
@@ -51,13 +49,9 @@ namespace Zoro.Persistence
         public virtual void Commit()
         {
             Accounts.DeleteWhere((k, v) => !v.IsFrozen && v.Votes.Length == 0 && v.Balances.All(p => p.Value <= Fixed8.Zero));
-            UnspentCoins.DeleteWhere((k, v) => v.Items.All(p => p.HasFlag(CoinState.Spent)));
-            SpentCoins.DeleteWhere((k, v) => v.Items.Count == 0);
             Blocks.Commit();
             Transactions.Commit();
             Accounts.Commit();
-            UnspentCoins.Commit();
-            SpentCoins.Commit();
             Assets.Commit();
             Contracts.Commit();
             Storages.Commit();

@@ -65,11 +65,6 @@ namespace Zoro.Persistence.LevelDB
             return new DbSnapshot(db, Blockchain);
         }
 
-        public override DataCache<UInt256, SpentCoinState> GetSpentCoins()
-        {
-            return new DbCache<UInt256, SpentCoinState>(db, null, null, Prefixes.ST_SpentCoin);
-        }
-
         public override DataCache<StorageKey, StorageItem> GetStorages()
         {
             return new DbCache<StorageKey, StorageItem>(db, null, null, Prefixes.ST_Storage);
@@ -78,11 +73,6 @@ namespace Zoro.Persistence.LevelDB
         public override DataCache<UInt256, TransactionState> GetTransactions()
         {
             return new DbCache<UInt256, TransactionState>(db, null, null, Prefixes.DATA_Transaction);
-        }
-
-        public override DataCache<UInt256, UnspentCoinState> GetUnspentCoins()
-        {
-            return new DbCache<UInt256, UnspentCoinState>(db, null, null, Prefixes.ST_Coin);
         }
 
         public override DataCache<UInt32Wrapper, HeaderHashList> GetHeaderHashList()
