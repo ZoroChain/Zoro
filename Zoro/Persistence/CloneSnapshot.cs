@@ -11,6 +11,7 @@ namespace Zoro.Persistence
         public override DataCache<UInt256, TransactionState> Transactions { get; }
         public override DataCache<UInt160, AccountState> Accounts { get; }
         public override DataCache<UInt160, AppChainState> AppChains { get; }
+        public override DataCache<UInt256, TransferState> Transfers { get; }
         public override DataCache<UInt256, UnspentCoinState> UnspentCoins { get; }
         public override DataCache<UInt256, SpentCoinState> SpentCoins { get; }
         public override DataCache<UInt256, AssetState> Assets { get; }
@@ -29,6 +30,7 @@ namespace Zoro.Persistence
             this.Transactions = snapshot.Transactions.CreateSnapshot();
             this.Accounts = snapshot.Accounts.CreateSnapshot();
             this.AppChains = snapshot.AppChains.CreateSnapshot();
+            this.Transfers = snapshot.Transfers.CreateSnapshot();
             this.UnspentCoins = snapshot.UnspentCoins.CreateSnapshot();
             this.SpentCoins = snapshot.SpentCoins.CreateSnapshot();
             this.Assets = snapshot.Assets.CreateSnapshot();

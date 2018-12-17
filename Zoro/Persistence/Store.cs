@@ -12,6 +12,7 @@ namespace Zoro.Persistence
         DataCache<UInt256, TransactionState> IPersistence.Transactions => GetTransactions();
         DataCache<UInt160, AccountState> IPersistence.Accounts => GetAccounts();
         DataCache<UInt160, AppChainState> IPersistence.AppChains => GetAppChains();
+        DataCache<UInt256, TransferState> IPersistence.Transfers => GetTransfers();
         DataCache<UInt256, UnspentCoinState> IPersistence.UnspentCoins => GetUnspentCoins();
         DataCache<UInt256, SpentCoinState> IPersistence.SpentCoins => GetSpentCoins();
         DataCache<UInt256, AssetState> IPersistence.Assets => GetAssets();
@@ -26,6 +27,7 @@ namespace Zoro.Persistence
         public abstract DataCache<UInt256, TransactionState> GetTransactions();
         public abstract DataCache<UInt160, AccountState> GetAccounts();
         public abstract DataCache<UInt160, AppChainState> GetAppChains();
+        public abstract DataCache<UInt256, TransferState> GetTransfers();
         public abstract DataCache<UInt256, UnspentCoinState> GetUnspentCoins();
         public abstract DataCache<UInt256, SpentCoinState> GetSpentCoins();
         public abstract DataCache<UInt256, AssetState> GetAssets();

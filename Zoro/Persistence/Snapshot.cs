@@ -20,6 +20,7 @@ namespace Zoro.Persistence
         public abstract DataCache<UInt256, TransactionState> Transactions { get; }
         public abstract DataCache<UInt160, AccountState> Accounts { get; }
         public abstract DataCache<UInt160, AppChainState> AppChains { get; }
+        public abstract DataCache<UInt256, TransferState> Transfers { get; }
         public abstract DataCache<UInt256, UnspentCoinState> UnspentCoins { get; }
         public abstract DataCache<UInt256, SpentCoinState> SpentCoins { get; }
         public abstract DataCache<UInt256, AssetState> Assets { get; }
@@ -65,6 +66,7 @@ namespace Zoro.Persistence
             HeaderHashIndex.Commit();
             AppChains.Commit();
             AppChainState.Commit();
+            Transfers.Commit();
         }
 
         public virtual void Dispose()

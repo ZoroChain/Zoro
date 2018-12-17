@@ -1,5 +1,6 @@
 ﻿using Zoro.Ledger;
 using Zoro.Persistence;
+using Zoro.Network.P2P.Payloads;
 using Neo.VM;
 
 namespace Zoro.SmartContract.Services
@@ -100,10 +101,19 @@ namespace Zoro.SmartContract.Services
 
             if (!Service.CheckWitness(engine, from))
                 return false;
+
             //禁止跳板调用、入口脚本不是当前执行脚本说明是跳板调用
             if (engine.EntryContext.ScriptHash != engine.CurrentContext.ScriptHash)
                 return false;
+
             bool result = nativeNEP5.Transfer(Snapshot, from, to, value);
+
+            if (result)
+            {
+                if (engine.ScriptContainer is Transaction tx)
+                    nativeNEP5.SaveTransferState(Snapshot, tx.Hash, from, to, value);
+            }
+
             return result;
         }
 
@@ -123,7 +133,30 @@ namespace Zoro.SmartContract.Services
                 return false;
 
             bool result = nativeNEP5.Transfer(Snapshot, from, to, value);
+
+            if (result)
+            {
+                if (engine.ScriptContainer is Transaction tx)
+                    nativeNEP5.SaveTransferState(Snapshot, tx.Hash, from, to, value);
+            }
+
             return result;
+        }
+
+        public bool GetTransferState(ExecutionEngine engine)
+        {
+            if (Trigger != TriggerType.Application) return false;
+
+            UInt256 hash = new UInt256(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            NativeNEP5 nativeNEP5 = Snapshot.Blockchain.GetNativeNEP5(hash);
+            if (nativeNEP5 == null) return false;
+
+            UInt256 transactionHash = new UInt256(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            TransferState state = nativeNEP5.GetTransferState(Snapshot, transactionHash);
+            if (state == null) return false;
+
+            engine.CurrentContext.EvaluationStack.Push(StackItem.FromInterface(state));
+            return true;
         }
     }
 }
