@@ -125,6 +125,7 @@ namespace Zoro.Ledger
         public uint HeaderHeight => (uint)header_index.Count - 1;
         public UInt256 CurrentBlockHash => currentSnapshot?.CurrentBlockHash ?? UInt256.Zero;
         public UInt256 CurrentHeaderHash => header_index[header_index.Count - 1];
+        public uint PersistingHeight { get; private set; }
 
         private readonly List<AppChainEventArgs> appchainNotifications = new List<AppChainEventArgs>();
         public static event EventHandler<AppChainEventArgs> AppChainNofity;
@@ -198,7 +199,8 @@ namespace Zoro.Ledger
 
                 if (header_index.Count == 0)
                 {
-                    Persist(GenesisBlock);
+                    PersistingHeight = 0;
+                    SyncPersist(GenesisBlock);
                     if (!chainHash.Equals(UInt160.Zero))
                     {
                         // 在应用链首次启动运行时，要在应用链的数据库里保存该应用链的AppChainState
@@ -208,6 +210,7 @@ namespace Zoro.Ledger
                 else
                 {
                     UpdateCurrentSnapshot();
+                    PersistingHeight = Height + 1;
                 }
 
                 InitializeNativeNEP5();
@@ -310,6 +313,8 @@ namespace Zoro.Ledger
             block.UpdateTransactionsChainHash();
 
             if (block.Index <= Height)
+                return RelayResultReason.AlreadyExists;
+            if (block.Index < PersistingHeight)
                 return RelayResultReason.AlreadyExists;
             if (block_cache.ContainsKey(block.Hash))
                 return RelayResultReason.AlreadyExists;
@@ -465,8 +470,39 @@ namespace Zoro.Ledger
             PersistCompleted completed = new PersistCompleted { Block = block };
             system.Consensus?.Tell(completed);
             Distribute(completed);
+            PersistCachedBlock(block);
             if (system.Consensus == null)
                 Log($"Block Persisted:{block.Index}, tx:{block.Transactions.Length}");
+        }
+
+        private void PersistCachedBlock(Block block)
+        {
+            uint blockIndex = block.Index + 1;
+            List<Block> blocksToPersistList = new List<Block>();
+
+            while (blockIndex < header_index.Count)
+            {
+                if (blockIndex >= PersistingHeight)
+                {
+                    UInt256 hash = header_index[(int)blockIndex];
+                    if (!block_cache.TryGetValue(hash, out Block block_persist)) break;
+                    blocksToPersistList.Add(block_persist);
+                }
+                blockIndex++;
+            }
+
+            int blocksPersisted = 0;
+            foreach (Block blockToPersist in blocksToPersistList)
+            {
+                block_cache_unverified.Remove(blockToPersist.Index);
+                Persist(blockToPersist);
+
+                if (blocksPersisted++ < blocksToPersistList.Count - 2) continue;
+                // Relay most recent 2 blocks persisted
+
+                if (blockToPersist.Index + 100 >= header_index.Count)
+                    system.LocalNode.Tell(new LocalNode.RelayDirectly { Inventory = block });
+            }
         }
 
         // 广播MemoryPool中还未上链的交易
@@ -522,9 +558,27 @@ namespace Zoro.Ledger
 
         private void Persist(Block block)
         {
+            if (block.Index != PersistingHeight)
+                throw new InvalidOperationException();
+
+            PersistingHeight = block.Index + 1;
             persistor.Tell(block);
         }
-        
+
+        private void SyncPersist(Block block)
+        {
+            if (block.Index != PersistingHeight)
+                throw new InvalidOperationException();
+
+            PersistingHeight = block.Index + 1;
+            PersistCompleted completed = persistor.Ask<PersistCompleted>(block).Result;
+
+            if (block.Index == header_index.Count)
+                header_index.Add(block.Hash);
+
+            UpdateCurrentSnapshot();
+        }
+
         protected override void PostStop()
         {
             Log($"OnStop Blockchain {Name}");

@@ -28,6 +28,7 @@ namespace Zoro.Ledger
             {
                 case Block block:
                     Persist(block);
+                    Sender.Tell(new Blockchain.PersistCompleted { Block = block });
                     break;
             }
         }
@@ -80,8 +81,6 @@ namespace Zoro.Ledger
 
                 snapshot.Commit();
             }
-
-            Sender.Tell(new Blockchain.PersistCompleted { Block = block });
         }
 
         private Fixed8 PersistTransaction(Block block, Snapshot snapshot, Transaction tx)
