@@ -127,6 +127,7 @@ namespace Zoro.Ledger
         public UInt256 CurrentHeaderHash => header_index[header_index.Count - 1];
         public uint PersistingHeight { get; private set; }
 
+        private readonly object appchainNotificationLock = new object();
         private readonly List<AppChainEventArgs> appchainNotifications = new List<AppChainEventArgs>();
         public static event EventHandler<AppChainEventArgs> AppChainNofity;
 
@@ -491,6 +492,9 @@ namespace Zoro.Ledger
                 blockIndex++;
             }
 
+            if (blocksToPersistList.Count == 0)
+                return;
+
             int blocksPersisted = 0;
             foreach (Block blockToPersist in blocksToPersistList)
             {
@@ -780,17 +784,23 @@ namespace Zoro.Ledger
 
         public void AddAppChainNotification(string method, AppChainState state)
         {
-            appchainNotifications.Add(new AppChainEventArgs(method, state));
+            lock (appchainNotificationLock)
+            {
+                appchainNotifications.Add(new AppChainEventArgs(method, state));
+            }
         }
 
         private void InvokeAppChainNotifications()
         {
-            appchainNotifications.ForEach(p =>
+            lock (appchainNotificationLock)
             {
-                AppChainNofity?.Invoke(this, p);
-            });
+                appchainNotifications.ForEach(p =>
+                {
+                    AppChainNofity?.Invoke(this, p);
+                });
 
-            appchainNotifications.Clear();
+                appchainNotifications.Clear();
+            }
         }
     }
 
