@@ -110,6 +110,10 @@ namespace Zoro.SmartContract
             Register("Zoro.NativeNEP5.Transfer", NativeNEP5_Transfer, 1000);
             Register("Zoro.NativeNEP5.Transfer_App", NativeNEP5_Transfer_App, 1000);
             Register("Zoro.NativeNEP5.GetTransferState", NativeNEP5_GetTransferState, 100);
+
+            Register("Zoro.NativeNEP5.TransferState.From", NativeNEP5_TransferState_From, 1);
+            Register("Zoro.NativeNEP5.TransferState.To", NativeNEP5_TransferState_To, 1);
+            Register("Zoro.NativeNEP5.TransferState.Value", NativeNEP5_TransferState_Value, 1);
         }
 
         private bool AppChain_Create(ExecutionEngine engine)
@@ -170,6 +174,21 @@ namespace Zoro.SmartContract
         private bool NativeNEP5_GetTransferState(ExecutionEngine engine)
         {
             return nativeNEP5Service.GetTransferState(engine);
+        }
+
+        private bool NativeNEP5_TransferState_From(ExecutionEngine engine)
+        {
+            return nativeNEP5Service.TransferState_GetFrom(engine);
+        }
+
+        private bool NativeNEP5_TransferState_To(ExecutionEngine engine)
+        {
+            return nativeNEP5Service.TransferState_GetTo(engine);
+        }
+
+        private bool NativeNEP5_TransferState_Value(ExecutionEngine engine)
+        {
+            return nativeNEP5Service.TransferState_GetValue(engine);
         }
 
         public bool NativeNEP5_Invoke_Notification(ExecutionEngine engine, UInt256 AssetId, StackItem item)

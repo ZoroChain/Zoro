@@ -281,7 +281,7 @@ namespace Zoro.SmartContract
         {
             return false;
         }
-           
+
         protected bool Transaction_GetWitnesses(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)

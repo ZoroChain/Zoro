@@ -39,7 +39,7 @@ namespace Zoro.SmartContract.Services
             UInt256 hash = new UInt256(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
             AssetState asset = Snapshot.Assets.TryGet(hash);
             if (asset == null) return false;
-            engine.CurrentContext.EvaluationStack.Push(asset.Name);
+            engine.CurrentContext.EvaluationStack.Push(asset.FullName);
             return true;
         }
 
@@ -50,7 +50,7 @@ namespace Zoro.SmartContract.Services
             UInt256 hash = new UInt256(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
             AssetState asset = Snapshot.Assets.TryGet(hash);
             if (asset == null) return false;
-            engine.CurrentContext.EvaluationStack.Push(asset.FullName);
+            engine.CurrentContext.EvaluationStack.Push(asset.Name);
             return true;
         }
 
@@ -189,6 +189,42 @@ namespace Zoro.SmartContract.Services
 
             engine.CurrentContext.EvaluationStack.Push(StackItem.FromInterface(state));
             return true;
+        }
+
+        public bool TransferState_GetFrom(ExecutionEngine engine)
+        {
+            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
+            {
+                TransferState ts = _interface.GetInterface<TransferState>();
+                if (ts == null) return false;
+                engine.CurrentContext.EvaluationStack.Push(ts.From.ToArray());
+                return true;
+            }
+            return false;
+        }
+
+        public bool TransferState_GetTo(ExecutionEngine engine)
+        {
+            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
+            {
+                TransferState ts = _interface.GetInterface<TransferState>();
+                if (ts == null) return false;
+                engine.CurrentContext.EvaluationStack.Push(ts.To.ToArray());
+                return true;
+            }
+            return false;
+        }
+
+        public bool TransferState_GetValue(ExecutionEngine engine)
+        {
+            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
+            {
+                TransferState ts = _interface.GetInterface<TransferState>();
+                if (ts == null) return false;
+                engine.CurrentContext.EvaluationStack.Push(ts.Value.GetData());
+                return true;
+            }
+            return false;
         }
     }
 }
