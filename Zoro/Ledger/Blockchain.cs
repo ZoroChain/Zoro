@@ -562,6 +562,9 @@ namespace Zoro.Ledger
 
         private void Persist(Block block)
         {
+            if (system.Consensus == null)
+                Log($"Persist Block:{block.Index}, tx:{block.Transactions.Length}");
+
             if (block.Index != PersistingHeight)
                 throw new InvalidOperationException();
 
@@ -571,6 +574,9 @@ namespace Zoro.Ledger
 
         private void SyncPersist(Block block)
         {
+            if (system.Consensus == null)
+                Log($"SyncPersist Block:{block.Index}, tx:{block.Transactions.Length}");
+
             if (block.Index != PersistingHeight)
                 throw new InvalidOperationException();
 

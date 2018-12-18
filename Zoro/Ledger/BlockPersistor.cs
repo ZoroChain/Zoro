@@ -35,9 +35,6 @@ namespace Zoro.Ledger
 
         private void Persist(Block block)
         {
-            if (system.Consensus == null)
-                blockchain.Log($"Persist Block:{block.Index}, tx:{block.Transactions.Length}");
-
             using (Snapshot snapshot = blockchain.GetSnapshot())
             {
                 Fixed8 sysfeeAmount = Fixed8.Zero;
