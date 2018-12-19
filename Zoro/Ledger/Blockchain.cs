@@ -157,7 +157,7 @@ namespace Zoro.Ledger
 
             lock (lockObj)
             {
-                persistor = Context.ActorOf(BlockPersistor.Props(system, this), $"BlockPersistor");
+                persistor = Context.ActorOf(BlockPersistor.Props(this), $"BlockPersistor");
 
                 if (chainHash.Equals(UInt160.Zero))
                 {
@@ -357,7 +357,7 @@ namespace Zoro.Ledger
                     // Relay most recent 2 blocks persisted
 
                     if (blockToPersist.Index + 100 >= header_index.Count)
-                        system.LocalNode.Tell(new LocalNode.RelayDirectly { Inventory = block });
+                        system.LocalNode.Tell(new LocalNode.RelayDirectly { Inventory = blockToPersist });
                 }
                 SaveHeaderHashList();
 
@@ -405,7 +405,7 @@ namespace Zoro.Ledger
 
         private void OnNewHeaders(Header[] headers)
         {
-            Log($"OnNewHeaders begin num:{headers.Length} height:{header_index.Count}", LogLevel.Debug);
+            Log($"OnNewHeaders begin:{headers.Length} height:{header_index.Count}", LogLevel.Info);
             using (Snapshot snapshot = GetSnapshot())
             {
                 foreach (Header header in headers)
@@ -427,7 +427,7 @@ namespace Zoro.Ledger
             }
             UpdateCurrentSnapshot();
             system.TaskManager.Tell(new TaskManager.HeaderTaskCompleted(), Sender);
-            Log($"OnNewHeaders end {headers.Length} height:{header_index.Count}", LogLevel.Debug);
+            Log($"OnNewHeaders end:{headers.Length} height:{header_index.Count}", LogLevel.Info);
         }
 
         private RelayResultReason OnNewTransaction(Transaction transaction)
@@ -450,33 +450,20 @@ namespace Zoro.Ledger
 
         private void OnPersistCompleted(Block block)
         {
-            if (block.Index == header_index.Count)
-                header_index.Add(block.Hash);
-            UpdateCurrentSnapshot();
             block_cache.TryRemove(block.Hash, out Block _);
             foreach (Transaction tx in block.Transactions)
                 mem_pool.TryRemove(tx.Hash, out _);
-            //mem_pool_unverified.Clear();
-            //foreach (Transaction tx in mem_pool
-            //    .OrderByDescending(p => p.NetworkFee / p.Size)
-            //    .ThenByDescending(p => p.NetworkFee)
-            //    .ThenByDescending(p => new BigInteger(p.Hash.ToArray())))
-            //{
-            //    mem_pool_unverified.TryAdd(tx.Hash, tx);
-            //    Self.Tell(tx, ActorRefs.NoSender);
-            //}
-            //mem_pool.Clear();
             RelayMemoryPool();
             InvokeAppChainNotifications();
             PersistCompleted completed = new PersistCompleted { Block = block };
             system.Consensus?.Tell(completed);
             Distribute(completed);
-            PersistCachedBlock(block);
+            PersistCachedBlocks(block);
             if (system.Consensus == null)
                 Log($"Block Persisted:{block.Index}, tx:{block.Transactions.Length}");
         }
 
-        private void PersistCachedBlock(Block block)
+        private void PersistCachedBlocks(Block block)
         {
             uint blockIndex = block.Index + 1;
             List<Block> blocksToPersistList = new List<Block>();
@@ -492,26 +479,40 @@ namespace Zoro.Ledger
                 blockIndex++;
             }
 
-            if (blocksToPersistList.Count == 0)
-                return;
-
-            int blocksPersisted = 0;
             foreach (Block blockToPersist in blocksToPersistList)
             {
                 block_cache_unverified.Remove(blockToPersist.Index);
                 Persist(blockToPersist);
+            }
 
-                if (blocksPersisted++ < blocksToPersistList.Count - 2) continue;
-                // Relay most recent 2 blocks persisted
+            PersistUnverifiedBlocks();
+        }
 
-                if (blockToPersist.Index + 100 >= header_index.Count)
-                    system.LocalNode.Tell(new LocalNode.RelayDirectly { Inventory = block });
+        private void PersistUnverifiedBlocks()
+        {
+            uint blockIndex = PersistingHeight;
+            if (block_cache_unverified.TryGetValue(blockIndex, out LinkedList<Block> unverifiedBlocks))
+            {
+                foreach (var unverifiedBlock in unverifiedBlocks)
+                    Self.Tell(unverifiedBlock, ActorRefs.NoSender);
+                block_cache_unverified.Remove(Height + 1);
             }
         }
 
         // 广播MemoryPool中还未上链的交易
         private void RelayMemoryPool()
         {
+            //mem_pool_unverified.Clear();
+            //foreach (Transaction tx in mem_pool
+            //    .OrderByDescending(p => p.NetworkFee / p.Size)
+            //    .ThenByDescending(p => p.NetworkFee)
+            //    .ThenByDescending(p => new BigInteger(p.Hash.ToArray())))
+            //{
+            //    mem_pool_unverified.TryAdd(tx.Hash, tx);
+            //    Self.Tell(tx, ActorRefs.NoSender);
+            //}
+            //mem_pool.Clear();
+
             Transaction[] trans = mem_pool.GetTransactions(MemPoolRelayCount);
             foreach (InvGroupPayload payload in InvGroupPayload.CreateGroup(InventoryType.TX, trans.Select(p => p.Hash).ToArray()))
                 system.LocalNode.Tell(Message.Create("invgroup", payload));
@@ -549,6 +550,7 @@ namespace Zoro.Ledger
                     Sender.Tell(OnChangeAppChainSeedList(msg.ChainHash, msg.SeedList));
                     break;
                 case PersistCompleted completed:
+                    PostPersist(completed.Block);
                     OnPersistCompleted(completed.Block);
                     break;
             }
@@ -569,6 +571,7 @@ namespace Zoro.Ledger
                 throw new InvalidOperationException();
 
             PersistingHeight = block.Index + 1;
+
             persistor.Tell(block);
         }
 
@@ -581,12 +584,32 @@ namespace Zoro.Ledger
                 throw new InvalidOperationException();
 
             PersistingHeight = block.Index + 1;
-            PersistCompleted completed = persistor.Ask<PersistCompleted>(block).Result;
 
-            if (block.Index == header_index.Count)
-                header_index.Add(block.Hash);
+            PersistCompleted completed = persistor.Ask<PersistCompleted>(block).Result;
+            PostPersist(completed.Block);
+        }
+
+        private void PostPersist(Block block)
+        {
+            using (Snapshot snapshot = GetSnapshot())
+            {
+                snapshot.BlockHashIndex.GetAndChange().Hash = block.Hash;
+                snapshot.BlockHashIndex.GetAndChange().Index = block.Index;
+                if (block.Index == header_index.Count)
+                {
+                    header_index.Add(block.Hash);
+                    snapshot.HeaderHashIndex.GetAndChange().Hash = block.Hash;
+                    snapshot.HeaderHashIndex.GetAndChange().Index = block.Index;
+                }
+                foreach (IPersistencePlugin plugin in PluginManager.PersistencePlugins)
+                    plugin.OnPersist(snapshot);
+                snapshot.Commit();
+            }
 
             UpdateCurrentSnapshot();
+
+            if (block.Index + 100 >= header_index.Count && block.Index != 0)
+                system.LocalNode.Tell(new LocalNode.RelayDirectly { Inventory = block });
         }
 
         protected override void PostStop()

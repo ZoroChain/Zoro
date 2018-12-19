@@ -274,7 +274,7 @@ namespace Zoro.Network.P2P
                 IncrementGlobalTask(HeaderTaskHash);
                 session.RemoteNode.Tell(Message.Create("getheaders", GetBlocksPayload.Create(blockchain.CurrentHeaderHash)));
             }
-            else if (blockchain.Height < session.Version.StartHeight)
+            else if (blockchain.Height < session.Version.StartHeight && blockchain.Height < blockchain.HeaderHeight)
             {
                 UInt256 hash = blockchain.CurrentBlockHash;
                 for (uint i = blockchain.Height + 1; i <= blockchain.HeaderHeight; i++)

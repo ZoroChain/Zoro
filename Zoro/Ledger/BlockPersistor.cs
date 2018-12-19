@@ -13,12 +13,10 @@ namespace Zoro.Ledger
 {
     class BlockPersistor : UntypedActor
     {
-        private ZoroSystem system;
         private Blockchain blockchain;
 
-        public BlockPersistor(ZoroSystem system, Blockchain blockchain)
+        public BlockPersistor(Blockchain blockchain)
         {
-            this.system = system;
             this.blockchain = blockchain;
         }
 
@@ -62,19 +60,6 @@ namespace Zoro.Ledger
                 {
                     blockchain.BCPNativeNEP5.AddBalance(snapshot, block.Transactions[0].GetAccountScriptHash(snapshot), sysfeeAmount);
                 }
-
-                snapshot.BlockHashIndex.GetAndChange().Hash = block.Hash;
-                snapshot.BlockHashIndex.GetAndChange().Index = block.Index;
-                if (block.Index == blockchain.HeaderHeight + 1)
-                {
-                    snapshot.HeaderHashIndex.GetAndChange().Hash = block.Hash;
-                    snapshot.HeaderHashIndex.GetAndChange().Index = block.Index;
-                }
-                foreach (IPersistencePlugin plugin in PluginManager.PersistencePlugins)
-                    plugin.OnPersist(snapshot);
-
-                //if (system.Consensus == null)
-                //    blockchain.Log($"Commit Snapshot:{block.Index}, tx:{block.Transactions.Length}");
 
                 snapshot.Commit();
             }
@@ -187,9 +172,9 @@ namespace Zoro.Ledger
             return blockchain.BCPNativeNEP5.SubBalance(snapshot, scriptHash, tx.SystemFee);
         }
 
-        public static Props Props(ZoroSystem system, Blockchain blockchain)
+        public static Props Props(Blockchain blockchain)
         {
-            return Akka.Actor.Props.Create(() => new BlockPersistor(system, blockchain));
+            return Akka.Actor.Props.Create(() => new BlockPersistor(blockchain));
         }
     }
 }
