@@ -347,17 +347,10 @@ namespace Zoro.Ledger
                     if (!block_cache.TryGetValue(hash, out block_persist)) break;
                 }
 
-                int blocksPersisted = 0;
                 foreach (Block blockToPersist in blocksToPersistList)
                 {
                     block_cache_unverified.Remove(blockToPersist.Index);
                     Persist(blockToPersist);
-
-                    if (blocksPersisted++ < blocksToPersistList.Count - 2) continue;
-                    // Relay most recent 2 blocks persisted
-
-                    if (blockToPersist.Index + 100 >= header_index.Count)
-                        system.LocalNode.Tell(new LocalNode.RelayDirectly { Inventory = blockToPersist });
                 }
                 SaveHeaderHashList();
 
@@ -491,11 +484,11 @@ namespace Zoro.Ledger
         private void PersistUnverifiedBlocks()
         {
             uint blockIndex = PersistingHeight;
-            if (block_cache_unverified.TryGetValue(blockIndex, out LinkedList<Block> unverifiedBlocks))
+            if (blockIndex <= header_index.Count && block_cache_unverified.TryGetValue(blockIndex, out LinkedList<Block> unverifiedBlocks))
             {
                 foreach (var unverifiedBlock in unverifiedBlocks)
                     Self.Tell(unverifiedBlock, ActorRefs.NoSender);
-                block_cache_unverified.Remove(Height + 1);
+                block_cache_unverified.Remove(blockIndex);
             }
         }
 
@@ -608,7 +601,7 @@ namespace Zoro.Ledger
 
             UpdateCurrentSnapshot();
 
-            if (block.Index + 100 >= header_index.Count && block.Index != 0)
+            if (block.Index > 0)
                 system.LocalNode.Tell(new LocalNode.RelayDirectly { Inventory = block });
         }
 
