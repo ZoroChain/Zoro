@@ -348,7 +348,7 @@ namespace Zoro.Ledger
                     // Relay most recent 2 blocks persisted
 
                     if (blockToPersist.Index + 100 >= header_index.Count)
-                        system.LocalNode.Tell(new LocalNode.RelayDirectly { Inventory = block });
+                        system.LocalNode.Tell(new LocalNode.RelayDirectly { Inventory = blockToPersist });
                 }
                 SaveHeaderHashList();
 
