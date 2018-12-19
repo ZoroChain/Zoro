@@ -52,19 +52,19 @@ namespace Zoro
             pluginmgr = new PluginManager();
             pluginmgr.LoadPlugins();
 
-             // 创建根链Actor对象
-            CreateZoroSystem(UInt160.Zero, store);
-
             // 获取IP地址
             string networkType = Settings.Default.NetworkType;
             MyIPAddress = GetMyIPAddress(networkType);
 
-            eventHandler = new AppChainEventHandler(MyIPAddress);
-
             // 打印调试信息
-            string str = "NetworkType:" + networkType + " MyIPAddress:";
+            string str = "NetworkType:" + networkType + ", MyIPAddress:";
             str += MyIPAddress?.ToString() ?? "null";
-            eventHandler.Log(str);
+            Log(str);
+
+            // 创建根链Actor对象
+            CreateZoroSystem(UInt160.Zero, store);
+
+            eventHandler = new AppChainEventHandler(MyIPAddress);
         }
 
         public void Dispose()
@@ -83,6 +83,12 @@ namespace Zoro
 
             // 关闭ActorSystem
             ActorSystem.Dispose();
+        }
+
+        // 输出日志
+        public void Log(string message, LogLevel level = LogLevel.Info)
+        {
+            pluginmgr.Log(nameof(ZoroChainSystem), level, message, UInt160.Zero);
         }
 
         // 设置钱包

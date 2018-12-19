@@ -35,7 +35,7 @@ namespace Zoro.AppChain
         // 输出日志
         public void Log(string message, LogLevel level = LogLevel.Info)
         {
-            PluginManager.Singleton.Log(nameof(ZoroChainSystem), level, message, UInt160.Zero);
+            PluginManager.Singleton.Log(nameof(AppChainEventHandler), level, message, UInt160.Zero);
         }
 
         // 设置钱包
