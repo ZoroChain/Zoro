@@ -31,8 +31,8 @@ namespace Zoro.Ledger
         public class Import { public IEnumerable<Block> Blocks; }
         public class ImportCompleted { }
 
-        public static readonly uint SecondsPerBlock = Settings.Default.SecondsPerBlock;
-        public static readonly uint MaxSecondsPerBlock = Settings.Default.MaxSecondsPerBlock;
+        public static readonly uint SecondsPerBlock = ProtocolSettings.Default.SecondsPerBlock;
+        public static readonly uint MaxSecondsPerBlock = ProtocolSettings.Default.MaxSecondsPerBlock;
         public const uint DecrementInterval = 2000000;
         public static readonly uint[] GenerationAmount = { 8, 7, 6, 5, 4, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
         public static readonly TimeSpan TimePerBlock = TimeSpan.FromSeconds(SecondsPerBlock);
@@ -131,7 +131,7 @@ namespace Zoro.Ledger
         private readonly List<AppChainEventArgs> appchainNotifications = new List<AppChainEventArgs>();
         public static event EventHandler<AppChainEventArgs> AppChainNofity;
 
-        public static readonly int MemPoolRelayCount = Settings.Default.MemPoolRelayCount;
+        public static readonly int MemPoolRelayCount = ProtocolSettings.Default.MemPoolRelayCount;
         private readonly ManualResetEvent startupEvent = new ManualResetEvent(false);
         private readonly ConcurrentDictionary<UInt256, NativeNEP5> nativeNEP5_Dict = new ConcurrentDictionary<UInt256, NativeNEP5>();
 
@@ -671,7 +671,7 @@ namespace Zoro.Ledger
             if (ChainHash.Equals(UInt160.Zero))
             {
                 // 根链的共识节点在json文件中配置，不能随意更改
-                return Settings.Default.StandbyValidators.OfType<string>().Select(p => ECPoint.DecodePoint(p.HexToBytes(), ECCurve.Secp256r1)).ToArray();
+                return ProtocolSettings.Default.StandbyValidators.OfType<string>().Select(p => ECPoint.DecodePoint(p.HexToBytes(), ECCurve.Secp256r1)).ToArray();
             }
             else
             {

@@ -53,7 +53,7 @@ namespace Zoro
             pluginmgr.LoadPlugins();
 
             // 获取IP地址
-            string networkType = Settings.Default.NetworkType;
+            string networkType = ProtocolSettings.Default.NetworkType;
             MyIPAddress = GetMyIPAddress(networkType);
 
             // 打印调试信息

@@ -21,7 +21,7 @@ namespace Zoro.Consensus
         public class SetViewNumber { public byte ViewNumber; }
         internal class Timer { public uint Height; public ushort ViewNumber; }
 
-        private static readonly uint MaxSecondsPerBlock = Settings.Default.MaxSecondsPerBlock;
+        private static readonly uint MaxSecondsPerBlock = ProtocolSettings.Default.MaxSecondsPerBlock;
         private static readonly TimeSpan MaxTimeSpanPerBlock = TimeSpan.FromSeconds(MaxSecondsPerBlock);
 
         private readonly IConsensusContext context;
