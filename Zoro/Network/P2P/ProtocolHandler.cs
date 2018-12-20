@@ -34,7 +34,7 @@ namespace Zoro.Network.P2P
         private BloomFilter bloom_filter;
 
         private static readonly TimeSpan TimerInterval = TimeSpan.FromMinutes(1);
-        private static readonly int MaxHashCount = Settings.Default.MaxProtocolHashCount;
+        private static readonly int MaxHashCount = ProtocolSettings.Default.MaxProtocolHashCount;
         private readonly ICancelable timer = Context.System.Scheduler.ScheduleTellRepeatedlyCancelable(TimerInterval, TimerInterval, Context.Self, new Timer(), ActorRefs.NoSender);
 
         public ProtocolHandler(ZoroSystem system, LocalNode localNode, Blockchain blockchain, RemoteNode remoteNode)
