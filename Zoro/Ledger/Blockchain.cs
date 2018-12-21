@@ -260,6 +260,11 @@ namespace Zoro.Ledger
             return mem_pool;
         }
 
+        public int GetMemoryPoolCount()
+        {
+            return mem_pool.Count;
+        }
+
         public Snapshot GetSnapshot()
         {
             return Store.GetSnapshot();
