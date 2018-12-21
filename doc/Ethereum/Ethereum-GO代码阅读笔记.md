@@ -40,7 +40,7 @@
 * worker.go
   * `commitNewWork`: 执行创建新区块的流程
     * `commitTransactions`: 执行一组交易
-      * `commitTransaction`：执行一笔交易
+      * `commitTransaction`：执行一笔交易，调用`ApplyTransaction`
     * `commit`：把新创建的块发送到`taskCh`消息频道
   * `taskLoop`：接收来自`taskCh`的新区块，加入到pending队列，并调用`consensus.Engine.Seal`运行挖矿流程，如果挖矿成功会发送消息到`resultCh`频道
   * `resultLoop`：接收`resultCh`的消息，将新创建的区块数据保存到数据库，并广播该区块
