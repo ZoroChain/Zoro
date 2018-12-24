@@ -56,7 +56,7 @@ namespace Zoro
             CreateZoroSystem(UInt160.Zero, store);
 
             // 获取IP地址
-            string networkType = Settings.Default.NetworkType;
+            string networkType = ProtocolSettings.Default.NetworkType;
             MyIPAddress = GetMyIPAddress(networkType);
 
             eventHandler = new AppChainEventHandler(MyIPAddress);

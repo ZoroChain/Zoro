@@ -231,7 +231,7 @@ namespace Zoro.Network.RPC
                             if (blockchain == null)
                                 throw new RpcException(-100, "Unknown blockchain");
 
-                            return blockchain.GetMemoryPool().Count();
+                            return blockchain.GetMemoryPoolCount();
                         }
                     case "getrawtransaction":
                         {

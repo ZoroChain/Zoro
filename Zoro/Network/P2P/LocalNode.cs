@@ -65,7 +65,7 @@ namespace Zoro.Network.P2P
 
                     root = this;
 
-                    this.SeedList = Settings.Default.SeedList;
+                    this.SeedList = ProtocolSettings.Default.SeedList;
                 }
                 else
                 {
