@@ -508,27 +508,7 @@ namespace Zoro.SmartContract
                 : Encoding.ASCII.GetString(CurrentContext.Script, CurrentContext.InstructionPointer + 2, length).ToInteropMethodHash();
             long price = Service.GetPrice(api_hash, this);
             if (price > 0) return price;
-            if (api_hash == "Zoro.Contract.Create".ToInteropMethodHash() ||
-                api_hash == "Zoro.Contract.Migrate".ToInteropMethodHash())
-            {
-                long fee = 100L;
 
-                ContractPropertyState contract_properties = (ContractPropertyState)(byte)CurrentContext.EvaluationStack.Peek(3).GetBigInteger();
-
-                if (contract_properties.HasFlag(ContractPropertyState.HasStorage))
-                {
-                    fee += 400L;
-                }
-                if (contract_properties.HasFlag(ContractPropertyState.HasDynamicInvoke))
-                {
-                    fee += 500L;
-                }
-                return fee * 100000000L / ratio;
-            }
-            if (api_hash == "System.Storage.Put".ToInteropMethodHash() ||
-                api_hash == "System.Storage.PutEx".ToInteropMethodHash() ||
-                api_hash == "Zoro.Storage.Put".ToInteropMethodHash())
-                return ((CurrentContext.EvaluationStack.Peek(1).GetByteArray().Length + CurrentContext.EvaluationStack.Peek(2).GetByteArray().Length - 1) / 1024 + 1) * 1000;
             return 1;
         }
 

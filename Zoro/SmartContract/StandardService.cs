@@ -28,6 +28,7 @@ namespace Zoro.SmartContract
         private readonly List<NotifyEventArgs> notifications = new List<NotifyEventArgs>();
         private readonly Dictionary<uint, Func<ExecutionEngine, bool>> methods = new Dictionary<uint, Func<ExecutionEngine, bool>>();
         private readonly Dictionary<uint, long> prices = new Dictionary<uint, long>();
+        private readonly Dictionary<string, List<uint>> apiHashCategories = new Dictionary<string, List<uint>>();
 
         public IReadOnlyList<NotifyEventArgs> Notifications => notifications;
 
@@ -107,15 +108,40 @@ namespace Zoro.SmartContract
             return func(engine);
         }
 
-        protected void Register(string method, Func<ExecutionEngine, bool> handler)
+        protected bool IsCategoryOf(uint api_hash, string category)
         {
-            methods.Add(method.ToInteropMethodHash(), handler);
+            if (apiHashCategories.TryGetValue(category, out List<uint> list))
+            {
+                return list.IndexOf(api_hash) > 0;
+            }
+
+            return false;
         }
 
-        protected void Register(string method, Func<ExecutionEngine, bool> handler, long price)
+        protected void Register(string method, Func<ExecutionEngine, bool> handler, long price = 0)
         {
-            Register(method, handler);
-            prices.Add(method.ToInteropMethodHash(), price);
+            uint hash = method.ToInteropMethodHash();
+            methods.Add(hash, handler);
+
+            if (price > 0)
+            {
+                prices.Add(hash, price);
+                return;
+            }
+
+            int pos = method.IndexOf('.');
+            if (pos > 0)
+            {
+                string category = method.Substring(pos + 1);
+
+                if (!apiHashCategories.TryGetValue(category, out List<uint> list))
+                {
+                    list = new List<uint>();
+                    apiHashCategories.Add(category, list);
+                }
+
+                list.Add(method.ToInteropMethodHash());
+            }
         }
 
         protected bool ExecutionEngine_GetScriptContainer(ExecutionEngine engine)

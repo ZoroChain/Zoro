@@ -1,10 +1,6 @@
 ﻿using Zoro.Ledger;
 using Zoro.Persistence;
-using Zoro.Cryptography.ECC;
 using Zoro.SmartContract.Services;
-using Zoro.Network.P2P.Payloads;
-using System;
-using System.Text;
 using System.Numerics;
 using Neo.VM;
 using Neo.VM.Types;
@@ -14,7 +10,7 @@ namespace Zoro.SmartContract
 {
     public class ZoroService : NeoService
     {
-        private AppChainService appchainService;        
+        private AppChainService appchainService;
         private NativeNEP5Service nativeNEP5Service;
         private GlobalAssetService globalAssetService;
         private TransferStateService transferStateService;
@@ -106,6 +102,7 @@ namespace Zoro.SmartContract
             Register("Zoro.AppChain.ChangeValidators", appchainService.ChangeSeedList, 1000);
 
             Register("Zoro.GlobalAsset.GetPrecision", globalAssetService.GetPrecision, 1);
+            Register("Zoro.GlobalAsset.BalanceOf", globalAssetService.BalanceOf, 1);
             Register("Zoro.GlobalAsset.Transfer", globalAssetService.Transfer, 1000);
             Register("Zoro.GlobalAsset.Transfer_App", globalAssetService.Transfer_App, 1000);
             Register("Zoro.GlobalAsset.GetTransferState", globalAssetService.GetTransferState, 100);
@@ -131,15 +128,39 @@ namespace Zoro.SmartContract
             InvokeNotification(notification);
         }
 
-        public long GetPrice(uint hash, ExecutionEngine engine)
+        public long GetPrice(uint api_hash, ExecutionEngine engine)
         {
-            long price = base.GetPrice(hash);
+            long price = base.GetPrice(api_hash);
             if (price > 0)
                 return price;
 
-            if (hash == NativeNEP5Service.SysCall_MethodHash)
+            if (api_hash == NativeNEP5Service.SysCall_MethodHash)
             {
                 price = NativeNEP5Service.GetPrice(engine);
+            }
+            else
+            {
+                if (IsCategoryOf(api_hash, "Contract.Create") || IsCategoryOf(api_hash, "Contract.Migrate"))
+                {
+                    long fee = 100L;
+
+                    ContractPropertyState contract_properties = (ContractPropertyState)(byte)engine.CurrentContext.EvaluationStack.Peek(3).GetBigInteger();
+
+                    if (contract_properties.HasFlag(ContractPropertyState.HasStorage))
+                    {
+                        fee += 400L;
+                    }
+                    if (contract_properties.HasFlag(ContractPropertyState.HasDynamicInvoke))
+                    {
+                        fee += 500L;
+                    }
+                    return fee * 100000000L / 100000;
+                }
+
+                if (IsCategoryOf(api_hash, "Storage.Put") || IsCategoryOf(api_hash, "Storage.PutEx"))
+                {
+                    return ((engine.CurrentContext.EvaluationStack.Peek(1).GetByteArray().Length + engine.CurrentContext.EvaluationStack.Peek(2).GetByteArray().Length - 1) / 1024 + 1) * 1000;
+                }
             }
 
             return price;

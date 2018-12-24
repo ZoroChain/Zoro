@@ -5,6 +5,7 @@ using Neo.VM;
 using System;
 using System.Collections.Concurrent;
 using System.Text;
+using System.Numerics;
 
 namespace Zoro.SmartContract
 {
@@ -119,6 +120,11 @@ namespace Zoro.SmartContract
                 }
             }
             return true;
+        }
+
+        public static BigInteger AsBigInteger(this byte[] bytes)
+        {
+            return new BigInteger(bytes);
         }
     }
 }

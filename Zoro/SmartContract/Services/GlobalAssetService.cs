@@ -20,11 +20,28 @@ namespace Zoro.SmartContract.Services
 
         public bool GetPrecision(ExecutionEngine engine)
         {
+            if (Trigger != TriggerType.Application) return false;
+
             UInt256 assetId = new UInt256(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
             AssetState asset = Snapshot.Assets.TryGet(assetId);
             if (asset == null) return false;
 
             engine.CurrentContext.EvaluationStack.Push((int)asset.Precision);
+            return true;
+        }
+
+        public bool BalanceOf(ExecutionEngine engine)
+        {
+            if (Trigger != TriggerType.Application) return false;
+
+            UInt256 assetId = new UInt256(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            GlobalAsset asset = Snapshot.Blockchain.GetGlobalAsset(assetId);
+            if (asset == null) return false;
+
+            UInt160 address = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            Fixed8 balance = asset.BalanceOf(address);
+
+            engine.CurrentContext.EvaluationStack.Push(balance.GetData());
             return true;
         }
 
