@@ -1,19 +1,31 @@
-﻿using Zoro.Persistence;
+﻿using Zoro.Ledger;
+using Zoro.Persistence;
+using Zoro.Cryptography.ECC;
 using Zoro.SmartContract.Services;
+using Zoro.Network.P2P.Payloads;
+using System;
+using System.Text;
+using System.Numerics;
 using Neo.VM;
+using Neo.VM.Types;
+using VMArray = Neo.VM.Types.Array;
 
 namespace Zoro.SmartContract
 {
     public class ZoroService : NeoService
     {
-        private AppChainService appchainService;
+        private AppChainService appchainService;        
         private NativeNEP5Service nativeNEP5Service;
+        private GlobalAssetService globalAssetService;
+        private TransferStateService transferStateService;
 
         public ZoroService(TriggerType trigger, Snapshot snapshot)
             : base(trigger, snapshot)
         {
             appchainService = new AppChainService(this, trigger, snapshot);
             nativeNEP5Service = new NativeNEP5Service(this, trigger, snapshot);
+            globalAssetService = new GlobalAssetService(this, trigger, snapshot);
+            transferStateService = new TransferStateService(this, trigger, snapshot);
 
             Register("Zoro.Runtime.GetTrigger", Runtime_GetTrigger, 1);
             Register("Zoro.Runtime.CheckWitness", Runtime_CheckWitness, 200);
@@ -50,17 +62,10 @@ namespace Zoro.SmartContract
             Register("Zoro.Witness.GetVerificationScript", Witness_GetVerificationScript, 100);
             Register("Zoro.Attribute.GetUsage", Attribute_GetUsage, 1);
             Register("Zoro.Attribute.GetData", Attribute_GetData, 1);
-            Register("Zoro.Input.GetHash", Input_GetHash, 1);
-            Register("Zoro.Input.GetIndex", Input_GetIndex, 1);
-            Register("Zoro.Output.GetAssetId", Output_GetAssetId, 1);
-            Register("Zoro.Output.GetValue", Output_GetValue, 1);
-            Register("Zoro.Output.GetScriptHash", Output_GetScriptHash, 1);
             Register("Zoro.Account.GetScriptHash", Account_GetScriptHash, 1);
             Register("Zoro.Account.GetVotes", Account_GetVotes, 1);
             Register("Zoro.Account.GetBalance", Account_GetBalance, 1);
             Register("Zoro.Account.IsStandard", Account_IsStandard, 100);
-            Register("Zoro.Asset.Create", Asset_Create);
-            Register("Zoro.Asset.Renew", Asset_Renew, 1);
             Register("Zoro.Asset.GetAssetId", Asset_GetAssetId, 1);
             Register("Zoro.Asset.GetAssetType", Asset_GetAssetType, 1);
             Register("Zoro.Asset.GetAmount", Asset_GetAmount, 1);
@@ -96,107 +101,48 @@ namespace Zoro.SmartContract
             Register("Zoro.Iterator.Value", Enumerator_Value, 1);
             #endregion
 
-            Register("Zoro.AppChain.Create", AppChain_Create);
-            Register("Zoro.AppChain.ChangeSeedList", AppChain_ChangeSeedList, 1000);
-            Register("Zoro.AppChain.ChangeValidators", AppChain_ChangeValidators, 1000);
+            Register("Zoro.AppChain.Create", appchainService.CreateAppChain, 5000 * 1000);
+            Register("Zoro.AppChain.ChangeSeedList", appchainService.ChangeValidators, 1000);
+            Register("Zoro.AppChain.ChangeValidators", appchainService.ChangeSeedList, 1000);
 
-            Register("Zoro.Blockchain.GetNativeNEP5", Blockchain_GetNativeNEP5, 1);
+            Register("Zoro.GlobalAsset.GetPrecision", globalAssetService.GetPrecision, 1);
+            Register("Zoro.GlobalAsset.Transfer", globalAssetService.Transfer, 1000);
+            Register("Zoro.GlobalAsset.Transfer_App", globalAssetService.Transfer_App, 1000);
+            Register("Zoro.GlobalAsset.GetTransferState", globalAssetService.GetTransferState, 100);
 
-            Register("Zoro.NativeNEP5.Name", NativeNEP5_Name, 1);
-            Register("Zoro.NativeNEP5.Symbol", NativeNEP5_Symbol, 1);
-            Register("Zoro.NativeNEP5.Decimals", NativeNEP5_Decimals, 1);
-            Register("Zoro.NativeNEP5.TotalSupply", NativeNEP5_TotalSupply, 1);
-            Register("Zoro.NativeNEP5.BalanceOf", NativeNEP5_BalanceOf, 100);
-            Register("Zoro.NativeNEP5.Transfer", NativeNEP5_Transfer, 1000);
-            Register("Zoro.NativeNEP5.Transfer_App", NativeNEP5_Transfer_App, 1000);
-            Register("Zoro.NativeNEP5.GetTransferState", NativeNEP5_GetTransferState, 100);
+            Register("Zoro.TransferState.AssetId", transferStateService.AssetId, 1);
+            Register("Zoro.TransferState.From", transferStateService.From, 1);
+            Register("Zoro.TransferState.To", transferStateService.To, 1);
+            Register("Zoro.TransferState.Value", transferStateService.Value, 1);
 
-            Register("Zoro.NativeNEP5.TransferState.From", NativeNEP5_TransferState_From, 1);
-            Register("Zoro.NativeNEP5.TransferState.To", NativeNEP5_TransferState_To, 1);
-            Register("Zoro.NativeNEP5.TransferState.Value", NativeNEP5_TransferState_Value, 1);
+            Register("Zoro.NativeNEP5.Create", nativeNEP5Service.Create, 1000 * 1000);
+            Register("Zoro.NativeNEP5.Call", nativeNEP5Service.Call);
         }
 
-        private bool AppChain_Create(ExecutionEngine engine)
+        public void AddTransferNotification(ExecutionEngine engine, UIntBase assetId, UInt160 from, UInt160 to, Fixed8 value)
         {
-            return appchainService.CreateAppChain(engine);
-        }
+            VMArray array = new VMArray();
+            array.Add("transfer");
+            array.Add(new ByteArray(from.ToArray()));
+            array.Add(new ByteArray(to.ToArray()));
+            array.Add(new ByteArray(new BigInteger(value.GetData()).ToByteArray()));
 
-        private bool AppChain_ChangeValidators(ExecutionEngine engine)
-        {
-            return appchainService.ChangeValidators(engine);
-        }
-
-        private bool AppChain_ChangeSeedList(ExecutionEngine engine)
-        {
-            return appchainService.ChangeSeedList(engine);
-        }
-
-        private bool Blockchain_GetNativeNEP5(ExecutionEngine engine)
-        {
-            return nativeNEP5Service.Retrieve(engine);
-        }
-
-        private bool NativeNEP5_Name(ExecutionEngine engine)
-        {
-            return nativeNEP5Service.Name(engine);
-        }
-
-        private bool NativeNEP5_Symbol(ExecutionEngine engine)
-        {
-            return nativeNEP5Service.Symbol(engine);
-        }
-
-        private bool NativeNEP5_Decimals(ExecutionEngine engine)
-        {
-            return nativeNEP5Service.Decimals(engine);
-        }
-
-        private bool NativeNEP5_TotalSupply(ExecutionEngine engine)
-        {
-            return nativeNEP5Service.TotalSupply(engine);
-        }
-
-        private bool NativeNEP5_BalanceOf(ExecutionEngine engine)
-        {
-            return nativeNEP5Service.BalanceOf(engine);
-        }
-
-        private bool NativeNEP5_Transfer(ExecutionEngine engine)
-        {
-            return nativeNEP5Service.Transfer(engine);
-        }
-
-        private bool NativeNEP5_Transfer_App(ExecutionEngine engine)
-        {
-            return nativeNEP5Service.Transfer_App(engine);
-        }
-
-        private bool NativeNEP5_GetTransferState(ExecutionEngine engine)
-        {
-            return nativeNEP5Service.GetTransferState(engine);
-        }
-
-        private bool NativeNEP5_TransferState_From(ExecutionEngine engine)
-        {
-            return nativeNEP5Service.TransferState_GetFrom(engine);
-        }
-
-        private bool NativeNEP5_TransferState_To(ExecutionEngine engine)
-        {
-            return nativeNEP5Service.TransferState_GetTo(engine);
-        }
-
-        private bool NativeNEP5_TransferState_Value(ExecutionEngine engine)
-        {
-            return nativeNEP5Service.TransferState_GetValue(engine);
-        }
-
-        public bool NativeNEP5_Invoke_Notification(ExecutionEngine engine, UInt256 AssetId, StackItem item)
-        {
-            NotifyEventArgs notification = new NotifyEventArgs(engine.ScriptContainer, AssetId, item);
+            NotifyEventArgs notification = new NotifyEventArgs(engine.ScriptContainer, assetId, array);
             InvokeNotification(notification);
-            return true;
         }
 
+        public long GetPrice(uint hash, ExecutionEngine engine)
+        {
+            long price = base.GetPrice(hash);
+            if (price > 0)
+                return price;
+
+            if (hash == NativeNEP5Service.SysCall_MethodHash)
+            {
+                price = NativeNEP5Service.GetPrice(engine);
+            }
+
+            return price;
+        }
     }
 }

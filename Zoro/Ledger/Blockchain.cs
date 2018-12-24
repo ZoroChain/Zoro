@@ -84,6 +84,7 @@ namespace Zoro.Ledger
                                 Witnesses = new Witness[0]
                             },
                             UtilityToken,
+#pragma warning disable CS0612
                             new IssueTransaction
                             {
                                 ChainHash = ChainHash,
@@ -100,6 +101,7 @@ namespace Zoro.Ledger
                                     }
                                 }
                             }
+#pragma warning restore CS0612
                         }
                     };
                 }
@@ -130,10 +132,10 @@ namespace Zoro.Ledger
 
         public static readonly int MemPoolRelayCount = ProtocolSettings.Default.MemPoolRelayCount;
         private readonly ManualResetEvent startupEvent = new ManualResetEvent(false);
-        private readonly ConcurrentDictionary<UInt256, NativeNEP5> nativeNEP5_Dict = new ConcurrentDictionary<UInt256, NativeNEP5>();
+        private readonly ConcurrentDictionary<UInt256, GlobalAsset> globalAssets = new ConcurrentDictionary<UInt256, GlobalAsset>();
 
         public UInt160 ChainHash { get; }
-        public NativeNEP5 BCPNativeNEP5 { get; private set; }
+        public GlobalAsset BCPToken { get; private set; }
 
         private static Blockchain root;
         public static Blockchain Root
@@ -207,7 +209,7 @@ namespace Zoro.Ledger
                     UpdateCurrentSnapshot();
                 }
 
-                InitializeNativeNEP5();
+                InitializeGlobalAssets();
 
                 startupEvent.Set();
             }
@@ -546,8 +548,8 @@ namespace Zoro.Ledger
 
                 if (block.Index > 0 && sysfeeAmount > Fixed8.Zero)
                 {
-                    BCPNativeNEP5.AddBalance(snapshot, block.Transactions[0].GetAccountScriptHash(snapshot), sysfeeAmount);
-                }               
+                    BCPToken.AddBalance(snapshot, block.Transactions[0].GetAccountScriptHash(snapshot), sysfeeAmount);
+                }
 
                 snapshot.BlockHashIndex.GetAndChange().Hash = block.Hash;
                 snapshot.BlockHashIndex.GetAndChange().Index = block.Index;
@@ -601,7 +603,6 @@ namespace Zoro.Ledger
                         IsFrozen = false
                     });
                     break;
-#pragma warning restore CS0612
                 case IssueTransaction tx_issue:
                     // 只能在根链上发行流通BCP
                     // 暂时不做限制，等实现跨链兑换BCP后再限制
@@ -615,9 +616,10 @@ namespace Zoro.Ledger
                             account.Balances[tx_issue.AssetId] = tx_issue.Value;
                     }
                     break;
+#pragma warning restore CS0612
                 case ContractTransaction tx_contract:
-                    NativeNEP5 nativeNEP5 = GetNativeNEP5(tx_contract.AssetId);
-                    nativeNEP5.Transfer(snapshot, tx_contract.From, tx_contract.To, tx_contract.Value);
+                    GlobalAsset asset = GetGlobalAsset(tx_contract.AssetId);
+                    asset.Transfer(snapshot, tx_contract.From, tx_contract.To, tx_contract.Value);
                     break;
                 case InvocationTransaction tx_invocation:
                     using (ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, tx_invocation, snapshot.Clone(), tx_invocation.GasLimit))
@@ -649,7 +651,7 @@ namespace Zoro.Ledger
                         }
 
                         // 退回多扣的手续费
-                        BCPNativeNEP5.AddBalance(snapshot, tx.GetAccountScriptHash(snapshot), tx.SystemFee - sysfee);
+                        BCPToken.AddBalance(snapshot, tx.GetAccountScriptHash(snapshot), tx.SystemFee - sysfee);
                     }
                     break;
             }
@@ -673,7 +675,7 @@ namespace Zoro.Ledger
 
             UInt160 scriptHash = tx.GetAccountScriptHash(snapshot);
 
-            return BCPNativeNEP5.SubBalance(snapshot, scriptHash, tx.SystemFee);
+            return BCPToken.SubBalance(snapshot, scriptHash, tx.SystemFee);
         }
         
         protected override void PostStop()
@@ -842,30 +844,30 @@ namespace Zoro.Ledger
             return true;
         }
 
-        private void InitializeNativeNEP5()
+        private void InitializeGlobalAssets()
         {
-            Log("RegisterNativeNEP5:");
+            Log("InitializeGlobalAssets:");
             foreach (var asset in Store.GetAssets().Find().Select(p => p.Value))
             {
-                if (asset.AssetType.HasFlag(AssetType.NativeNEP5Token))
+                if (asset.AssetType.HasFlag(AssetType.GlobalToken))
                 {
                     Log($"{asset.GetName()}, {asset.AssetId}");
-                    RegisterNativeNEP5(asset.AssetId);
+                    RegisterGlobalAsset(asset.AssetId);
                 }
             }
 
-            BCPNativeNEP5 = GetNativeNEP5(UtilityToken.Hash);
+            BCPToken = GetGlobalAsset(UtilityToken.Hash);
         }
 
-        public bool RegisterNativeNEP5(UInt256 assetId)
+        public bool RegisterGlobalAsset(UInt256 assetId)
         {
-            return nativeNEP5_Dict.TryAdd(assetId, new NativeNEP5(this, assetId));
+            return globalAssets.TryAdd(assetId, new GlobalAsset(this, assetId));
         }
 
-        public NativeNEP5 GetNativeNEP5(UInt256 AssetId)
+        public GlobalAsset GetGlobalAsset(UInt256 AssetId)
         {
-            if (nativeNEP5_Dict.TryGetValue(AssetId, out NativeNEP5 nativeNEP5))
-                return nativeNEP5;
+            if (globalAssets.TryGetValue(AssetId, out GlobalAsset asset))
+                return asset;
 
             return null;
         }

@@ -10,6 +10,7 @@
         public const byte ST_Transfer = 0x42;
         public const byte ST_Asset = 0x4c;
         public const byte ST_Contract = 0x50;
+        public const byte ST_NativeNEP5 = 0x51;
         public const byte ST_Storage = 0x70;
 
         public const byte IX_HeaderHashList = 0x80;

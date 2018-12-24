@@ -19,149 +19,6 @@ namespace Zoro.SmartContract
         public NeoService(TriggerType trigger, Snapshot snapshot)
             : base(trigger, snapshot)
         {
-            Register("Neo.Runtime.GetTrigger", Runtime_GetTrigger, 1);
-            Register("Neo.Runtime.CheckWitness", Runtime_CheckWitness, 200);
-            Register("Neo.Runtime.Notify", Runtime_Notify, 1);
-            Register("Neo.Runtime.Log", Runtime_Log, 1);
-            Register("Neo.Runtime.GetTime", Runtime_GetTime, 1);
-            Register("Neo.Runtime.Serialize", Runtime_Serialize, 1);
-            Register("Neo.Runtime.Deserialize", Runtime_Deserialize, 1);
-            Register("Neo.Blockchain.GetHeight", Blockchain_GetHeight, 1);
-            Register("Neo.Blockchain.GetHeader", Blockchain_GetHeader, 100);
-            Register("Neo.Blockchain.GetBlock", Blockchain_GetBlock, 200);
-            Register("Neo.Blockchain.GetTransaction", Blockchain_GetTransaction, 100);
-            Register("Neo.Blockchain.GetTransactionHeight", Blockchain_GetTransactionHeight, 100);
-            Register("Neo.Blockchain.GetAccount", Blockchain_GetAccount, 100);
-            Register("Neo.Blockchain.GetValidators", Blockchain_GetValidators, 200);
-            Register("Neo.Blockchain.GetAsset", Blockchain_GetAsset, 100);
-            Register("Neo.Blockchain.GetContract", Blockchain_GetContract, 100);
-            Register("Neo.Header.GetHash", Header_GetHash, 1);
-            Register("Neo.Header.GetVersion", Header_GetVersion, 1);
-            Register("Neo.Header.GetPrevHash", Header_GetPrevHash, 1);
-            Register("Neo.Header.GetMerkleRoot", Header_GetMerkleRoot, 1);
-            Register("Neo.Header.GetTimestamp", Header_GetTimestamp, 1);
-            Register("Neo.Header.GetIndex", Header_GetIndex, 1);
-            Register("Neo.Header.GetConsensusData", Header_GetConsensusData, 1);
-            Register("Neo.Header.GetNextConsensus", Header_GetNextConsensus, 1);
-            Register("Neo.Block.GetTransactionCount", Block_GetTransactionCount, 1);
-            Register("Neo.Block.GetTransactions", Block_GetTransactions, 1);
-            Register("Neo.Block.GetTransaction", Block_GetTransaction, 1);
-            Register("Neo.Transaction.GetHash", Transaction_GetHash, 1);
-            Register("Neo.Transaction.GetType", Transaction_GetType, 1);
-            Register("Neo.Transaction.GetAttributes", Transaction_GetAttributes, 1);
-            Register("Neo.Transaction.GetInputs", Transaction_GetInputs, 1);
-            Register("Neo.Transaction.GetOutputs", Transaction_GetOutputs, 1);
-            Register("Neo.Transaction.GetReferences", Transaction_GetReferences, 1);
-            Register("Neo.Transaction.GetUnspentCoins", Transaction_GetUnspentCoins, 1);
-            Register("Neo.Transaction.GetWitnesses", Transaction_GetWitnesses, 200);
-            Register("Neo.InvocationTransaction.GetScript", InvocationTransaction_GetScript, 1);
-            Register("Neo.Witness.GetVerificationScript", Witness_GetVerificationScript, 100);
-            Register("Neo.Attribute.GetUsage", Attribute_GetUsage, 1);
-            Register("Neo.Attribute.GetData", Attribute_GetData, 1);
-            Register("Neo.Input.GetHash", Input_GetHash, 1);
-            Register("Neo.Input.GetIndex", Input_GetIndex, 1);
-            Register("Neo.Output.GetAssetId", Output_GetAssetId, 1);
-            Register("Neo.Output.GetValue", Output_GetValue, 1);
-            Register("Neo.Output.GetScriptHash", Output_GetScriptHash, 1);
-            Register("Neo.Account.GetScriptHash", Account_GetScriptHash, 1);
-            Register("Neo.Account.GetVotes", Account_GetVotes, 1);
-            Register("Neo.Account.GetBalance", Account_GetBalance, 1);
-            Register("Neo.Account.IsStandard", Account_IsStandard, 100);
-            Register("Neo.Asset.Create", Asset_Create);
-            Register("Neo.Asset.Renew", Asset_Renew, 1);
-            Register("Neo.Asset.GetAssetId", Asset_GetAssetId, 1);
-            Register("Neo.Asset.GetAssetType", Asset_GetAssetType, 1);
-            Register("Neo.Asset.GetAmount", Asset_GetAmount, 1);
-            Register("Neo.Asset.GetAvailable", Asset_GetAvailable, 1);
-            Register("Neo.Asset.GetPrecision", Asset_GetPrecision, 1);
-            Register("Neo.Asset.GetOwner", Asset_GetOwner, 1);
-            Register("Neo.Asset.GetAdmin", Asset_GetAdmin, 1);
-            Register("Neo.Asset.GetIssuer", Asset_GetIssuer, 1);
-            Register("Neo.Contract.Create", Contract_Create);
-            Register("Neo.Contract.Migrate", Contract_Migrate);
-            Register("Neo.Contract.Destroy", Contract_Destroy, 1);
-            Register("Neo.Contract.GetScript", Contract_GetScript, 1);
-            Register("Neo.Contract.IsPayable", Contract_IsPayable, 1);
-            Register("Neo.Contract.GetStorageContext", Contract_GetStorageContext, 1);
-            Register("Neo.Storage.GetContext", Storage_GetContext, 1);
-            Register("Neo.Storage.GetReadOnlyContext", Storage_GetReadOnlyContext, 1);
-            Register("Neo.Storage.Get", Storage_Get, 100);
-            Register("Neo.Storage.Put", Storage_Put);
-            Register("Neo.Storage.Delete", Storage_Delete, 100);
-            Register("Neo.Storage.Find", Storage_Find, 1);
-            Register("Neo.StorageContext.AsReadOnly", StorageContext_AsReadOnly, 1);
-            Register("Neo.Enumerator.Create", Enumerator_Create, 1);
-            Register("Neo.Enumerator.Next", Enumerator_Next, 1);
-            Register("Neo.Enumerator.Value", Enumerator_Value, 1);
-            Register("Neo.Enumerator.Concat", Enumerator_Concat, 1);
-            Register("Neo.Iterator.Create", Iterator_Create, 1);
-            Register("Neo.Iterator.Key", Iterator_Key, 1);
-            Register("Neo.Iterator.Keys", Iterator_Keys, 1);
-            Register("Neo.Iterator.Values", Iterator_Values, 1);
-
-            #region Aliases
-            Register("Neo.Iterator.Next", Enumerator_Next, 1);
-            Register("Neo.Iterator.Value", Enumerator_Value, 1);
-            #endregion
-
-            #region Old APIs
-            Register("AntShares.Runtime.CheckWitness", Runtime_CheckWitness, 200);
-            Register("AntShares.Runtime.Notify", Runtime_Notify, 1);
-            Register("AntShares.Runtime.Log", Runtime_Log, 1);
-            Register("AntShares.Blockchain.GetHeight", Blockchain_GetHeight, 1);
-            Register("AntShares.Blockchain.GetHeader", Blockchain_GetHeader, 100);
-            Register("AntShares.Blockchain.GetBlock", Blockchain_GetBlock, 200);
-            Register("AntShares.Blockchain.GetTransaction", Blockchain_GetTransaction, 100);
-            Register("AntShares.Blockchain.GetAccount", Blockchain_GetAccount, 100);
-            Register("AntShares.Blockchain.GetValidators", Blockchain_GetValidators, 200);
-            Register("AntShares.Blockchain.GetAsset", Blockchain_GetAsset, 100);
-            Register("AntShares.Blockchain.GetContract", Blockchain_GetContract, 100);
-            Register("AntShares.Header.GetHash", Header_GetHash, 1);
-            Register("AntShares.Header.GetVersion", Header_GetVersion, 1);
-            Register("AntShares.Header.GetPrevHash", Header_GetPrevHash, 1);
-            Register("AntShares.Header.GetMerkleRoot", Header_GetMerkleRoot, 1);
-            Register("AntShares.Header.GetTimestamp", Header_GetTimestamp, 1);
-            Register("AntShares.Header.GetConsensusData", Header_GetConsensusData, 1);
-            Register("AntShares.Header.GetNextConsensus", Header_GetNextConsensus, 1);
-            Register("AntShares.Block.GetTransactionCount", Block_GetTransactionCount, 1);
-            Register("AntShares.Block.GetTransactions", Block_GetTransactions, 1);
-            Register("AntShares.Block.GetTransaction", Block_GetTransaction, 1);
-            Register("AntShares.Transaction.GetHash", Transaction_GetHash, 1);
-            Register("AntShares.Transaction.GetType", Transaction_GetType, 1);
-            Register("AntShares.Transaction.GetAttributes", Transaction_GetAttributes, 1);
-            Register("AntShares.Transaction.GetInputs", Transaction_GetInputs, 1);
-            Register("AntShares.Transaction.GetOutputs", Transaction_GetOutputs, 1);
-            Register("AntShares.Transaction.GetReferences", Transaction_GetReferences, 1);
-            Register("AntShares.Attribute.GetUsage", Attribute_GetUsage, 1);
-            Register("AntShares.Attribute.GetData", Attribute_GetData, 1);
-            Register("AntShares.Input.GetHash", Input_GetHash, 1);
-            Register("AntShares.Input.GetIndex", Input_GetIndex, 1);
-            Register("AntShares.Output.GetAssetId", Output_GetAssetId, 1);
-            Register("AntShares.Output.GetValue", Output_GetValue, 1);
-            Register("AntShares.Output.GetScriptHash", Output_GetScriptHash, 1);
-            Register("AntShares.Account.GetScriptHash", Account_GetScriptHash, 1);
-            Register("AntShares.Account.GetVotes", Account_GetVotes, 1);
-            Register("AntShares.Account.GetBalance", Account_GetBalance, 1);
-            Register("AntShares.Asset.Create", Asset_Create);
-            Register("AntShares.Asset.Renew", Asset_Renew, 1);
-            Register("AntShares.Asset.GetAssetId", Asset_GetAssetId, 1);
-            Register("AntShares.Asset.GetAssetType", Asset_GetAssetType, 1);
-            Register("AntShares.Asset.GetAmount", Asset_GetAmount, 1);
-            Register("AntShares.Asset.GetAvailable", Asset_GetAvailable, 1);
-            Register("AntShares.Asset.GetPrecision", Asset_GetPrecision, 1);
-            Register("AntShares.Asset.GetOwner", Asset_GetOwner, 1);
-            Register("AntShares.Asset.GetAdmin", Asset_GetAdmin, 1);
-            Register("AntShares.Asset.GetIssuer", Asset_GetIssuer, 1);
-            Register("AntShares.Contract.Create", Contract_Create);
-            Register("AntShares.Contract.Migrate", Contract_Migrate);
-            Register("AntShares.Contract.Destroy", Contract_Destroy, 1);
-            Register("AntShares.Contract.GetScript", Contract_GetScript, 1);
-            Register("AntShares.Contract.GetStorageContext", Contract_GetStorageContext, 1);
-            Register("AntShares.Storage.GetContext", Storage_GetContext, 1);
-            Register("AntShares.Storage.Get", Storage_Get, 100);
-            Register("AntShares.Storage.Put", Storage_Put);
-            Register("AntShares.Storage.Delete", Storage_Delete, 100);
-            #endregion
         }
 
         protected bool Blockchain_GetAccount(ExecutionEngine engine)
@@ -262,26 +119,6 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        protected bool Transaction_GetInputs(ExecutionEngine engine)
-        {
-            return false;
-        }
-
-        protected bool Transaction_GetOutputs(ExecutionEngine engine)
-        {
-            return false;
-        }
-
-        protected bool Transaction_GetReferences(ExecutionEngine engine)
-        {
-            return false;
-        }
-
-        protected bool Transaction_GetUnspentCoins(ExecutionEngine engine)
-        {
-            return false;
-        }
-
         protected bool Transaction_GetWitnesses(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
@@ -345,31 +182,6 @@ namespace Zoro.SmartContract
             return false;
         }
 
-        protected bool Input_GetHash(ExecutionEngine engine)
-        {
-            return false;
-        }
-
-        protected bool Input_GetIndex(ExecutionEngine engine)
-        {
-            return false;
-        }
-
-        protected bool Output_GetAssetId(ExecutionEngine engine)
-        {
-            return false;
-        }
-
-        protected bool Output_GetValue(ExecutionEngine engine)
-        {
-            return false;
-        }
-
-        protected bool Output_GetScriptHash(ExecutionEngine engine)
-        {
-            return false;
-        }
-
         protected bool Account_GetScriptHash(ExecutionEngine engine)
         {
             if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
@@ -415,53 +227,6 @@ namespace Zoro.SmartContract
             bool isStandard = contract is null || contract.Script.IsStandardContract();
             engine.CurrentContext.EvaluationStack.Push(isStandard);
             return true;
-        }
-
-        protected bool Asset_Create(ExecutionEngine engine)
-        {
-            if (Trigger != TriggerType.Application) return false;
-            InvocationTransaction tx = (InvocationTransaction)engine.ScriptContainer;
-            AssetType asset_type = (AssetType)(byte)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
-            if (!Enum.IsDefined(typeof(AssetType), asset_type) || asset_type == AssetType.UtilityToken)
-                return false;
-            if (engine.CurrentContext.EvaluationStack.Peek().GetByteArray().Length > 1024)
-                return false;
-            string name = Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
-            Fixed8 amount = new Fixed8((long)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger());
-            if (amount == Fixed8.Zero || amount < -Fixed8.Satoshi) return false;
-            byte precision = (byte)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
-            if (precision > 8) return false;
-            if (amount != -Fixed8.Satoshi && amount.GetData() % (long)Math.Pow(10, 8 - precision) != 0)
-                return false;
-            ECPoint owner = ECPoint.DecodePoint(engine.CurrentContext.EvaluationStack.Pop().GetByteArray(), ECCurve.Secp256r1);
-            if (owner.IsInfinity) return false;
-            if (!CheckWitness(engine, owner))
-                return false;
-            UInt160 admin = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
-            UInt160 issuer = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
-            AssetState asset = Snapshot.Assets.GetOrAdd(tx.Hash, () => new AssetState
-            {
-                AssetId = tx.Hash,
-                AssetType = asset_type,
-                Name = name,
-                Amount = amount,
-                Available = Fixed8.Zero,
-                Precision = precision,
-                Fee = Fixed8.Zero,
-                FeeAddress = new UInt160(),
-                Owner = owner,
-                Admin = admin,
-                Issuer = issuer,
-                BlockIndex = Snapshot.Height + 1,
-                IsFrozen = false
-            });
-            engine.CurrentContext.EvaluationStack.Push(StackItem.FromInterface(asset));
-            return true;
-        }
-
-        protected bool Asset_Renew(ExecutionEngine engine)
-        {
-            return false;
         }
 
         protected bool Asset_GetAssetId(ExecutionEngine engine)

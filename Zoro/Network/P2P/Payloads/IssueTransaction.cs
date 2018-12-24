@@ -10,6 +10,7 @@ using System.Linq;
 
 namespace Zoro.Network.P2P.Payloads
 {
+    [Obsolete]
     public class IssueTransaction : Transaction
     {
         public UInt256 AssetId;
@@ -96,17 +97,7 @@ namespace Zoro.Network.P2P.Payloads
 
         public override bool Verify(Snapshot snapshot, IEnumerable<Transaction> mempool)
         {
-            if (Version < 1) return false;
-            if (!base.Verify(snapshot, mempool)) return false;
-            if (Value == null || Value <= Fixed8.Zero) return false;
-            if (AssetId == null) return false;
-            if (Address == null) return false;
-
-            AssetState asset = snapshot.Assets.TryGet(AssetId);
-            if (asset == null) return false;
-            if (asset.Amount < Fixed8.Zero) return false;
-            if (asset.Amount - asset.Available < Value) return false;
-            return true;
+            return false;
         }
     }
 }

@@ -506,15 +506,10 @@ namespace Zoro.SmartContract
             uint api_hash = length == 4
                 ? System.BitConverter.ToUInt32(CurrentContext.Script, CurrentContext.InstructionPointer + 2)
                 : Encoding.ASCII.GetString(CurrentContext.Script, CurrentContext.InstructionPointer + 2, length).ToInteropMethodHash();
-            long price = Service.GetPrice(api_hash);
+            long price = Service.GetPrice(api_hash, this);
             if (price > 0) return price;
-            if (api_hash == "Neo.Asset.Create".ToInteropMethodHash() ||
-               api_hash == "AntShares.Asset.Create".ToInteropMethodHash())
-                return 5000L * 100000000L / ratio;
-            if (api_hash == "Neo.Contract.Create".ToInteropMethodHash() ||
-                api_hash == "Neo.Contract.Migrate".ToInteropMethodHash() ||
-                api_hash == "AntShares.Contract.Create".ToInteropMethodHash() ||
-                api_hash == "AntShares.Contract.Migrate".ToInteropMethodHash())
+            if (api_hash == "Zoro.Contract.Create".ToInteropMethodHash() ||
+                api_hash == "Zoro.Contract.Migrate".ToInteropMethodHash())
             {
                 long fee = 100L;
 
@@ -532,11 +527,8 @@ namespace Zoro.SmartContract
             }
             if (api_hash == "System.Storage.Put".ToInteropMethodHash() ||
                 api_hash == "System.Storage.PutEx".ToInteropMethodHash() ||
-                api_hash == "Neo.Storage.Put".ToInteropMethodHash() ||
-                api_hash == "AntShares.Storage.Put".ToInteropMethodHash())
+                api_hash == "Zoro.Storage.Put".ToInteropMethodHash())
                 return ((CurrentContext.EvaluationStack.Peek(1).GetByteArray().Length + CurrentContext.EvaluationStack.Peek(2).GetByteArray().Length - 1) / 1024 + 1) * 1000;
-            if (api_hash == "Zoro.AppChain.Create".ToInteropMethodHash())
-                return 5000L * 100000000L / ratio;
             return 1;
         }
 

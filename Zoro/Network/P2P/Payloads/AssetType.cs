@@ -2,8 +2,8 @@
 {
     public enum AssetType : byte
     {
-        NativeNEP5Token = 0x01,
+        GlobalToken = 0x01,
 
-        UtilityToken = NativeNEP5Token | 0x80,
+        UtilityToken = GlobalToken | 0x80,
     }
 }

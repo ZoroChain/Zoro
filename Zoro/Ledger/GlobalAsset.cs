@@ -2,13 +2,13 @@
 
 namespace Zoro.Ledger
 {
-    public sealed class NativeNEP5
+    public sealed class GlobalAsset
     {
         private Blockchain blockchain;
 
         public UInt256 AssetId { get; private set; }
 
-        public NativeNEP5(Blockchain blockchain, UInt256 assetId)
+        public GlobalAsset(Blockchain blockchain, UInt256 assetId)
         {
             this.blockchain = blockchain;
 
