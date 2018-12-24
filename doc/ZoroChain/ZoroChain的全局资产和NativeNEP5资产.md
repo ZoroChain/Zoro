@@ -35,7 +35,7 @@
 * ID长度不同，全局资产使用32字节的UInt256作为Hash，NativeNEP5使用20字节的UInt160作为Hash
 * 全局资产只能在创世块中创建，且所有的链上都能使用
 * NativeNEP5资产需要用交易在链上发布，成功上链之后才能使用
-* 通过SysCall来调用全局资产，通过AppCall来调用NativeNEP5资产
+* 通过"Zoro.GlobalAsset.XXX"来调用全局资产，通过"Zoro.NativeNEP5.Call"来调用NativeNEP5资产
 
 ### NativeNEP5和NEP5合约的差异
 * 通过不同的SysCall来创建和调用
