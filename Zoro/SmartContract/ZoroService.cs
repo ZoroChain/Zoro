@@ -140,7 +140,7 @@ namespace Zoro.SmartContract
             }
             else
             {
-                if (IsCategoryOf(api_hash, "Contract.Create") || IsCategoryOf(api_hash, "Contract.Migrate"))
+                if (IsUnpricedMethod(api_hash, "Contract.Create") || IsUnpricedMethod(api_hash, "Contract.Migrate"))
                 {
                     long fee = 100L;
 
@@ -157,7 +157,7 @@ namespace Zoro.SmartContract
                     return fee * 100000000L / 100000;
                 }
 
-                if (IsCategoryOf(api_hash, "Storage.Put") || IsCategoryOf(api_hash, "Storage.PutEx"))
+                if (IsUnpricedMethod(api_hash, "Storage.Put") || IsUnpricedMethod(api_hash, "Storage.PutEx"))
                 {
                     return ((engine.CurrentContext.EvaluationStack.Peek(1).GetByteArray().Length + engine.CurrentContext.EvaluationStack.Peek(2).GetByteArray().Length - 1) / 1024 + 1) * 1000;
                 }

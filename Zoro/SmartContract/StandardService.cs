@@ -28,7 +28,7 @@ namespace Zoro.SmartContract
         private readonly List<NotifyEventArgs> notifications = new List<NotifyEventArgs>();
         private readonly Dictionary<uint, Func<ExecutionEngine, bool>> methods = new Dictionary<uint, Func<ExecutionEngine, bool>>();
         private readonly Dictionary<uint, long> prices = new Dictionary<uint, long>();
-        private readonly Dictionary<string, List<uint>> apiHashCategories = new Dictionary<string, List<uint>>();
+        private readonly Dictionary<string, List<uint>> unpricedMethods = new Dictionary<string, List<uint>>();
 
         public IReadOnlyList<NotifyEventArgs> Notifications => notifications;
 
@@ -108,9 +108,11 @@ namespace Zoro.SmartContract
             return func(engine);
         }
 
-        protected bool IsCategoryOf(uint api_hash, string category)
+        // 用某个完整方法名的Hash，判断其是否是某个具体的功能函数
+        // 例如: "System.Storage.Put"和"Neo.Storage.Put"都是"Storage.Put"
+        protected bool IsUnpricedMethod(uint api_hash, string api_func)
         {
-            if (apiHashCategories.TryGetValue(category, out List<uint> list))
+            if (unpricedMethods.TryGetValue(api_func, out List<uint> list))
             {
                 return list.IndexOf(api_hash) > 0;
             }
@@ -129,15 +131,22 @@ namespace Zoro.SmartContract
                 return;
             }
 
+            // 记录没有定义手续费的方法
+            RegisterUnpricedMethod(method);
+        }
+
+        // 用去掉前缀（名字空间）后的方法名最为键值，记录该方法名的hash
+        private void RegisterUnpricedMethod(string method)
+        {
             int pos = method.IndexOf('.');
             if (pos > 0)
             {
-                string category = method.Substring(pos + 1);
+                string api_func = method.Substring(pos + 1);
 
-                if (!apiHashCategories.TryGetValue(category, out List<uint> list))
+                if (!unpricedMethods.TryGetValue(api_func, out List<uint> list))
                 {
                     list = new List<uint>();
-                    apiHashCategories.Add(category, list);
+                    unpricedMethods.Add(api_func, list);
                 }
 
                 list.Add(method.ToInteropMethodHash());
