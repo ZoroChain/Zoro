@@ -154,7 +154,7 @@ namespace Zoro.Ledger
                 if (name_obj is JString)
                     _fullnames = new Dictionary<CultureInfo, string> { { new CultureInfo("en"), name_obj.AsString() } };
                 else
-                    _fullnames = ((JArray)name_obj).Where(p => p.ContainsProperty("lang") && p.ContainsProperty("fullname")).ToDictionary(p => new CultureInfo(p["lang"].AsString()), p => p["fullname"].AsString());
+                    _fullnames = ((JArray)name_obj).Where(p => p.ContainsProperty("lang") && p.ContainsProperty("name")).ToDictionary(p => new CultureInfo(p["lang"].AsString()), p => p["name"].AsString());
             }
             if (culture == null) culture = CultureInfo.CurrentCulture;
             if (_fullnames.TryGetValue(culture, out string fullname))
