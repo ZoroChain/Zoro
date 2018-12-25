@@ -18,6 +18,42 @@ namespace Zoro.SmartContract.Services
             Snapshot = snapshot;
         }
 
+        public bool GetName(ExecutionEngine engine)
+        {
+            if (Trigger != TriggerType.Application) return false;
+
+            UInt256 assetId = new UInt256(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            AssetState asset = Snapshot.Assets.TryGet(assetId);
+            if (asset == null) return false;
+
+            engine.CurrentContext.EvaluationStack.Push(asset.GetName());
+            return true;
+        }
+
+        public bool GetFullName(ExecutionEngine engine)
+        {
+            if (Trigger != TriggerType.Application) return false;
+
+            UInt256 assetId = new UInt256(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            AssetState asset = Snapshot.Assets.TryGet(assetId);
+            if (asset == null) return false;
+
+            engine.CurrentContext.EvaluationStack.Push(asset.GetFullName());
+            return true;
+        }
+
+        public bool GetAmount(ExecutionEngine engine)
+        {
+            if (Trigger != TriggerType.Application) return false;
+
+            UInt256 assetId = new UInt256(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            AssetState asset = Snapshot.Assets.TryGet(assetId);
+            if (asset == null) return false;
+
+            engine.CurrentContext.EvaluationStack.Push(asset.Amount.GetData());
+            return true;
+        }
+
         public bool GetPrecision(ExecutionEngine engine)
         {
             if (Trigger != TriggerType.Application) return false;

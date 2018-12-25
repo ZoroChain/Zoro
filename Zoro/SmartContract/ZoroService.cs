@@ -101,6 +101,9 @@ namespace Zoro.SmartContract
             Register("Zoro.AppChain.ChangeSeedList", appchainService.ChangeValidators, 1000);
             Register("Zoro.AppChain.ChangeValidators", appchainService.ChangeSeedList, 1000);
 
+            Register("Zoro.GlobalAsset.Name", globalAssetService.GetName, 1);
+            Register("Zoro.GlobalAsset.FullName", globalAssetService.GetFullName, 1);
+            Register("Zoro.GlobalAsset.Amount", globalAssetService.GetAmount, 1);
             Register("Zoro.GlobalAsset.GetPrecision", globalAssetService.GetPrecision, 1);
             Register("Zoro.GlobalAsset.BalanceOf", globalAssetService.BalanceOf, 1);
             Register("Zoro.GlobalAsset.Transfer", globalAssetService.Transfer, 1000);
