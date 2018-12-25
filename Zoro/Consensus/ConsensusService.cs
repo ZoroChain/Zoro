@@ -208,7 +208,7 @@ namespace Zoro.Consensus
 
         private void OnPersistCompleted(Block block)
         {
-            Log($"persist block: {block.Hash}");
+            Log($"persist block: {block.Hash}, mempool:{blockchain.GetMemoryPoolCount()}");
             block_received_time = TimeProvider.Current.UtcNow;
             InitializeConsensus(0);
         }

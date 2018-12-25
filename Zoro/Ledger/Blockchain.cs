@@ -467,7 +467,7 @@ namespace Zoro.Ledger
             system.Consensus?.Tell(completed);
             Distribute(completed);
             if (system.Consensus == null)
-                Log($"Block Persisted:{block.Index}, tx:{block.Transactions.Length}");
+                Log($"Block Persisted:{block.Index}, tx:{block.Transactions.Length}, mempool:{mem_pool.Count}");
         }
 
         // 广播MemoryPool中还未上链的交易
