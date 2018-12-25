@@ -23,7 +23,6 @@ namespace Zoro.Plugins
 
         private static bool enableLog = true;
         private static LogLevel logLevel = LogLevel.Info;
-        private static List<string> disabledLogSources = new List<string>();
 
         public static PluginManager Singleton { get; private set; }
 
@@ -83,7 +82,7 @@ namespace Zoro.Plugins
 
         public void Log(string source, LogLevel level, string message, UInt160 chainHash)
         {
-            if (enableLog && logLevel >= level && !disabledLogSources.Contains(source))
+            if (enableLog && logLevel >= level)
             {
                 foreach (ILogPlugin plugin in Loggers)
                     plugin.Log(source, level, message, chainHash);
@@ -100,22 +99,9 @@ namespace Zoro.Plugins
             logLevel = lv;
         }
 
-        public static void DisableLogSource(string source)
+        public static LogLevel GetLogLevel()
         {
-            if (!disabledLogSources.Contains(source))
-            {
-                disabledLogSources.Add(source);
-            }
-        }
-
-        public static void EnableLogSource(string source)
-        {
-            disabledLogSources.Remove(source);
-        }
-
-        public static void EnableAllLogSources()
-        {
-            disabledLogSources.Clear();
+            return logLevel;
         }
 
         public void LoadPlugins()

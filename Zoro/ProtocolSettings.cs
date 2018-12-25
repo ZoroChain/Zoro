@@ -20,6 +20,7 @@ namespace Zoro
         public string NetworkType { get; }
         public Fixed8 LowPriorityThreshold { get; }
         public IReadOnlyDictionary<TransactionType, Fixed8> SystemFee { get; }
+        public List<string> ListenMessages { get; }
 
         public static ProtocolSettings Default { get; }
 
@@ -43,6 +44,7 @@ namespace Zoro
             this.NetworkType = GetValueOrDefault(section.GetSection("NetworkType"), "Unknown", p => p);
             this.LowPriorityThreshold = GetValueOrDefault(section.GetSection("LowPriorityThreshold"), Fixed8.FromDecimal(0.001m), p => Fixed8.Parse(p));
             this.SystemFee = section.GetSection("SystemFee").GetChildren().ToDictionary(p => (TransactionType)Enum.Parse(typeof(TransactionType), p.Key, true), p => Fixed8.Parse(p.Value));
+            this.ListenMessages = section.GetSection("ListenMessages").GetChildren().Select(p => p.Value).ToList();
         }
 
         internal T GetValueOrDefault<T>(IConfigurationSection section, T defaultValue, Func<string, T> selector)

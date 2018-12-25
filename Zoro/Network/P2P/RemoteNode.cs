@@ -100,7 +100,10 @@ namespace Zoro.Network.P2P
         {
             msg_buffer = msg_buffer.Concat(data);
             for (Message message = TryParseMessage(); message != null; message = TryParseMessage())
+            {
+                LogMsg("recv", message);
                 protocol.Tell(message);
+            }
         }
 
         protected override void OnReceive(object message)
@@ -216,11 +219,22 @@ namespace Zoro.Network.P2P
             PluginManager.Singleton?.Log(nameof(RemoteNode), level, message, localNode.ChainHash);
         }
 
+        private void LogMsg(string action, Message message)
+        {
+            if (PluginManager.GetLogLevel() >= LogLevel.Debug)
+            {
+                if (ProtocolSettings.Default.ListenMessages.Contains(message.Command))
+                {
+                    Log($"{action}:{message.Command} {message.Size} [{Remote.Address}]", LogLevel.Debug);
+                }
+            }
+        }
+
         private void SendMessage(Message message)
         {
             ack = false;
             SendData(ByteString.FromBytes(message.ToArray()));
-            Log($"send:{message.Command} {message.Size} [{Remote.Address}]", Plugins.LogLevel.Debug);
+            LogMsg("send", message);
         }
 
         protected override SupervisorStrategy SupervisorStrategy()
