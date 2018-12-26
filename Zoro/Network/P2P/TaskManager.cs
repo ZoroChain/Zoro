@@ -168,6 +168,7 @@ namespace Zoro.Network.P2P
             {
                 session.Tasks.Remove(hash);
                 RequestTasks(session);
+                Sender.Tell(new RemoteNode.TaskCompleted());
             }
         }
 
@@ -216,6 +217,8 @@ namespace Zoro.Network.P2P
                     {
                         if (session.Tasks.Remove(task.Key))
                             DecrementGlobalTask(task.Key);
+
+                        session.RemoteNode.Tell(new RemoteNode.TaskTimeout());
                     }
             foreach (TaskSession session in sessions.Values)
                 RequestTasks(session);

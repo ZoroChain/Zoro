@@ -10,12 +10,16 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Threading;
 
 namespace Zoro.Network.P2P
 {
     public class RemoteNode : Connection
     {
         internal class Relay { public IInventory Inventory; }
+        internal class TaskTimeout { };
+        internal class TaskCompleted { };
+        internal class InventorySended { };
 
         private readonly ZoroSystem system;
         private readonly IActorRef protocol;
@@ -31,6 +35,13 @@ namespace Zoro.Network.P2P
         public VersionPayload Version { get; private set; }
 
         private readonly LocalNode localNode;
+        private int taskTimeoutStat = 0;
+        private int taskCompletedStat = 0;
+        private int dataSendedStat = 0;
+
+        public int TaskTimeoutStat => taskTimeoutStat;
+        public int TaskCompletedStat => taskCompletedStat;
+        public int DataSendedStat => dataSendedStat;
 
         public RemoteNode(ZoroSystem system, object connection, IPEndPoint remote, IPEndPoint local, LocalNode localNode)
             : base(connection, remote, local)
@@ -128,6 +139,15 @@ namespace Zoro.Network.P2P
                     break;
                 case ProtocolHandler.SetFilter setFilter:
                     OnSetFilter(setFilter.Filter);
+                    break;
+                case TaskTimeout _:
+                    Interlocked.Increment(ref taskTimeoutStat);
+                    break;
+                case TaskCompleted _:
+                    Interlocked.Increment(ref taskCompletedStat);
+                    break;
+                case InventorySended _:
+                    Interlocked.Increment(ref dataSendedStat);
                     break;
             }
         }
