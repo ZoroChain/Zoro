@@ -108,16 +108,7 @@ namespace Zoro.Network.P2P
                 IncrementGlobalTask(hash);
                 session.Tasks[hash] = DateTime.UtcNow;
             }
-
-            if (hashes.Count == 1)
-            {
-                Sender.Tell(Message.Create("getdata", InvPayload.Create(payload.Type, hashes.First())));
-            }
-            else
-            {
-                foreach (InvGroupPayload group in InvGroupPayload.CreateGroup(payload.Type, hashes.ToArray()))
-                    Sender.Tell(Message.Create("getdatagroup", group));
-            }
+            RequestInventoryData(payload.Type, hashes.ToArray(), Sender);
         }
 
         protected override void OnReceive(object message)
@@ -164,8 +155,7 @@ namespace Zoro.Network.P2P
             knownHashes.ExceptWith(payload.Hashes);
             foreach (UInt256 hash in payload.Hashes)
                 globalTasks.Remove(hash);
-            foreach (InvGroupPayload group in InvGroupPayload.CreateGroup(payload.Type, payload.Hashes))
-                system.LocalNode.Tell(Message.Create("getdatagroup", group));
+            RequestInventoryData(payload.Type, payload.Hashes, system.LocalNode);
         }
 
         private void OnTaskCompleted(UInt256 hash)
@@ -263,8 +253,7 @@ namespace Zoro.Network.P2P
                     session.AvailableTasks.ExceptWith(hashes);
                     foreach (UInt256 hash in hashes)
                         session.Tasks[hash] = DateTime.UtcNow;
-                    foreach (InvGroupPayload group in InvGroupPayload.CreateGroup(InventoryType.Block, hashes.ToArray()))
-                        session.RemoteNode.Tell(Message.Create("getdatagroup", group));
+                    RequestInventoryData(InventoryType.Block, hashes.ToArray(), session.RemoteNode);
                     return;
                 }
             }
@@ -290,6 +279,19 @@ namespace Zoro.Network.P2P
                 {
                     session.RemoteNode.Tell(Message.Create("getblocks", GetBlocksPayload.Create(hash)));
                 }
+            }
+        }
+
+        private void RequestInventoryData(InventoryType type, UInt256[] hashes, IActorRef sender)
+        {
+            if (hashes.Length == 1)
+            {
+                sender.Tell(Message.Create("getdata", InvPayload.Create(type, hashes[0])));
+            }
+            else
+            {
+                foreach (InvGroupPayload group in InvGroupPayload.CreateGroup(type, hashes))
+                    sender.Tell(Message.Create("getdatagroup", group));
             }
         }
 
