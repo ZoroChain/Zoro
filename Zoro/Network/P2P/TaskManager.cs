@@ -287,6 +287,9 @@ namespace Zoro.Network.P2P
 
         private void RequestInventoryData(InventoryType type, UInt256[] hashes, IActorRef sender)
         {
+            if (hashes.Length == 0)
+                return;
+
             if (hashes.Length == 1)
             {
                 sender.Tell(Message.Create("getdata", InvPayload.Create(type, hashes[0])));
