@@ -78,7 +78,7 @@ namespace Zoro.Network.P2P
             foreach (UInt256 hash in hashes)
             {
                 IncrementGlobalTask(hash);
-                session.Tasks[hash] = DateTime.UtcNow;
+                session.Tasks[hash] = new RequestTask { Type = payload.Type, BeginTime = DateTime.UtcNow };
             }
             RequestInventoryData(payload.Type, hashes.ToArray(), Sender);
         }
@@ -135,9 +135,10 @@ namespace Zoro.Network.P2P
                 ms.AvailableTasks.Remove(hash);
             if (sessions.TryGetValue(Sender, out TaskSession session))
             {
+                if (session.Tasks.TryGetValue(hash, out RequestTask task))
+                    Sender.Tell(new RemoteNode.TaskCompleted { Type = task.Type });
                 session.Tasks.Remove(hash);
                 RequestTasks(session);
-                Sender.Tell(new RemoteNode.TaskCompleted());
             }
         }
 
@@ -182,12 +183,12 @@ namespace Zoro.Network.P2P
         {
             foreach (TaskSession session in sessions.Values)
                 foreach (var task in session.Tasks.ToArray())
-                    if (DateTime.UtcNow - task.Value > TaskTimeout)
+                    if (DateTime.UtcNow - task.Value.BeginTime > TaskTimeout)
                     {
                         if (session.Tasks.Remove(task.Key))
                             DecrementGlobalTask(task.Key);
 
-                        session.RemoteNode.Tell(new RemoteNode.TaskTimeout());
+                        session.RemoteNode.Tell(new RemoteNode.TaskTimeout { Type = task.Value.Type });
                     }
             foreach (TaskSession session in sessions.Values)
                 RequestTasks(session);
@@ -224,14 +225,14 @@ namespace Zoro.Network.P2P
                     }
                     session.AvailableTasks.ExceptWith(hashes);
                     foreach (UInt256 hash in hashes)
-                        session.Tasks[hash] = DateTime.UtcNow;
+                        session.Tasks[hash] = new RequestTask { Type = InventoryType.Block, BeginTime = DateTime.UtcNow }; 
                     RequestInventoryData(InventoryType.Block, hashes.ToArray(), session.RemoteNode);
                     return;
                 }
             }
             if ((!HasHeaderTask || globalTasks[HeaderTaskHash] < MaxConncurrentTasks) && blockchain.HeaderHeight < session.Version.StartHeight)
             {
-                session.Tasks[HeaderTaskHash] = DateTime.UtcNow;
+                session.Tasks[HeaderTaskHash] = new RequestTask { Type = InventoryType.Block, BeginTime = DateTime.UtcNow };
                 IncrementGlobalTask(HeaderTaskHash);
                 session.RemoteNode.Tell(Message.Create("getheaders", GetBlocksPayload.Create(blockchain.CurrentHeaderHash)));
             }
@@ -268,6 +269,8 @@ namespace Zoro.Network.P2P
                 foreach (InvPayload group in InvPayload.CreateGroup(type, hashes))
                     sender.Tell(Message.Create("getdatagroup", group));
             }
+
+            Sender.Tell(new RemoteNode.RequestInventory { Type = type });
         }
 
         private void ClearKnownHashes()

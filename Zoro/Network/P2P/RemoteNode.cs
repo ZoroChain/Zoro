@@ -17,9 +17,10 @@ namespace Zoro.Network.P2P
     public class RemoteNode : Connection
     {
         internal class Relay { public IInventory Inventory; }
-        internal class TaskTimeout { };
-        internal class TaskCompleted { };
-        internal class InventorySended { };
+        internal class TaskTimeout { public InventoryType Type; };
+        internal class TaskCompleted { public InventoryType Type; };
+        internal class RequestInventory { public InventoryType Type; };
+        internal class InventorySended { public InventoryType Type; };
 
         private readonly ZoroSystem system;
         private readonly IActorRef protocol;
@@ -35,13 +36,15 @@ namespace Zoro.Network.P2P
         public VersionPayload Version { get; private set; }
 
         private readonly LocalNode localNode;
-        private int taskTimeoutStat = 0;
-        private int taskCompletedStat = 0;
-        private int dataSendedStat = 0;
+        private int[] taskTimeoutStat = new int[3];
+        private int[] taskCompletedStat = new int[3];
+        private int[] dataRequestStat = new int[3];
+        private int[] dataSendedStat = new int[3];
 
-        public int TaskTimeoutStat => taskTimeoutStat;
-        public int TaskCompletedStat => taskCompletedStat;
-        public int DataSendedStat => dataSendedStat;
+        public int TaskTimeoutStat(int idx) => taskTimeoutStat[idx];
+        public int TaskCompletedStat(int idx) => taskCompletedStat[idx];
+        public int DataRequestStat(int idx) => dataRequestStat[idx];
+        public int DataSendedStat(int idx) => dataSendedStat[idx];
 
         public RemoteNode(ZoroSystem system, object connection, IPEndPoint remote, IPEndPoint local, LocalNode localNode)
             : base(connection, remote, local)
@@ -140,16 +143,28 @@ namespace Zoro.Network.P2P
                 case ProtocolHandler.SetFilter setFilter:
                     OnSetFilter(setFilter.Filter);
                     break;
-                case TaskTimeout _:
-                    Interlocked.Increment(ref taskTimeoutStat);
+                case TaskTimeout msg:
+                    Interlocked.Increment(ref taskTimeoutStat[GetStatIndex(msg.Type)]);
                     break;
-                case TaskCompleted _:
-                    Interlocked.Increment(ref taskCompletedStat);
+                case TaskCompleted msg:
+                    Interlocked.Increment(ref taskCompletedStat[GetStatIndex(msg.Type)]);
                     break;
-                case InventorySended _:
-                    Interlocked.Increment(ref dataSendedStat);
+                case RequestInventory msg:
+                    Interlocked.Increment(ref dataRequestStat[GetStatIndex(msg.Type)]);
+                    break;
+                case InventorySended msg:
+                    Interlocked.Increment(ref dataSendedStat[GetStatIndex(msg.Type)]);
                     break;
             }
+        }
+
+        private int GetStatIndex(InventoryType type)
+        {
+            if (type == InventoryType.TX)
+                return 0;
+            else if (type == InventoryType.Block)
+                return 1;
+            return 2;
         }
 
         private void OnRelay(IInventory inventory)
