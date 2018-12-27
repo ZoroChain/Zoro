@@ -8,18 +8,30 @@ namespace Zoro.Network.P2P.Payloads
 {
     public class InvPayload : ISerializable
     {
+        public const int MaxHashesCount = 500;
+
         public InventoryType Type;
-        public UInt256 Hash;
+        public UInt256[] Hashes;
 
-        public int Size => sizeof(InventoryType) + Hash.Size;
+        public int Size => sizeof(InventoryType) + Hashes.GetVarSize();
 
-        public static InvPayload Create(InventoryType type, UInt256 hash)
+        public static InvPayload Create(InventoryType type, params UInt256[] hashes)
         {
             return new InvPayload
             {
                 Type = type,
-                Hash = hash
+                Hashes = hashes
             };
+        }
+
+        public static IEnumerable<InvPayload> CreateGroup(InventoryType type, UInt256[] hashes)
+        {
+            for (int i = 0; i < hashes.Length; i += MaxHashesCount)
+                yield return new InvPayload
+                {
+                    Type = type,
+                    Hashes = hashes.Skip(i).Take(MaxHashesCount).ToArray()
+                };
         }
 
         void ISerializable.Deserialize(BinaryReader reader)
@@ -27,13 +39,13 @@ namespace Zoro.Network.P2P.Payloads
             Type = (InventoryType)reader.ReadByte();
             if (!Enum.IsDefined(typeof(InventoryType), Type))
                 throw new FormatException();
-            Hash = reader.ReadSerializable<UInt256>();
+            Hashes = reader.ReadSerializableArray<UInt256>(MaxHashesCount);
         }
 
         void ISerializable.Serialize(BinaryWriter writer)
         {
             writer.Write((byte)Type);
-            writer.Write(Hash);
+            writer.Write(Hashes);
         }
     }
 }

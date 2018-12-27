@@ -263,7 +263,7 @@ namespace Zoro.Consensus
                 UInt256[] hashes = context.TransactionHashes.Where(i => !context.Transactions.ContainsKey(i)).ToArray();
                 taskManager.Tell(new TaskManager.RestartTasks
                 {
-                    Payload = InvGroupPayload.Create(InventoryType.TX, hashes)
+                    Payload = InvPayload.Create(InventoryType.TX, hashes)
                 });
 
                 Log($"restart tasks, tx={hashes.Length}");
@@ -341,8 +341,8 @@ namespace Zoro.Consensus
                 localNode.Tell(new LocalNode.SendDirectly { Inventory = context.MakePrepareRequest() });
                 if (context.TransactionHashes.Length > 1)
                 {
-                    foreach (InvGroupPayload payload in InvGroupPayload.CreateGroup(InventoryType.TX, context.TransactionHashes.Skip(1).ToArray()))
-                        localNode.Tell(Message.Create("invgroup", payload));
+                    foreach (InvPayload payload in InvPayload.CreateGroup(InventoryType.TX, context.TransactionHashes.Skip(1).ToArray()))
+                        localNode.Tell(Message.Create("inv", payload));
                 }
                 SetNextTimer(timer.ViewNumber + 1);
             }

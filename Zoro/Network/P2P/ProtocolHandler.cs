@@ -97,7 +97,7 @@ namespace Zoro.Network.P2P
                     OnGetDataMessageReceived(msg.Payload.AsSerializable<InvPayload>());
                     break;
                 case "getdatagroup":
-                    OnGetDataGroupMessageReceived(msg.Payload.AsSerializable<InvGroupPayload>());
+                    OnGetDataGroupMessageReceived(msg.Payload.AsSerializable<InvPayload>());
                     break;
                 case "getheaders":
                     OnGetHeadersMessageReceived(msg.Payload.AsSerializable<GetBlocksPayload>());
@@ -107,9 +107,6 @@ namespace Zoro.Network.P2P
                     break;
                 case "inv":
                     OnInvMessageReceived(msg.Payload.AsSerializable<InvPayload>());
-                    break;
-                case "invgroup":
-                    OnInvGroupMessageReceived(msg.Payload.AsSerializable<InvGroupPayload>());
                     break;
                 case "mempool":
                     OnMemPoolMessageReceived();
@@ -186,7 +183,7 @@ namespace Zoro.Network.P2P
             BlockState state = blockchain.Store.GetBlocks().TryGet(hash);
             if (state == null) return;
             List<UInt256> hashes = new List<UInt256>();
-            for (uint i = 1; i <= InvGroupPayload.MaxHashesCount; i++)
+            for (uint i = 1; i <= InvPayload.MaxHashesCount; i++)
             {
                 uint index = state.TrimmedBlock.Index + i;
                 if (index > blockchain.Height)
@@ -195,13 +192,13 @@ namespace Zoro.Network.P2P
                 if (hash == null) break;
                 if (hash == payload.HashStop) break;
                 hashes.Add(hash);
-            }
-            blockchain.Log($"OnGetBlocks, blockIndex:{state.TrimmedBlock.Index}, count:{hashes.Count}, [{remoteNode.Remote.Address}]");
+            }            
             if (hashes.Count == 0) return;
-            Context.Parent.Tell(Message.Create("invgroup", InvGroupPayload.Create(InventoryType.Block, hashes.ToArray())));
+            Context.Parent.Tell(Message.Create("inv", InvPayload.Create(InventoryType.Block, hashes.ToArray())));
+            blockchain.Log($"OnGetBlocks, blockIndex:{state.TrimmedBlock.Index}, count:{hashes.Count}, [{remoteNode.Remote.Address}]");
         }
 
-        private void OnGetInvertoryData(UInt256 hash, InventoryType type)
+        private void OnGetInventoryData(UInt256 hash, InventoryType type)
         {
             blockchain.RelayCache.TryGet(hash, out IInventory inventory);
             switch (type)
@@ -237,20 +234,20 @@ namespace Zoro.Network.P2P
 
         private void OnGetDataMessageReceived(InvPayload payload)
         {
-            if (sentHashes.Add(payload.Hash))
+            if (sentHashes.Add(payload.Hashes[0]))
             {
-                OnGetInvertoryData(payload.Hash, payload.Type);
+                OnGetInventoryData(payload.Hashes[0], payload.Type);
                 Context.Parent.Tell(new RemoteNode.InventorySended());
             }
         }
 
-        private void OnGetDataGroupMessageReceived(InvGroupPayload payload)
+        private void OnGetDataGroupMessageReceived(InvPayload payload)
         {
             blockchain.Log($"OnGetDataGroup begin, type:{payload.Type}, count:{payload.Hashes.Length}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
             UInt256[] hashes = payload.Hashes.Where(p => sentHashes.Add(p)).ToArray();
             foreach (UInt256 hash in hashes)
             {
-                OnGetInvertoryData(hash, payload.Type);
+                OnGetInventoryData(hash, payload.Type);
             }
             Context.Parent.Tell(new RemoteNode.InventorySended());
             blockchain.Log($"OnGetDataGroup end, type:{payload.Type}, count:{hashes.Length}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
@@ -294,30 +291,6 @@ namespace Zoro.Network.P2P
 
         private void OnInvMessageReceived(InvPayload payload)
         {
-            if (!knownHashes.Add(payload.Hash))
-                return;
-
-            bool exists = false;
-            switch (payload.Type)
-            {
-                case InventoryType.Block:
-                    using (Snapshot snapshot = blockchain.GetSnapshot())
-                        exists = snapshot.ContainsBlock(payload.Hash);
-                    break;
-                case InventoryType.TX:
-                    using (Snapshot snapshot = blockchain.GetSnapshot())
-                        exists = snapshot.ContainsTransaction(payload.Hash);
-                    break;
-            }
-
-            if (!exists)
-            {
-                system.TaskManager.Tell(new TaskManager.NewTask { Payload = InvPayload.Create(payload.Type, payload.Hash) }, Context.Parent);
-            }
-        }
-
-        private void OnInvGroupMessageReceived(InvGroupPayload payload)
-        {
             UInt256[] hashes = payload.Hashes.Where(p => knownHashes.Add(p)).ToArray();
             if (hashes.Length == 0) return;
             switch (payload.Type)
@@ -332,13 +305,13 @@ namespace Zoro.Network.P2P
                     break;
             }
             if (hashes.Length == 0) return;
-            system.TaskManager.Tell(new TaskManager.NewGroupTask { Payload = InvGroupPayload.Create(payload.Type, hashes) }, Context.Parent);
+            system.TaskManager.Tell(new TaskManager.NewTasks { Payload = InvPayload.Create(payload.Type, hashes) }, Context.Parent);
         }
 
         private void OnMemPoolMessageReceived()
         {
-            foreach (InvGroupPayload payload in InvGroupPayload.CreateGroup(InventoryType.TX, blockchain.GetMemoryPool().Select(p => p.Hash).ToArray()))
-                Context.Parent.Tell(Message.Create("invgroup", payload));
+            foreach (InvPayload payload in InvPayload.CreateGroup(InventoryType.TX, blockchain.GetMemoryPool().Select(p => p.Hash).ToArray()))
+                Context.Parent.Tell(Message.Create("inv", payload));
         }
 
         private void OnVerackMessageReceived()

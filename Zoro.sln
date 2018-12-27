@@ -25,6 +25,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Zoro-Projects", "Zoro-Proje
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Zoro-RpcHost", "..\Zoro-RpcHost\Zoro-RpcHost.csproj", "{DDF1D3A4-B740-4784-B040-18EF9A0167D0}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StressTesting", "..\Zoro-Plugins\StressTesting\StressTesting.csproj", "{1D7ED08A-5133-44FC-9DC7-C6F2F6E04E52}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -63,6 +65,10 @@ Global
 		{DDF1D3A4-B740-4784-B040-18EF9A0167D0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DDF1D3A4-B740-4784-B040-18EF9A0167D0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DDF1D3A4-B740-4784-B040-18EF9A0167D0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1D7ED08A-5133-44FC-9DC7-C6F2F6E04E52}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1D7ED08A-5133-44FC-9DC7-C6F2F6E04E52}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1D7ED08A-5133-44FC-9DC7-C6F2F6E04E52}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1D7ED08A-5133-44FC-9DC7-C6F2F6E04E52}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -76,6 +82,7 @@ Global
 		{F4CE360E-8B47-4059-BBE4-9FF00DAFEE31} = {0E06C9FB-1A05-4DF9-A89D-8583FEDD1B8F}
 		{91CCD157-0B70-42FD-8526-E099FECB5C4A} = {0E06C9FB-1A05-4DF9-A89D-8583FEDD1B8F}
 		{DDF1D3A4-B740-4784-B040-18EF9A0167D0} = {8C2F9054-594B-44D2-86EF-0B0DF62C428F}
+		{1D7ED08A-5133-44FC-9DC7-C6F2F6E04E52} = {0E06C9FB-1A05-4DF9-A89D-8583FEDD1B8F}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7C695419-F2D2-4319-9191-334B87B08634}
