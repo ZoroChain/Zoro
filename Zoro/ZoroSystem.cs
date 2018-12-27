@@ -23,6 +23,7 @@ namespace Zoro
         public IActorRef LocalNode { get; }
         internal IActorRef TaskManager { get; }
         public IActorRef Consensus { get; private set; }
+        public IActorRef RawTxnList { get; }
 
         public bool HasConsensusService => Consensus != null;
 
@@ -57,6 +58,7 @@ namespace Zoro
             Blockchain = Context.ActorOf(Ledger.Blockchain.Props(this, store, chainHash), $"Blockchain");
             LocalNode = Context.ActorOf(Network.P2P.LocalNode.Props(this, chainHash), $"LocalNode");
             TaskManager = Context.ActorOf(Network.P2P.TaskManager.Props(this, chainHash), $"TaskManager");
+            RawTxnList = Context.ActorOf(Network.P2P.RawTransactionList.Props(this), $"RawTxnList");
         }
 
         public IActorRef ActorOf(Props props, string name = null)

@@ -14,6 +14,7 @@ namespace Zoro.Network.P2P
     {
         public class Register { public VersionPayload Version; }
         public class NewTasks { public InvPayload Payload; }
+        public class RawTxnTask { public InvPayload Payload; }
         public class TaskCompleted { public UInt256 Hash; }
         public class HeaderTaskCompleted { }
         public class RestartTasks { public InvPayload Payload; }
@@ -83,6 +84,33 @@ namespace Zoro.Network.P2P
             RequestInventoryData(payload.Type, hashes.ToArray(), Sender);
         }
 
+        private void OnRawTxnTask(InvPayload payload)
+        {
+            if (!sessions.TryGetValue(Sender, out TaskSession session))
+                return;
+            if (payload.Type == InventoryType.TX && blockchain.Height < blockchain.HeaderHeight)
+            {
+                RequestTasks(session);
+                return;
+            }
+            HashSet<UInt256> hashes = new HashSet<UInt256>(payload.Hashes);
+            hashes.ExceptWith(knownHashes);
+
+            hashes.ExceptWith(globalTasks.Keys);
+            if (hashes.Count == 0)
+            {
+                RequestTasks(session);
+                return;
+            }
+
+            foreach (UInt256 hash in hashes)
+            {
+                IncrementGlobalTask(hash);
+                session.Tasks[hash] = new RequestTask { Type = payload.Type, BeginTime = DateTime.UtcNow };
+            }
+            RequestRawTxns(hashes.ToArray(), Sender);
+        }
+
         protected override void OnReceive(object message)
         {
             switch (message)
@@ -107,6 +135,9 @@ namespace Zoro.Network.P2P
                     break;
                 case Terminated terminated:
                     OnTerminated(terminated.ActorRef);
+                    break;
+                case RawTxnTask task:
+                    OnRawTxnTask(task.Payload);
                     break;
             }
         }
@@ -271,6 +302,17 @@ namespace Zoro.Network.P2P
             }
 
             Sender.Tell(new RemoteNode.RequestInventory { Type = type });
+        }
+
+        private void RequestRawTxns(UInt256[] hashes, IActorRef sender)
+        {
+            if (hashes.Length == 0)
+                return;
+
+            foreach (InvPayload group in InvPayload.CreateGroup(InventoryType.TX, hashes))
+                sender.Tell(Message.Create("getrawtxn", group));
+
+            Sender.Tell(new RemoteNode.RequestInventory { Type = InventoryType.TX });
         }
 
         private void ClearKnownHashes()

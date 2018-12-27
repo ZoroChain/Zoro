@@ -233,6 +233,12 @@ namespace Zoro.Ledger
             return Store.ContainsTransaction(hash);
         }
 
+        public bool ContainsRawTransaction(UInt256 hash)
+        {
+            if (mem_pool.ContainsKey(hash)) return true;
+            return false;
+        }
+
         private void Distribute(object message)
         {
             foreach (IActorRef subscriber in subscribers)
@@ -277,6 +283,14 @@ namespace Zoro.Ledger
             if (mem_pool.TryGetValue(hash, out Transaction transaction))
                 return transaction;
             return Store.GetTransaction(hash);
+        }
+
+        public Transaction GetRawTransaction(UInt256 hash)
+        {
+            if (mem_pool.TryGetValue(hash, out Transaction transaction))
+                return transaction;
+
+            return null;
         }
 
         internal Transaction GetUnverifiedTransaction(UInt256 hash)
@@ -442,7 +456,8 @@ namespace Zoro.Ledger
             if (!mem_pool.TryAdd(transaction.Hash, transaction))
                 return RelayResultReason.OutOfMemory;
 
-            system.LocalNode.Tell(new LocalNode.RelayDirectly { Inventory = transaction });
+            //system.LocalNode.Tell(new LocalNode.RelayDirectly { Inventory = transaction });
+            system.RawTxnList.Tell(transaction);
             return RelayResultReason.Succeed;
         }
 

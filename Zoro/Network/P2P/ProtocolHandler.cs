@@ -115,6 +115,15 @@ namespace Zoro.Network.P2P
                     if (msg.Payload.Length <= Transaction.MaxTransactionSize)
                         OnInventoryReceived(Transaction.DeserializeFrom(msg.Payload));
                     break;
+                case "rawinv":
+                    OnRawInvMessageReceived(msg.Payload.AsSerializable<InvPayload>());
+                    break;
+                case "getrawtxn":
+                    OnGetRawTransactionMessageReceived(msg.Payload.AsSerializable<InvPayload>());
+                    break;
+                case "rawtxn":
+                    OnRawTransactionMessageReceived(msg.Payload.AsSerializable<RawTransactionPayload>());
+                    break;
                 case "verack":
                 case "version":
                     throw new ProtocolViolationException();
@@ -263,6 +272,36 @@ namespace Zoro.Network.P2P
             blockchain.Log($"OnGetDataGroup end, type:{payload.Type}, count:{hashes.Length}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
         }
 
+        private void OnGetRawTransactionMessageReceived(InvPayload payload)
+        {
+            if (payload.Type != InventoryType.TX)
+                throw new ArgumentException();
+
+            UInt256[] hashes = payload.Hashes.Where(p => sentHashes.Add(p)).ToArray();
+            if (hashes.Length == 0)
+                return;
+
+            List<Transaction> transactions = new List<Transaction>();
+            foreach (UInt256 hash in hashes)
+            {
+                Transaction tx = blockchain.GetRawTransaction(hash);
+                if (tx != null)
+                    transactions.Add(tx);
+            }
+            Context.Parent.Tell(Message.Create("rawtxn", RawTransactionPayload.Create(transactions)));
+            Context.Parent.Tell(new RemoteNode.InventorySended { Type = payload.Type });
+        }
+
+        private void OnRawTransactionMessageReceived(RawTransactionPayload payload)
+        {
+            foreach (var tx in payload.Array)
+            {
+                system.TaskManager.Tell(new TaskManager.TaskCompleted { Hash = tx.Hash }, Context.Parent);
+                if (!(tx is MinerTransaction))
+                    system.LocalNode.Tell(new LocalNode.Relay { Inventory = tx });
+            }
+        }
+
         private void OnGetHeadersMessageReceived(GetBlocksPayload payload)
         {
             UInt256 hash = payload.HashStart[0];
@@ -316,6 +355,20 @@ namespace Zoro.Network.P2P
             }
             if (hashes.Length == 0) return;
             system.TaskManager.Tell(new TaskManager.NewTasks { Payload = InvPayload.Create(payload.Type, hashes) }, Context.Parent);
+        }
+
+        private void OnRawInvMessageReceived(InvPayload payload)
+        {
+            if (payload.Type != InventoryType.TX)
+                throw new ArgumentException();
+
+            UInt256[] hashes = payload.Hashes.Where(p => knownHashes.Add(p)).ToArray();
+            if (hashes.Length == 0) return;
+
+            hashes = hashes.Where(p => !blockchain.ContainsRawTransaction(p)).ToArray();
+            if (hashes.Length == 0) return;
+
+            system.TaskManager.Tell(new TaskManager.RawTxnTask { Payload = InvPayload.Create(payload.Type, hashes) }, Context.Parent);
         }
 
         private void OnMemPoolMessageReceived()
