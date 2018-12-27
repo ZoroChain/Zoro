@@ -198,7 +198,7 @@ namespace Zoro.Network.P2P
             blockchain.Log($"OnGetBlocks, blockIndex:{state.TrimmedBlock.Index}, count:{hashes.Count}, [{remoteNode.Remote.Address}]");
         }
 
-        private void OnGetInventoryData(UInt256 hash, InventoryType type)
+        private bool OnGetInventoryData(UInt256 hash, InventoryType type)
         {
             blockchain.RelayCache.TryGet(hash, out IInventory inventory);
             switch (type)
@@ -207,7 +207,10 @@ namespace Zoro.Network.P2P
                     if (inventory == null)
                         inventory = blockchain.GetTransaction(hash);
                     if (inventory is Transaction)
+                    {
                         Context.Parent.Tell(Message.Create("tx", inventory));
+                        return true;
+                    }
                     break;
                 case InventoryType.Block:
                     if (inventory == null)
@@ -223,21 +226,28 @@ namespace Zoro.Network.P2P
                             BitArray flags = new BitArray(block.Transactions.Select(p => bloom_filter.Test(p)).ToArray());
                             Context.Parent.Tell(Message.Create("merkleblock", MerkleBlockPayload.Create(block, flags)));
                         }
+                        return true;
                     }
                     break;
                 case InventoryType.Consensus:
                     if (inventory != null)
+                    {
                         Context.Parent.Tell(Message.Create("consensus", inventory));
+                        return true;
+                    }
                     break;
             }
+            return false;
         }
 
         private void OnGetDataMessageReceived(InvPayload payload)
         {
             if (sentHashes.Add(payload.Hashes[0]))
             {
-                OnGetInventoryData(payload.Hashes[0], payload.Type);
-                Context.Parent.Tell(new RemoteNode.InventorySended { Type = payload.Type });
+                if (OnGetInventoryData(payload.Hashes[0], payload.Type))
+                {
+                    Context.Parent.Tell(new RemoteNode.InventorySended { Type = payload.Type });
+                }
             }
         }
 
