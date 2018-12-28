@@ -1,4 +1,6 @@
 ﻿using Akka.Actor;
+using System;
+using System.Linq;
 using System.Collections.Generic;
 using Zoro.Network.P2P.Payloads;
 
@@ -10,6 +12,9 @@ namespace Zoro.Network.P2P
 
         private ZoroSystem system;
         private List<Transaction> rawtxnList = new List<Transaction>();
+
+        private static readonly TimeSpan TimerInterval = TimeSpan.FromMilliseconds(500);
+        private readonly ICancelable timer = Context.System.Scheduler.ScheduleTellRepeatedlyCancelable(TimerInterval, TimerInterval, Context.Self, new Timer(), ActorRefs.NoSender);
 
         public RawTransactionList(ZoroSystem system)
         {
@@ -45,7 +50,7 @@ namespace Zoro.Network.P2P
 
         private bool CheckRawTransactions()
         {
-            if (rawtxnList.Count > RawTransactionPayload.MaxCount)
+            if (rawtxnList.Count >= InvPayload.MaxHashesCount)
                 return true;
 
             int size = 0;
@@ -61,21 +66,8 @@ namespace Zoro.Network.P2P
 
         private void BroadcastRawTransactions()
         {
-            List<UInt256> hashes = new List<UInt256>();
-
-            int size = 0;
-            foreach (var tx in rawtxnList.ToArray())
-            {
-                hashes.Add(tx.Hash);
-
-                rawtxnList.Remove(tx);
-
-                size += tx.Size;                
-                if (size >= RawTransactionPayload.MaxPayloadSize)
-                    break;
-            }
-
-            system.LocalNode.Tell(Message.Create("rawinv", InvPayload.Create(InventoryType.TX, hashes.ToArray())));
+            foreach (InvPayload payload in InvPayload.CreateGroup(InventoryType.TX, rawtxnList.Select(p => p.Hash).ToArray()))
+                system.LocalNode.Tell(Message.Create("rawinv", payload));
         }
 
         public static Props Props(ZoroSystem system)

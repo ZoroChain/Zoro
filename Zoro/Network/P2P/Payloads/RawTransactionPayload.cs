@@ -31,7 +31,7 @@ namespace Zoro.Network.P2P.Payloads
             for (int i = 0; i < transactions.Length; i ++, count ++)
             {
                 size += transactions[i].Size;
-                if (size >= MaxPayloadSize)
+                if (size >= MaxPayloadSize || count >= MaxCount)
                 {
                     yield return new RawTransactionPayload
                     {

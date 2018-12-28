@@ -291,7 +291,8 @@ namespace Zoro.Network.P2P
                     transactions.Add(tx);
             }
             int count = transactions.Count;
-            Context.Parent.Tell(Message.Create("rawtxn", RawTransactionPayload.Create(transactions)));
+            foreach (RawTransactionPayload rtx_payload in RawTransactionPayload.CreateGroup(transactions.ToArray()))
+                Context.Parent.Tell(Message.Create("rawtxn", rtx_payload));
             Context.Parent.Tell(new RemoteNode.InventorySended { Type = payload.Type, Count = count });
             blockchain.Log($"send rawtxn, count:{count}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
         }
