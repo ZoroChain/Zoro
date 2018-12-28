@@ -301,7 +301,7 @@ namespace Zoro.Network.P2P
                     sender.Tell(Message.Create("getdatagroup", group));
             }
 
-            Sender.Tell(new RemoteNode.RequestInventory { Type = type });
+            Sender.Tell(new RemoteNode.RequestInventory { Type = type, Count = hashes.Length });
         }
 
         private void RequestRawTxns(UInt256[] hashes, IActorRef sender)
