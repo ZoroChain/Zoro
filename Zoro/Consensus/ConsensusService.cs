@@ -35,6 +35,8 @@ namespace Zoro.Consensus
         private readonly Blockchain blockchain;
         private readonly LocalNode localNodeObj;
 
+        private readonly List<ConsensusPayload> payload_cache_unhandled = new List<ConsensusPayload>();
+
         public ConsensusService(IActorRef localNode, IActorRef taskManager, Wallet wallet, UInt160 chainHash)
         {
             this.chainHash = chainHash;
@@ -105,7 +107,7 @@ namespace Zoro.Consensus
         private void CheckExpectedView(ushort view_number)
         {
             if (context.ViewNumber == view_number) return;
-            if (context.ExpectedView.Count(p => p == view_number) >= context.M)
+            if (context.ExpectedView.Count(p => p >= view_number) >= context.M)
             {
                 InitializeConsensus(view_number);
             }
@@ -146,6 +148,29 @@ namespace Zoro.Consensus
                 context.State = ConsensusState.Backup;
                 SetNextTimer(view_number + 1);
             }
+            ProcessUnhandledPayload();
+        }
+
+        private void ProcessUnhandledPayload()
+        {
+            // 删除过时的消息
+            payload_cache_unhandled.RemoveAll(p => p.BlockIndex < context.BlockIndex);
+            // 重新发送之前未能处理的消息
+            payload_cache_unhandled.ForEach(p =>
+            {
+                if (p.BlockIndex == context.BlockIndex)
+                {
+                    Self.Tell(p, ActorRefs.NoSender);
+                    Log($"awake unhandled payload: height={p.BlockIndex} view={context.ViewNumber} index={p.ValidatorIndex}");
+                }
+            });
+            // 删除重新发送了的消息
+            payload_cache_unhandled.RemoveAll(p => p.BlockIndex == context.BlockIndex);
+        }
+
+        private void AddUnhandledPayloadToCache(ConsensusPayload payload)
+        {
+            payload_cache_unhandled.Add(payload);
         }
 
         private void Log(string message, LogLevel level = LogLevel.Info)
@@ -163,16 +188,18 @@ namespace Zoro.Consensus
         }
 
         private void OnConsensusPayload(ConsensusPayload payload)
-        {
-            if (context.State.HasFlag(ConsensusState.BlockSent)) return;
+        {            
             if (payload.ValidatorIndex == context.MyIndex) return;
             if (payload.Version != ConsensusContext.Version)
                 return;
             if (payload.PrevHash != context.PrevHash || payload.BlockIndex != context.BlockIndex)
             {
-                if (context.BlockIndex + 1 < payload.BlockIndex)
+                if (context.BlockIndex != payload.BlockIndex)
                 {
-                    Log($"chain sync: expected={payload.BlockIndex} current={context.BlockIndex - 1} nodes={localNodeObj.ConnectedCount}", LogLevel.Warning);
+                    Log($"chain sync: expected={payload.BlockIndex} current={context.BlockIndex} nodes={localNodeObj.ConnectedCount}", LogLevel.Warning);
+
+                    if (context.BlockIndex < payload.BlockIndex)
+                        AddUnhandledPayloadToCache(payload);
                 }
                 if (payload.BlockIndex == context.BlockIndex && payload.PrevHash != context.PrevHash)
                 {
@@ -180,6 +207,7 @@ namespace Zoro.Consensus
                 }
                 return;
             }
+            if (context.State.HasFlag(ConsensusState.BlockSent)) return;
             if (payload.ValidatorIndex >= context.Validators.Length) return;
             ConsensusMessage message;
             try
