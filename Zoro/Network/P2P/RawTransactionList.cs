@@ -66,8 +66,13 @@ namespace Zoro.Network.P2P
 
         private void BroadcastRawTransactions()
         {
+            if (rawtxnList.Count == 0)
+                return;
+
             foreach (InvPayload payload in InvPayload.CreateGroup(InventoryType.TX, rawtxnList.Select(p => p.Hash).ToArray()))
                 system.LocalNode.Tell(Message.Create("rawinv", payload));
+
+            rawtxnList.Clear();
         }
 
         public static Props Props(ZoroSystem system)

@@ -119,7 +119,10 @@ namespace Zoro.Network.P2P
                     OnRawInvMessageReceived(msg.Payload.AsSerializable<InvPayload>());
                     break;
                 case "getrawtxn":
-                    OnGetRawTransactionMessageReceived(msg.Payload.AsSerializable<InvPayload>());
+                    OnGetRawTransactionMessageReceived(msg.Payload.AsSerializable<InvPayload>(), false);
+                    break;
+                case "syncrawtxn":
+                    OnGetRawTransactionMessageReceived(msg.Payload.AsSerializable<InvPayload>(), true);
                     break;
                 case "rawtxn":
                     OnRawTransactionMessageReceived(msg.Payload.AsSerializable<RawTransactionPayload>());
@@ -274,12 +277,22 @@ namespace Zoro.Network.P2P
             blockchain.Log($"OnGetDataGroup end, type:{payload.Type}, count:{hashes.Length}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
         }
 
-        private void OnGetRawTransactionMessageReceived(InvPayload payload)
+        private void OnGetRawTransactionMessageReceived(InvPayload payload, bool resend)
         {
             if (payload.Type != InventoryType.TX)
                 throw new ArgumentException();
 
-            UInt256[] hashes = payload.Hashes.Where(p => sentHashes.Add(p)).ToArray();
+            UInt256[] hashes;
+            
+            if (resend)
+            {
+                hashes = payload.Hashes;
+                sentHashes.Union(hashes);
+            }
+            else
+            {
+                hashes = payload.Hashes.Where(p => sentHashes.Add(p)).ToArray();
+            }
             if (hashes.Length == 0)
                 return;
 
@@ -291,10 +304,13 @@ namespace Zoro.Network.P2P
                     transactions.Add(tx);
             }
             int count = transactions.Count;
-            foreach (RawTransactionPayload rtx_payload in RawTransactionPayload.CreateGroup(transactions.ToArray()))
-                Context.Parent.Tell(Message.Create("rawtxn", rtx_payload));
-            Context.Parent.Tell(new RemoteNode.InventorySended { Type = payload.Type, Count = count });
-            blockchain.Log($"send rawtxn, count:{count}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
+            if (count > 0)
+            {
+                foreach (RawTransactionPayload rtx_payload in RawTransactionPayload.CreateGroup(transactions.ToArray()))
+                    Context.Parent.Tell(Message.Create("rawtxn", rtx_payload));
+                Context.Parent.Tell(new RemoteNode.InventorySended { Type = payload.Type, Count = count });
+                blockchain.Log($"send rawtxn, count:{payload.Hashes.Length}=>{hashes.Length}=>{count}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
+            }            
         }
 
         private void OnRawTransactionMessageReceived(RawTransactionPayload payload)
@@ -368,10 +384,10 @@ namespace Zoro.Network.P2P
             if (payload.Type != InventoryType.TX)
                 throw new ArgumentException();
 
-            UInt256[] hashes = payload.Hashes.Where(p => knownHashes.Add(p)).ToArray();
-            if (hashes.Length == 0) return;
+            //UInt256[] hashes = payload.Hashes.Where(p => knownHashes.Add(p)).ToArray();
+            //if (hashes.Length == 0) return;
 
-            hashes = hashes.Where(p => !blockchain.ContainsRawTransaction(p)).ToArray();
+            UInt256[] hashes = payload.Hashes.Where(p => !blockchain.ContainsRawTransaction(p)).ToArray();
             if (hashes.Length == 0) return;
 
             system.TaskManager.Tell(new TaskManager.RawTxnTask { Payload = InvPayload.Create(payload.Type, hashes) }, Context.Parent);

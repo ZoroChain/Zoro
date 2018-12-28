@@ -108,7 +108,7 @@ namespace Zoro.Network.P2P
                 IncrementGlobalTask(hash);
                 session.Tasks[hash] = new RequestTask { Type = payload.Type, BeginTime = DateTime.UtcNow };
             }
-            RequestRawTxns(hashes.ToArray(), Sender);
+            RequestRawTxns("getrawtxn", hashes.ToArray(), Sender);
         }
 
         protected override void OnReceive(object message)
@@ -155,7 +155,10 @@ namespace Zoro.Network.P2P
             knownHashes.ExceptWith(payload.Hashes);
             foreach (UInt256 hash in payload.Hashes)
                 globalTasks.Remove(hash);
-            RequestInventoryData(payload.Type, payload.Hashes, system.LocalNode);
+            if (payload.Type == InventoryType.TX)
+                RequestRawTxns("syncrawtxn", payload.Hashes, system.LocalNode);
+            else
+                throw new ArgumentException();
         }
 
         private void OnTaskCompleted(UInt256 hash)
@@ -304,13 +307,13 @@ namespace Zoro.Network.P2P
             Sender.Tell(new RemoteNode.RequestInventory { Type = type, Count = hashes.Length });
         }
 
-        private void RequestRawTxns(UInt256[] hashes, IActorRef sender)
+        private void RequestRawTxns(string command, UInt256[] hashes, IActorRef sender)
         {
             if (hashes.Length == 0)
                 return;
 
             foreach (InvPayload group in InvPayload.CreateGroup(InventoryType.TX, hashes))
-                sender.Tell(Message.Create("getrawtxn", group));
+                sender.Tell(Message.Create(command, group));
 
             Sender.Tell(new RemoteNode.RequestInventory { Type = InventoryType.TX, Count = hashes.Length });
             blockchain.Log($"send getrawtxn, count:{hashes.Length}", Plugins.LogLevel.Debug);

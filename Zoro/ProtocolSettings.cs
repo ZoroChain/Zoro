@@ -40,7 +40,7 @@ namespace Zoro
             this.MaxSecondsPerBlock = GetValueOrDefault(section.GetSection("MaxSecondsPerBlock"), 15u, p => uint.Parse(p));
             this.MaxTaskHashCount = GetValueOrDefault(section.GetSection("MaxTaskHashCount"), 0, p => int.Parse(p));
             this.MaxProtocolHashCount = GetValueOrDefault(section.GetSection("MaxProtocolHashCount"), 0, p => int.Parse(p));
-            this.MemPoolRelayCount = GetValueOrDefault(section.GetSection("MemPoolRelayCount"), 0, p => int.Parse(p));
+            this.MemPoolRelayCount = GetValueOrDefault(section.GetSection("MemPoolRelayCount"), 1000, p => int.Parse(p));
             this.NetworkType = GetValueOrDefault(section.GetSection("NetworkType"), "Unknown", p => p);
             this.LowPriorityThreshold = GetValueOrDefault(section.GetSection("LowPriorityThreshold"), Fixed8.FromDecimal(0.001m), p => Fixed8.Parse(p));
             this.SystemFee = section.GetSection("SystemFee").GetChildren().ToDictionary(p => (TransactionType)Enum.Parse(typeof(TransactionType), p.Key, true), p => Fixed8.Parse(p.Value));

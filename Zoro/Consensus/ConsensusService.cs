@@ -342,7 +342,7 @@ namespace Zoro.Consensus
                 if (context.TransactionHashes.Length > 1)
                 {
                     foreach (InvPayload payload in InvPayload.CreateGroup(InventoryType.TX, context.TransactionHashes.Skip(1).ToArray()))
-                        localNode.Tell(Message.Create("inv", payload));
+                        localNode.Tell(Message.Create("rawinv", payload));
                 }
                 SetNextTimer(timer.ViewNumber + 1);
             }
