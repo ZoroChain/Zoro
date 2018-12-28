@@ -290,12 +290,15 @@ namespace Zoro.Network.P2P
                 if (tx != null)
                     transactions.Add(tx);
             }
+            int count = transactions.Count;
             Context.Parent.Tell(Message.Create("rawtxn", RawTransactionPayload.Create(transactions)));
-            Context.Parent.Tell(new RemoteNode.InventorySended { Type = payload.Type });
+            Context.Parent.Tell(new RemoteNode.InventorySended { Type = payload.Type, Count = count });
+            blockchain.Log($"send rawtxn, count:{count}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
         }
 
         private void OnRawTransactionMessageReceived(RawTransactionPayload payload)
         {
+            blockchain.Log($"recv rawtxn, count:{payload.Array.Length}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
             foreach (var tx in payload.Array)
             {
                 system.TaskManager.Tell(new TaskManager.TaskCompleted { Hash = tx.Hash }, Context.Parent);

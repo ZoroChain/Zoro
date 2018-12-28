@@ -312,7 +312,8 @@ namespace Zoro.Network.P2P
             foreach (InvPayload group in InvPayload.CreateGroup(InventoryType.TX, hashes))
                 sender.Tell(Message.Create("getrawtxn", group));
 
-            Sender.Tell(new RemoteNode.RequestInventory { Type = InventoryType.TX });
+            Sender.Tell(new RemoteNode.RequestInventory { Type = InventoryType.TX, Count = hashes.Length });
+            blockchain.Log($"send getrawtxn, count:{hashes.Length}", Plugins.LogLevel.Debug);
         }
 
         private void ClearKnownHashes()
