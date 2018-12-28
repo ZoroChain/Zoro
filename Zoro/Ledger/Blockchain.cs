@@ -490,7 +490,7 @@ namespace Zoro.Ledger
         {
             Transaction[] trans = mem_pool.GetTransactions(MemPoolRelayCount);
             foreach (InvPayload payload in InvPayload.CreateGroup(InventoryType.TX, trans.Select(p => p.Hash).ToArray()))
-                system.LocalNode.Tell(Message.Create("inv", payload));
+                system.LocalNode.Tell(Message.Create("rawinv", payload));
         }
 
         protected override void OnReceive(object message)

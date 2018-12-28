@@ -75,7 +75,7 @@ namespace Zoro.Network.P2P
                     break;
             }
 
-            Context.Parent.Tell(Message.Create("rawinv", InvPayload.Create(InventoryType.TX, hashes.ToArray())));
+            system.LocalNode.Tell(Message.Create("rawinv", InvPayload.Create(InventoryType.TX, hashes.ToArray())));
         }
 
         public static Props Props(ZoroSystem system)
