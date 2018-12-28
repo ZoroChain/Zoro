@@ -246,7 +246,7 @@ namespace Zoro.Network.P2P
             {
                 if (OnGetInventoryData(payload.Hashes[0], payload.Type))
                 {
-                    Context.Parent.Tell(new RemoteNode.InventorySended { Type = payload.Type });
+                    Context.Parent.Tell(new RemoteNode.InventorySended { Type = payload.Type, Count = 1 });
                 }
             }
         }
@@ -254,12 +254,14 @@ namespace Zoro.Network.P2P
         private void OnGetDataGroupMessageReceived(InvPayload payload)
         {
             blockchain.Log($"OnGetDataGroup begin, type:{payload.Type}, count:{payload.Hashes.Length}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
+            int count = 0;
             UInt256[] hashes = payload.Hashes.Where(p => sentHashes.Add(p)).ToArray();
             foreach (UInt256 hash in hashes)
             {
-                OnGetInventoryData(hash, payload.Type);
+                if (OnGetInventoryData(hash, payload.Type))
+                    count++;
             }
-            Context.Parent.Tell(new RemoteNode.InventorySended { Type = payload.Type });
+            Context.Parent.Tell(new RemoteNode.InventorySended { Type = payload.Type, Count = count });
             blockchain.Log($"OnGetDataGroup end, type:{payload.Type}, count:{hashes.Length}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
         }
 

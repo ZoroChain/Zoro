@@ -19,8 +19,8 @@ namespace Zoro.Network.P2P
         internal class Relay { public IInventory Inventory; }
         internal class TaskTimeout { public InventoryType Type; };
         internal class TaskCompleted { public InventoryType Type; };
-        internal class RequestInventory { public InventoryType Type; };
-        internal class InventorySended { public InventoryType Type; };
+        internal class RequestInventory { public InventoryType Type; public int Count; };
+        internal class InventorySended { public InventoryType Type; public int Count; };
 
         private readonly ZoroSystem system;
         private readonly IActorRef protocol;
@@ -150,10 +150,10 @@ namespace Zoro.Network.P2P
                     Interlocked.Increment(ref taskCompletedStat[GetStatIndex(msg.Type)]);
                     break;
                 case RequestInventory msg:
-                    Interlocked.Increment(ref dataRequestStat[GetStatIndex(msg.Type)]);
+                    Interlocked.Add(ref dataRequestStat[GetStatIndex(msg.Type)], msg.Count);
                     break;
                 case InventorySended msg:
-                    Interlocked.Increment(ref dataSendedStat[GetStatIndex(msg.Type)]);
+                    Interlocked.Add(ref dataSendedStat[GetStatIndex(msg.Type)], msg.Count);
                     break;
             }
         }
