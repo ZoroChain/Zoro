@@ -463,6 +463,7 @@ namespace Zoro.Ledger
 
         private void OnPersistCompleted(Block block)
         {
+            Log($"OnPersistCompleted:{block.Index}, tx:{block.Transactions.Length}");
             block_cache.TryRemove(block.Hash, out Block _);
             foreach (Transaction tx in block.Transactions)
                 mem_pool.TryRemove(tx.Hash, out _);
@@ -481,8 +482,7 @@ namespace Zoro.Ledger
             PersistCompleted completed = new PersistCompleted { Block = block };
             system.Consensus?.Tell(completed);
             Distribute(completed);
-            if (system.Consensus == null)
-                Log($"Block Persisted:{block.Index}, tx:{block.Transactions.Length}, mempool:{mem_pool.Count}");
+            Log($"Block Persisted:{block.Index}, tx:{block.Transactions.Length}, mempool:{mem_pool.Count}");
         }
 
         // 广播MemoryPool中还未上链的交易
@@ -535,8 +535,7 @@ namespace Zoro.Ledger
 
         private void Persist(Block block)
         {
-            if (system.Consensus == null)
-                Log($"Persist Block:{block.Index}, tx:{block.Transactions.Length}");
+            Log($"Persist Block:{block.Index}, tx:{block.Transactions.Length}");
 
             using (Snapshot snapshot = GetSnapshot())
             {
@@ -577,8 +576,7 @@ namespace Zoro.Ledger
                 foreach (IPersistencePlugin plugin in PluginManager.PersistencePlugins)
                     plugin.OnPersist(snapshot);
 
-                if (system.Consensus == null)
-                    Log($"Commit Snapshot:{block.Index}, tx:{block.Transactions.Length}");
+                Log($"Commit Snapshot:{block.Index}, tx:{block.Transactions.Length}");
 
                 snapshot.Commit();
             }
