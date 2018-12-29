@@ -456,7 +456,7 @@ namespace Zoro.Ledger
             if (!mem_pool.TryAdd(transaction.Hash, transaction))
                 return RelayResultReason.OutOfMemory;
 
-            //system.LocalNode.Tell(new LocalNode.RelayDirectly { Inventory = transaction });
+            //先把交易缓存在队列里，等待批量转发
             system.RawTxnList.Tell(transaction);
             return RelayResultReason.Succeed;
         }
@@ -467,16 +467,6 @@ namespace Zoro.Ledger
             block_cache.TryRemove(block.Hash, out Block _);
             foreach (Transaction tx in block.Transactions)
                 mem_pool.TryRemove(tx.Hash, out _);
-            //mem_pool_unverified.Clear();
-            //foreach (Transaction tx in mem_pool
-            //    .OrderByDescending(p => p.NetworkFee / p.Size)
-            //    .ThenByDescending(p => p.NetworkFee)
-            //    .ThenByDescending(p => new BigInteger(p.Hash.ToArray())))
-            //{
-            //    mem_pool_unverified.TryAdd(tx.Hash, tx);
-            //    Self.Tell(tx, ActorRefs.NoSender);
-            //}
-            //mem_pool.Clear();
             RelayMemoryPool();
             InvokeAppChainNotifications();
             PersistCompleted completed = new PersistCompleted { Block = block };
@@ -489,7 +479,9 @@ namespace Zoro.Ledger
         // 广播MemoryPool中还未上链的交易
         private void RelayMemoryPool()
         {
+            // 按配置的最大数量，从交易池中取出未处理的交易
             Transaction[] trans = mem_pool.GetTransactions(MemPoolRelayCount);
+            // 使用批量广播的方式来转发未处理的交易，这里先发送交易的清单数据
             foreach (InvPayload payload in InvPayload.CreateGroup(InventoryType.TX, trans.Select(p => p.Hash).ToArray()))
                 system.LocalNode.Tell(Message.Create("rawinv", payload));
         }

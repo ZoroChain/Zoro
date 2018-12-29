@@ -390,7 +390,7 @@ namespace Zoro.Network.P2P
             hashes = hashes.Where(p => !blockchain.ContainsRawTransaction(p)).ToArray();
             if (hashes.Length == 0) return;
 
-            system.TaskManager.Tell(new TaskManager.RawTxnTask { Payload = InvPayload.Create(payload.Type, hashes) }, Context.Parent);
+            system.TaskManager.Tell(new TaskManager.RawTransactionTask { Payload = InvPayload.Create(payload.Type, hashes) }, Context.Parent);
         }
 
         private void OnMemPoolMessageReceived()

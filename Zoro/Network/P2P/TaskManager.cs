@@ -14,7 +14,7 @@ namespace Zoro.Network.P2P
     {
         public class Register { public VersionPayload Version; }
         public class NewTasks { public InvPayload Payload; }
-        public class RawTxnTask { public InvPayload Payload; }
+        public class RawTransactionTask { public InvPayload Payload; }
         public class TaskCompleted { public UInt256 Hash; }
         public class HeaderTaskCompleted { }
         public class RestartTasks { public InvPayload Payload; }
@@ -84,7 +84,8 @@ namespace Zoro.Network.P2P
             RequestInventoryData(payload.Type, hashes.ToArray(), Sender);
         }
 
-        private void OnRawTxnTask(InvPayload payload)
+        // 向远程节点发送获取未处理交易的消息
+        private void OnRawTransactionTask(InvPayload payload)
         {
             if (!sessions.TryGetValue(Sender, out TaskSession session))
                 return;
@@ -104,7 +105,7 @@ namespace Zoro.Network.P2P
                 IncrementGlobalTask(hash);
                 session.Tasks[hash] = new RequestTask { Type = payload.Type, BeginTime = DateTime.UtcNow };
             }
-            RequestRawTxns("getrawtxn", hashes.ToArray(), Sender);
+            RequestRawTransactions("getrawtxn", hashes.ToArray(), Sender);
         }
 
         protected override void OnReceive(object message)
@@ -132,8 +133,8 @@ namespace Zoro.Network.P2P
                 case Terminated terminated:
                     OnTerminated(terminated.ActorRef);
                     break;
-                case RawTxnTask task:
-                    OnRawTxnTask(task.Payload);
+                case RawTransactionTask task:
+                    OnRawTransactionTask(task.Payload);
                     break;
             }
         }
@@ -152,7 +153,7 @@ namespace Zoro.Network.P2P
             foreach (UInt256 hash in payload.Hashes)
                 globalTasks.Remove(hash);
             if (payload.Type == InventoryType.TX)
-                RequestRawTxns("syncrawtxn", payload.Hashes, system.LocalNode);
+                RequestRawTransactions("syncrawtxn", payload.Hashes, system.LocalNode);
             else
                 throw new ArgumentException();
         }
@@ -303,7 +304,8 @@ namespace Zoro.Network.P2P
             Sender.Tell(new RemoteNode.RequestInventory { Type = type, Count = hashes.Length });
         }
 
-        private void RequestRawTxns(string command, UInt256[] hashes, IActorRef sender)
+        // 向远程节点发送获取未处理交易的消息
+        private void RequestRawTransactions(string command, UInt256[] hashes, IActorRef sender)
         {
             if (hashes.Length == 0)
                 return;
