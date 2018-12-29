@@ -482,7 +482,8 @@ namespace Zoro.Ledger
             PersistCompleted completed = new PersistCompleted { Block = block };
             system.Consensus?.Tell(completed);
             Distribute(completed);
-            Log($"Block Persisted:{block.Index}, tx:{block.Transactions.Length}, mempool:{mem_pool.Count}");
+            if (system.Consensus == null)
+                Log($"Block Persisted:{block.Index}, tx:{block.Transactions.Length}, mempool:{mem_pool.Count}");
         }
 
         // 广播MemoryPool中还未上链的交易
