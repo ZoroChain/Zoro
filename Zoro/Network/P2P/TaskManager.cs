@@ -88,11 +88,7 @@ namespace Zoro.Network.P2P
         {
             if (!sessions.TryGetValue(Sender, out TaskSession session))
                 return;
-            if (payload.Type == InventoryType.TX && blockchain.Height < blockchain.HeaderHeight)
-            {
-                RequestTasks(session);
-                return;
-            }
+
             HashSet<UInt256> hashes = new HashSet<UInt256>(payload.Hashes);
             hashes.ExceptWith(knownHashes);
 

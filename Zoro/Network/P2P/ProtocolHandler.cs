@@ -384,10 +384,10 @@ namespace Zoro.Network.P2P
             if (payload.Type != InventoryType.TX)
                 throw new ArgumentException();
 
-            //UInt256[] hashes = payload.Hashes.Where(p => knownHashes.Add(p)).ToArray();
-            //if (hashes.Length == 0) return;
+            UInt256[] hashes = payload.Hashes.Where(p => knownHashes.Add(p)).ToArray();
+            if (hashes.Length == 0) return;
 
-            UInt256[] hashes = payload.Hashes.Where(p => !blockchain.ContainsRawTransaction(p)).ToArray();
+            hashes = hashes.Where(p => !blockchain.ContainsRawTransaction(p)).ToArray();
             if (hashes.Length == 0) return;
 
             system.TaskManager.Tell(new TaskManager.RawTxnTask { Payload = InvPayload.Create(payload.Type, hashes) }, Context.Parent);
