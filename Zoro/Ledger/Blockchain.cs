@@ -463,7 +463,6 @@ namespace Zoro.Ledger
 
         private void OnPersistCompleted(Block block)
         {
-            Log($"OnPersistCompleted:{block.Index}, tx:{block.Transactions.Length}");
             block_cache.TryRemove(block.Hash, out Block _);
             foreach (Transaction tx in block.Transactions)
                 mem_pool.TryRemove(tx.Hash, out _);
@@ -528,7 +527,8 @@ namespace Zoro.Ledger
 
         private void Persist(Block block)
         {
-            Log($"Persist Block:{block.Index}, tx:{block.Transactions.Length}");
+            if (system.Consensus == null)
+                Log($"Persist Block:{block.Index}, tx:{block.Transactions.Length}");
 
             using (Snapshot snapshot = GetSnapshot())
             {
