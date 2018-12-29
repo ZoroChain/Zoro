@@ -119,10 +119,7 @@ namespace Zoro.Network.P2P
                     OnRawInvMessageReceived(msg.Payload.AsSerializable<InvPayload>());
                     break;
                 case "getrawtxn":
-                    OnGetRawTransactionMessageReceived(msg.Payload.AsSerializable<InvPayload>(), false);
-                    break;
-                case "syncrawtxn":
-                    OnGetRawTransactionMessageReceived(msg.Payload.AsSerializable<InvPayload>(), true);
+                    OnGetRawTransactionMessageReceived(msg.Payload.AsSerializable<InvPayload>());
                     break;
                 case "rawtxn":
                     OnRawTransactionMessageReceived(msg.Payload.AsSerializable<RawTransactionPayload>());
@@ -277,22 +274,12 @@ namespace Zoro.Network.P2P
             blockchain.Log($"OnGetDataGroup end, type:{payload.Type}, count:{hashes.Length}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
         }
 
-        private void OnGetRawTransactionMessageReceived(InvPayload payload, bool resend)
+        private void OnGetRawTransactionMessageReceived(InvPayload payload)
         {
             if (payload.Type != InventoryType.TX)
                 throw new ArgumentException();
 
-            UInt256[] hashes;
-            
-            if (resend)
-            {
-                hashes = payload.Hashes;
-                sentHashes.Union(hashes);
-            }
-            else
-            {
-                hashes = payload.Hashes.Where(p => sentHashes.Add(p)).ToArray();
-            }
+            UInt256[] hashes = payload.Hashes.Where(p => sentHashes.Add(p)).ToArray();
             if (hashes.Length == 0)
                 return;
 

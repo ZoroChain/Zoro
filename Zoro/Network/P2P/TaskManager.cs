@@ -105,7 +105,7 @@ namespace Zoro.Network.P2P
                 IncrementGlobalTask(hash);
                 session.Tasks[hash] = new RequestTask { Type = payload.Type, BeginTime = DateTime.UtcNow };
             }
-            RequestRawTransactions("getrawtxn", hashes.ToArray(), Sender);
+            RequestRawTransactions(hashes.ToArray(), Sender);
         }
 
         protected override void OnReceive(object message)
@@ -153,7 +153,7 @@ namespace Zoro.Network.P2P
             foreach (UInt256 hash in payload.Hashes)
                 globalTasks.Remove(hash);
             if (payload.Type == InventoryType.TX)
-                RequestRawTransactions("syncrawtxn", payload.Hashes, system.LocalNode);
+                RequestRawTransactions(payload.Hashes, system.LocalNode);
             else
                 throw new ArgumentException();
         }
@@ -305,13 +305,13 @@ namespace Zoro.Network.P2P
         }
 
         // 向远程节点发送获取未处理交易的消息
-        private void RequestRawTransactions(string command, UInt256[] hashes, IActorRef sender)
+        private void RequestRawTransactions(UInt256[] hashes, IActorRef sender)
         {
             if (hashes.Length == 0)
                 return;
 
             foreach (InvPayload group in InvPayload.CreateGroup(InventoryType.TX, hashes))
-                sender.Tell(Message.Create(command, group));
+                sender.Tell(Message.Create("getrawtxn", group));
 
             Sender.Tell(new RemoteNode.RequestInventory { Type = InventoryType.TX, Count = hashes.Length });
             blockchain.Log($"send getrawtxn, count:{hashes.Length}", Plugins.LogLevel.Debug);
