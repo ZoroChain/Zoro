@@ -83,12 +83,12 @@ namespace Zoro.Network.P2P.Payloads
             return base.GetScriptHashesForVerifying(snapshot).Union(new[] { ScriptHash }).OrderBy(p => p).ToArray();
         }
 
-        public override bool Verify(Snapshot snapshot, IEnumerable<Transaction> mempool)
+        public override bool Verify(Snapshot snapshot)
         {
             if (ScriptHash.Equals(UInt160.Zero)) return false;
             if (GasLimit.GetData() % 100000000 != 0) return false;
             if (GasPrice <= Fixed8.Zero) return false;
-            return base.Verify(snapshot, mempool);
+            return base.Verify(snapshot);
         }
     }
 }

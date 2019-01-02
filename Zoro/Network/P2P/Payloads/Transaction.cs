@@ -187,10 +187,10 @@ namespace Zoro.Network.P2P.Payloads
 
         bool IInventory.Verify(Snapshot snapshot)
         {
-            return Verify(snapshot, Enumerable.Empty<Transaction>());
+            return Verify(snapshot);
         }
 
-        public virtual bool Verify(Snapshot snapshot, IEnumerable<Transaction> mempool)
+        public virtual bool Verify(Snapshot snapshot)
         {
             if (Size > MaxTransactionSize) return false;
             if (Attributes.Count(p => p.Usage == TransactionAttributeUsage.ECDH02 || p.Usage == TransactionAttributeUsage.ECDH03) > 1)

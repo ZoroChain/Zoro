@@ -95,7 +95,7 @@ namespace Zoro.Network.P2P.Payloads
             return hashes.OrderBy(p => p).ToArray();
         }
 
-        public override bool Verify(Snapshot snapshot, IEnumerable<Transaction> mempool)
+        public override bool Verify(Snapshot snapshot)
         {
             return false;
         }
