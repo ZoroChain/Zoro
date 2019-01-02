@@ -38,7 +38,7 @@ namespace Zoro.Consensus
         public int M => Validators.Length - (Validators.Length - 1) / 3;
         public Header PrevHeader => snapshot.GetHeader(PrevHash);
         public bool TransactionExists(UInt256 hash) => snapshot.ContainsTransaction(hash);
-        public bool VerifyTransaction(Transaction tx) => tx.Verify(snapshot, Transactions.Values);
+        public bool VerifyTransaction(Transaction tx) => tx.Verify(snapshot);
 
         public ConsensusContext(Blockchain blockchain, Wallet wallet)
         {

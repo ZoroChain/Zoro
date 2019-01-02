@@ -449,7 +449,7 @@ namespace Zoro.Ledger
                 return RelayResultReason.Invalid;
             if (ContainsTransaction(transaction.Hash))
                 return RelayResultReason.AlreadyExists;
-            if (!transaction.Verify(currentSnapshot, GetMemoryPool()))
+            if (!transaction.Verify(currentSnapshot))
                 return RelayResultReason.Invalid;
             if (!PluginManager.Singleton.CheckPolicy(transaction))
                 return RelayResultReason.Unknown;
@@ -848,7 +848,6 @@ namespace Zoro.Ledger
 
         private void InitializeGlobalAssets()
         {
-            Log("InitializeGlobalAssets:");
             foreach (var asset in Store.GetAssets().Find().Select(p => p.Value))
             {
                 if (asset.AssetType.HasFlag(AssetType.GlobalToken))
