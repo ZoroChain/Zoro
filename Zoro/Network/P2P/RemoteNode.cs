@@ -199,6 +199,7 @@ namespace Zoro.Network.P2P
             verack = true;
             system.TaskManager.Tell(new TaskManager.Register { Version = Version });
             CheckMessageQueue();
+            SendMessage(Message.Create("mempool"));
         }
 
         private void OnSetVersion(VersionPayload version)
