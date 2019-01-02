@@ -623,10 +623,6 @@ namespace Zoro.Ledger
                     }
                     break;
 #pragma warning restore CS0612
-                case ContractTransaction tx_contract:
-                    GlobalAsset asset = GetGlobalAsset(tx_contract.AssetId);
-                    asset.Transfer(snapshot, tx_contract.From, tx_contract.To, tx_contract.Value);
-                    break;
                 case InvocationTransaction tx_invocation:
                     using (ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, tx_invocation, snapshot.Clone(), tx_invocation.GasLimit))
                     {

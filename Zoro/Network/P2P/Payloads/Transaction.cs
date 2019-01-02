@@ -200,7 +200,7 @@ namespace Zoro.Network.P2P.Payloads
             return this.VerifyWitnesses(snapshot);
         }
 
-        protected virtual bool CheckBalance(Snapshot snapshot)
+        private bool CheckBalance(Snapshot snapshot)
         {
             Fixed8 sysfee = SystemFee;
 
