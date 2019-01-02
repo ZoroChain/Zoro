@@ -8,7 +8,7 @@ namespace Zoro.Network.P2P.Payloads
     public class RawTransactionPayload : ISerializable
     {
         public const int MaxCount = 500;
-        public const int MaxPayloadSize = 1024 * 1024;
+        public const int MaxPayloadSize = 128 * 1024;
 
         public Transaction[] Array;
 
