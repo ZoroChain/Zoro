@@ -121,6 +121,7 @@ namespace Zoro.Consensus
                 Log($"relay block: {block.Hash}");
                 localNode.Tell(new LocalNode.Relay { Inventory = block });
                 context.State |= ConsensusState.BlockSent;
+                block_received_time = TimeProvider.Current.UtcNow;
             }
         }
 
@@ -237,7 +238,6 @@ namespace Zoro.Consensus
         private void OnPersistCompleted(Block block)
         {
             Log($"persist block: {block.Hash}, mempool:{blockchain.GetMemoryPoolCount()}");
-            block_received_time = TimeProvider.Current.UtcNow;
             InitializeConsensus(0);
         }
 
