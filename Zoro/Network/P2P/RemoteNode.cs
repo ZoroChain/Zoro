@@ -54,6 +54,8 @@ namespace Zoro.Network.P2P
             this.protocol = Context.ActorOf(ProtocolHandler.Props(system, localNode, localNode.Blockchain, this), "RemoteNode");
             localNode.RemoteNodes.TryAdd(Self, this);
             SendMessage(Message.Create("version", VersionPayload.Create(localNode.ChainHash, localNode.ListenerPort, LocalNode.Nonce, LocalNode.UserAgent, localNode.Blockchain.Height)));
+
+            Log($"Connected to RemoteNode {localNode.Blockchain.Name} {remote}");
         }
 
         private void CheckMessageQueue()
