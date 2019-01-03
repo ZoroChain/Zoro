@@ -88,6 +88,14 @@ namespace Zoro.Network.P2P.Payloads
             if (ScriptHash.Equals(UInt160.Zero)) return false;
             if (GasLimit.GetData() % 100000000 != 0) return false;
             if (GasPrice <= Fixed8.Zero) return false;
+            try
+            {
+                if (SystemFee <= Fixed8.Zero) return false;
+            }
+            catch (OverflowException)
+            {
+                return false;
+            }
             return base.Verify(snapshot);
         }
     }
