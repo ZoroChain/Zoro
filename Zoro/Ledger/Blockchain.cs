@@ -532,6 +532,7 @@ namespace Zoro.Ledger
 
             using (Snapshot snapshot = GetSnapshot())
             {
+                List<ApplicationExecuted> all_application_executed = new List<ApplicationExecuted>();
                 Fixed8 sysfeeAmount = Fixed8.Zero;
                 snapshot.PersistingBlock = block;
                 foreach (Transaction tx in block.Transactions)
@@ -539,7 +540,7 @@ namespace Zoro.Ledger
                     // 先预扣手续费，如果余额不够，不执行交易
                     if (PrepaySystemFee(snapshot, tx))
                     {
-                        sysfeeAmount += PersistTransaction(block, snapshot, tx);
+                        sysfeeAmount += PersistTransaction(block, snapshot, tx, all_application_executed);
                     }
                     else
                     {
@@ -567,7 +568,7 @@ namespace Zoro.Ledger
                     snapshot.HeaderHashIndex.GetAndChange().Index = block.Index;
                 }
                 foreach (IPersistencePlugin plugin in PluginManager.PersistencePlugins)
-                    plugin.OnPersist(snapshot);
+                    plugin.OnPersist(snapshot, all_application_executed);
 
                 Log($"Commit Snapshot:{block.Index}, tx:{block.Transactions.Length}");
 
@@ -577,7 +578,7 @@ namespace Zoro.Ledger
             OnPersistCompleted(block);
         }
 
-        private Fixed8 PersistTransaction(Block block, Snapshot snapshot, Transaction tx)
+        private Fixed8 PersistTransaction(Block block, Snapshot snapshot, Transaction tx, List<ApplicationExecuted> all_application_executed)
         {
             Fixed8 sysfee = tx.SystemFee;
 
@@ -660,11 +661,13 @@ namespace Zoro.Ledger
 
             if (execution_results.Count > 0)
             {
-                Distribute(new ApplicationExecuted
+                ApplicationExecuted application_executed = new ApplicationExecuted
                 {
                     Transaction = tx,
                     ExecutionResults = execution_results.ToArray()
-                });
+                };
+                Distribute(application_executed);
+                all_application_executed.Add(application_executed);
             }
 
             return sysfee;
