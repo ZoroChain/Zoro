@@ -15,8 +15,6 @@ namespace Zoro.Network.P2P.Payloads
 
         public UInt160 Address = (new[] { (byte)OpCode.PUSHF }).ToScriptHash();
 
-        public override Fixed8 NetworkFee => Fixed8.Zero;
-
         public override int Size => base.Size + sizeof(uint) + Address.Size;
 
         public MinerTransaction()

@@ -38,16 +38,6 @@ namespace Zoro.Network.P2P.Payloads
 
         public override int Size => base.Size + sizeof(AssetType) + Name.GetVarSize() + FullName.GetVarSize() + Amount.Size + sizeof(byte) + Owner.Size + Admin.Size;
 
-        public override Fixed8 SystemFee
-        {
-            get
-            {
-                if (AssetType == AssetType.UtilityToken)
-                    return Fixed8.Zero;
-                return base.SystemFee;
-            }
-        }
-
         public RegisterTransaction()
             : base(TransactionType.RegisterTransaction)
         {

@@ -51,24 +51,9 @@ namespace Zoro.Network.P2P.Payloads
 
         InventoryType IInventory.InventoryType => InventoryType.TX;
 
-        public bool IsLowPriority => NetworkFee < ProtocolSettings.Default.LowPriorityThreshold;
-
-        private Fixed8 _network_fee = -Fixed8.Satoshi;
-        public virtual Fixed8 NetworkFee
-        {
-            get
-            {
-                if (_network_fee == -Fixed8.Satoshi)
-                {
-                    _network_fee = SystemFee;
-                }
-                return _network_fee;
-            }
-        }
-
         public virtual int Size => sizeof(TransactionType) + sizeof(byte) + Attributes.GetVarSize() + Witnesses.GetVarSize();
 
-        public virtual Fixed8 SystemFee => ProtocolSettings.Default.SystemFee.TryGetValue(Type, out Fixed8 fee) ? fee : Fixed8.Zero;
+        public virtual Fixed8 SystemFee => Fixed8.Zero;
 
         protected Transaction(TransactionType type)
         {
@@ -180,7 +165,6 @@ namespace Zoro.Network.P2P.Payloads
             json["version"] = Version;
             json["attributes"] = Attributes.Select(p => p.ToJson()).ToArray();
             json["sys_fee"] = SystemFee.ToString();
-            json["net_fee"] = NetworkFee.ToString();
             json["scripts"] = Witnesses.Select(p => p.ToJson()).ToArray();
             return json;
         }

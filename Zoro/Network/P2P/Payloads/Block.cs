@@ -40,13 +40,6 @@ namespace Zoro.Network.P2P.Payloads
 
         public override int Size => base.Size + Transactions.GetVarSize();
 
-        public static Fixed8 CalculateNetFee(IEnumerable<Transaction> transactions)
-        {
-            Transaction[] ts = transactions.Where(p => p.Type != TransactionType.MinerTransaction).ToArray();
-            Fixed8 amount_sysfee = ts.Sum(p => p.SystemFee);
-            return - amount_sysfee;
-        }
-
         public override void Deserialize(BinaryReader reader)
         {
             base.Deserialize(reader);

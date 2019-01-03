@@ -4,29 +4,15 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 
 namespace Zoro.Ledger
 {
     internal class MemoryPool : IReadOnlyCollection<Transaction>
     {
-        private class PoolItem
-        {
-            public readonly Transaction Transaction;
-            public readonly DateTime Timestamp;
-
-            public PoolItem(Transaction tx)
-            {
-                Transaction = tx;
-                Timestamp = DateTime.UtcNow;
-            }
-        }
-
-        private readonly ConcurrentDictionary<UInt256, PoolItem> _mem_pool_fee = new ConcurrentDictionary<UInt256, PoolItem>();
-        private readonly ConcurrentDictionary<UInt256, PoolItem> _mem_pool_free = new ConcurrentDictionary<UInt256, PoolItem>();
+        private readonly ConcurrentDictionary<UInt256, Transaction> _mem_pool = new ConcurrentDictionary<UInt256, Transaction>();
 
         public int Capacity { get; }
-        public int Count => _mem_pool_fee.Count + _mem_pool_free.Count;
+        public int Count => _mem_pool.Count;
 
         public MemoryPool(int capacity)
         {
@@ -35,105 +21,34 @@ namespace Zoro.Ledger
 
         public void Clear()
         {
-            _mem_pool_free.Clear();
-            _mem_pool_fee.Clear();
+            _mem_pool.Clear();
         }
 
-        public bool ContainsKey(UInt256 hash) => _mem_pool_free.ContainsKey(hash) || _mem_pool_fee.ContainsKey(hash);
+        public bool ContainsKey(UInt256 hash) => _mem_pool.ContainsKey(hash);
 
         public IEnumerator<Transaction> GetEnumerator()
         {
-            return
-                _mem_pool_fee.Values.OrderBy(p => p.Timestamp).Select(p => p.Transaction)
-                .Concat(_mem_pool_free.Values.OrderBy(p => p.Timestamp).Select(p => p.Transaction))
-                .GetEnumerator();
+            return _mem_pool.Values.GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-        static void RemoveLowestFee(ConcurrentDictionary<UInt256, PoolItem> pool, int count)
-        {
-            if (count <= 0) return;
-            if (count >= pool.Count)
-            {
-                pool.Clear();
-            }
-            else
-            {
-                UInt256[] delete = pool.AsParallel()
-                    .OrderBy(p => p.Value.Transaction.NetworkFee / p.Value.Transaction.Size)
-                    .ThenBy(p => p.Value.Transaction.NetworkFee)
-                    .ThenBy(p => new BigInteger(p.Key.ToArray()))
-                    .Take(count)
-                    .Select(p => p.Key)
-                    .ToArray();
-
-                foreach (UInt256 hash in delete)
-                {
-                    pool.TryRemove(hash, out _);
-                }
-            }
-        }
-
-        static void RemoveOldest(ConcurrentDictionary<UInt256, PoolItem> pool, DateTime time)
-        {
-            UInt256[] hashes = pool
-                .Where(p => p.Value.Timestamp < time)
-                .Select(p => p.Key)
-                .ToArray();
-
-            foreach (UInt256 hash in hashes)
-            {
-                pool.TryRemove(hash, out _);
-            }
-        }
-
         public bool TryAdd(UInt256 hash, Transaction tx)
         {
-            ConcurrentDictionary<UInt256, PoolItem> pool;
-
-            if (tx.IsLowPriority)
-            {
-                pool = _mem_pool_free;
-            }
-            else
-            {
-                pool = _mem_pool_fee;
-            }
-
-            pool.TryAdd(hash, new PoolItem(tx));
-
             if (Count > Capacity)
             {
-                RemoveOldest(_mem_pool_free, DateTime.UtcNow.AddSeconds(-Blockchain.MaxSecondsPerBlock * 20));
-
-                var exceed = Count - Capacity;
-
-                if (exceed > 0)
-                {
-                    RemoveLowestFee(_mem_pool_free, exceed);
-                    exceed = Count - Capacity;
-
-                    if (exceed > 0)
-                    {
-                        RemoveLowestFee(_mem_pool_fee, exceed);
-                    }
-                }
+                return false;
             }
 
-            return pool.ContainsKey(hash);
+            _mem_pool.TryAdd(hash, tx);
+
+            return true;
         }
 
         public bool TryRemove(UInt256 hash, out Transaction tx)
         {
-            if (_mem_pool_free.TryRemove(hash, out PoolItem item))
+            if (_mem_pool.TryRemove(hash, out tx))
             {
-                tx = item.Transaction;
-                return true;
-            }
-            else if (_mem_pool_fee.TryRemove(hash, out item))
-            {
-                tx = item.Transaction;
                 return true;
             }
             else
@@ -145,14 +60,8 @@ namespace Zoro.Ledger
 
         public bool TryGetValue(UInt256 hash, out Transaction tx)
         {
-            if (_mem_pool_free.TryGetValue(hash, out PoolItem item))
+            if (_mem_pool.TryGetValue(hash, out tx))
             {
-                tx = item.Transaction;
-                return true;
-            }
-            else if (_mem_pool_fee.TryGetValue(hash, out item))
-            {
-                tx = item.Transaction;
                 return true;
             }
             else
@@ -166,24 +75,11 @@ namespace Zoro.Ledger
         {
             if (count > 0)
             {
-                return _mem_pool_fee.Values
-                    .OrderByDescending(p => p.Transaction.NetworkFee / p.Transaction.Size)
-                    .ThenByDescending(p => p.Transaction.NetworkFee)
-                    .OrderBy(p => p.Timestamp)
-                    .Concat(_mem_pool_free.Values.OrderBy(p => p.Timestamp))
-                    .Take(count)
-                    .Select(p => p.Transaction)
-                    .ToArray();
+                return _mem_pool.Values.Take(count).ToArray();
             }
             else
             {
-                return _mem_pool_fee.Values
-                    .OrderByDescending(p => p.Transaction.NetworkFee / p.Transaction.Size)
-                    .ThenByDescending(p => p.Transaction.NetworkFee)
-                    .OrderBy(p => p.Timestamp)
-                    .Concat(_mem_pool_free.Values.OrderBy(p => p.Timestamp))
-                    .Select(p => p.Transaction)
-                    .ToArray();
+                return _mem_pool.Values.ToArray();
             }
         }
     }

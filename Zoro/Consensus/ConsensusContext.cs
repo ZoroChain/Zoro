@@ -210,7 +210,6 @@ namespace Zoro.Consensus
             foreach (IPolicyPlugin plugin in PluginManager.Singleton.Policies)
                 mem_pool = plugin.FilterForBlock(mem_pool);
             List<Transaction> transactions = mem_pool.ToList();
-            Fixed8 amount_netfee = Block.CalculateNetFee(transactions);
             while (true)
             {
                 ulong nonce = GetNonce();
@@ -249,9 +248,6 @@ namespace Zoro.Consensus
                 return false;
             if (!Blockchain.GetConsensusAddress(snapshot.GetValidators(Transactions.Values).ToArray()).Equals(NextConsensus))
                 return false;
-            Transaction tx_gen = Transactions.Values.FirstOrDefault(p => p.Type == TransactionType.MinerTransaction);
-            Fixed8 amount_netfee = Block.CalculateNetFee(Transactions.Values);
-            //if (tx_gen?.Outputs.Sum(p => p.Value) != amount_netfee) return false;
             return true;
         }
     }

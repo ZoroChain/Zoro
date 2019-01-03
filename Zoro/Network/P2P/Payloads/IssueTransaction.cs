@@ -19,17 +19,6 @@ namespace Zoro.Network.P2P.Payloads
 
         public override int Size => base.Size + AssetId.Size + Address.Size + Value.Size;
 
-        public override Fixed8 SystemFee
-        {
-            get
-            {
-                if (Version > 1) return Fixed8.Zero;
-                if (AssetId == Blockchain.UtilityToken.Hash)
-                    return Fixed8.Zero;
-                return base.SystemFee;
-            }
-        }
-
         public IssueTransaction()
             : base(TransactionType.IssueTransaction)
         {
