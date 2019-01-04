@@ -7,7 +7,6 @@
 
         public const byte ST_Account = 0x40;
         public const byte ST_Appchain = 0x41;
-        public const byte ST_Transfer = 0x42;
         public const byte ST_Asset = 0x4c;
         public const byte ST_Contract = 0x50;
         public const byte ST_NativeNEP5 = 0x51;

@@ -13,7 +13,6 @@ namespace Zoro.Persistence
         DataCache<UInt160, AccountState> IPersistence.Accounts => GetAccounts();
         DataCache<UInt160, AppChainState> IPersistence.AppChains => GetAppChains();
         DataCache<UInt160, NativeNEP5State> IPersistence.NativeNEP5s => GetNativeNEP5s();
-        DataCache<UInt256, TransferState> IPersistence.Transfers => GetTransfers();
         DataCache<UInt256, AssetState> IPersistence.Assets => GetAssets();
         DataCache<UInt160, ContractState> IPersistence.Contracts => GetContracts();
         DataCache<StorageKey, StorageItem> IPersistence.Storages => GetStorages();
@@ -27,7 +26,6 @@ namespace Zoro.Persistence
         public abstract DataCache<UInt160, AccountState> GetAccounts();
         public abstract DataCache<UInt160, AppChainState> GetAppChains();
         public abstract DataCache<UInt160, NativeNEP5State> GetNativeNEP5s();
-        public abstract DataCache<UInt256, TransferState> GetTransfers();
         public abstract DataCache<UInt256, AssetState> GetAssets();
         public abstract DataCache<UInt160, ContractState> GetContracts();
         public abstract DataCache<StorageKey, StorageItem> GetStorages();

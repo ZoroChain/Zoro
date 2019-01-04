@@ -10,6 +10,7 @@ using Zoro.Network.P2P.Payloads;
 using Zoro.Persistence;
 using Zoro.Plugins;
 using Zoro.SmartContract;
+using Zoro.SmartContract.NativeNEP5;
 using Neo.VM;
 using System;
 using System.Collections.Concurrent;
@@ -62,48 +63,7 @@ namespace Zoro.Ledger
             {
                 if (_genesisBlock == null)
                 {
-                    _genesisBlock = new Block
-                    {
-                        PrevHash = UInt256.Zero,
-                        Timestamp = (new DateTime(2016, 7, 15, 15, 8, 21, DateTimeKind.Utc)).ToTimestamp(),
-                        Index = 0,
-                        ConsensusData = 2083236893, //向比特币致敬
-                        NextConsensus = GetConsensusAddress(StandbyValidators),
-                        Witness = new Witness
-                        {
-                            InvocationScript = new byte[0],
-                            VerificationScript = new[] { (byte)OpCode.PUSHT }
-                        },
-                        Transactions = new Transaction[]
-                        {
-                            new MinerTransaction
-                            {
-                                ChainHash = ChainHash,
-                                Nonce = 2083236893,
-                                Attributes = new TransactionAttribute[0],
-                                Witnesses = new Witness[0]
-                            },
-                            UtilityToken,
-#pragma warning disable CS0612
-                            new IssueTransaction
-                            {
-                                ChainHash = ChainHash,
-                                Attributes = new TransactionAttribute[0],
-                                AssetId = UtilityToken.Hash,
-                                Value = UtilityToken.Amount,
-                                Address = Contract.CreateMultiSigRedeemScript(StandbyValidators.Length / 2 + 1, StandbyValidators).ToScriptHash(),
-                                Witnesses = new[]
-                                {
-                                    new Witness
-                                    {
-                                        InvocationScript = new byte[0],
-                                        VerificationScript = new[] { (byte)OpCode.PUSHT }
-                                    }
-                                }
-                            }
-#pragma warning restore CS0612
-                        }
-                    };
+                    _genesisBlock = Genesis.BuildGenesisBlock(ChainHash, StandbyValidators);
                 }
                 return _genesisBlock;
             }
@@ -132,10 +92,10 @@ namespace Zoro.Ledger
 
         public static readonly int MemPoolRelayCount = ProtocolSettings.Default.MemPoolRelayCount;
         private readonly ManualResetEvent startupEvent = new ManualResetEvent(false);
-        private readonly ConcurrentDictionary<UInt256, GlobalAsset> globalAssets = new ConcurrentDictionary<UInt256, GlobalAsset>();
 
         public UInt160 ChainHash { get; }
-        public GlobalAsset BCPToken { get; private set; }
+        public NativeToken BCPToken { get; private set; }
+        public NativeToken BCTToken { get; private set; }
 
         private static Blockchain root;
         public static Blockchain Root
@@ -209,7 +169,7 @@ namespace Zoro.Ledger
                     UpdateCurrentSnapshot();
                 }
 
-                InitializeGlobalAssets();
+                InitializeNativeTokens();
 
                 startupEvent.Set();
             }
@@ -654,7 +614,7 @@ namespace Zoro.Ledger
                         }
 
                         // 退回多扣的手续费
-                        BCPToken.AddBalance(snapshot, tx.GetAccountScriptHash(snapshot), tx.SystemFee - sysfee);
+                        BCPToken?.AddBalance(snapshot, tx.GetAccountScriptHash(snapshot), tx.SystemFee - sysfee);
                     }
                     break;
             }
@@ -680,7 +640,7 @@ namespace Zoro.Ledger
 
             UInt160 scriptHash = tx.GetAccountScriptHash(snapshot);
 
-            return BCPToken.SubBalance(snapshot, scriptHash, tx.SystemFee);
+            return BCPToken != null ? BCPToken.SubBalance(snapshot, scriptHash, tx.SystemFee) : true;
         }
         
         protected override void PostStop()
@@ -849,33 +809,6 @@ namespace Zoro.Ledger
             return true;
         }
 
-        private void InitializeGlobalAssets()
-        {
-            foreach (var asset in Store.GetAssets().Find().Select(p => p.Value))
-            {
-                if (asset.AssetType.HasFlag(AssetType.GlobalToken))
-                {
-                    Log($"{asset.GetName()}, {asset.AssetId}");
-                    RegisterGlobalAsset(asset.AssetId);
-                }
-            }
-
-            BCPToken = GetGlobalAsset(UtilityToken.Hash);
-        }
-
-        public bool RegisterGlobalAsset(UInt256 assetId)
-        {
-            return globalAssets.TryAdd(assetId, new GlobalAsset(this, assetId));
-        }
-
-        public GlobalAsset GetGlobalAsset(UInt256 AssetId)
-        {
-            if (globalAssets.TryGetValue(AssetId, out GlobalAsset asset))
-                return asset;
-
-            return null;
-        }
-
         public void Log(string message, LogLevel level = LogLevel.Info)
         {
             PluginManager.Singleton?.Log(nameof(Blockchain), level, message, ChainHash);
@@ -894,6 +827,18 @@ namespace Zoro.Ledger
             });
 
             appchainNotifications.Clear();
+        }
+
+        private void InitializeNativeTokens()
+        {
+            BCPToken = new NativeToken(Genesis.BCPHash);
+            BCTToken = new NativeToken(Genesis.BCTHash);
+
+            if (ChainHash.Equals(UInt160.Zero))
+            {
+                Log($"BCP:{Genesis.BCPHash}");
+                Log($"BCT:{Genesis.BCTHash}");
+            }
         }
     }
 

@@ -12,7 +12,6 @@ namespace Zoro.Persistence
         public override DataCache<UInt160, AccountState> Accounts { get; }
         public override DataCache<UInt160, AppChainState> AppChains { get; }
         public override DataCache<UInt160, NativeNEP5State> NativeNEP5s { get; }
-        public override DataCache<UInt256, TransferState> Transfers { get; }
         public override DataCache<UInt256, AssetState> Assets { get; }
         public override DataCache<UInt160, ContractState> Contracts { get; }
         public override DataCache<StorageKey, StorageItem> Storages { get; }
@@ -30,7 +29,6 @@ namespace Zoro.Persistence
             this.Accounts = snapshot.Accounts.CreateSnapshot();
             this.AppChains = snapshot.AppChains.CreateSnapshot();
             this.NativeNEP5s = snapshot.NativeNEP5s.CreateSnapshot();
-            this.Transfers = snapshot.Transfers.CreateSnapshot();
             this.Assets = snapshot.Assets.CreateSnapshot();
             this.Contracts = snapshot.Contracts.CreateSnapshot();
             this.Storages = snapshot.Storages.CreateSnapshot();

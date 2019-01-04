@@ -12,16 +12,12 @@ namespace Zoro.SmartContract
     {
         private AppChainService appchainService;
         private NativeNEP5Service nativeNEP5Service;
-        private GlobalAssetService globalAssetService;
-        private TransferStateService transferStateService;
 
         public ZoroService(TriggerType trigger, Snapshot snapshot)
             : base(trigger, snapshot)
         {
             appchainService = new AppChainService(this, trigger, snapshot);
             nativeNEP5Service = new NativeNEP5Service(this, trigger, snapshot);
-            globalAssetService = new GlobalAssetService(this, trigger, snapshot);
-            transferStateService = new TransferStateService(this, trigger, snapshot);
 
             Register("Zoro.Runtime.GetTrigger", Runtime_GetTrigger, 1);
             Register("Zoro.Runtime.CheckWitness", Runtime_CheckWitness, 200);
@@ -100,20 +96,6 @@ namespace Zoro.SmartContract
             Register("Zoro.AppChain.Create", appchainService.CreateAppChain, 5000 * 1000);
             Register("Zoro.AppChain.ChangeSeedList", appchainService.ChangeValidators, 1000);
             Register("Zoro.AppChain.ChangeValidators", appchainService.ChangeSeedList, 1000);
-
-            Register("Zoro.GlobalAsset.Name", globalAssetService.GetName, 1);
-            Register("Zoro.GlobalAsset.FullName", globalAssetService.GetFullName, 1);
-            Register("Zoro.GlobalAsset.Amount", globalAssetService.GetAmount, 1);
-            Register("Zoro.GlobalAsset.GetPrecision", globalAssetService.GetPrecision, 1);
-            Register("Zoro.GlobalAsset.BalanceOf", globalAssetService.BalanceOf, 1);
-            Register("Zoro.GlobalAsset.Transfer", globalAssetService.Transfer, 1000);
-            Register("Zoro.GlobalAsset.Transfer_App", globalAssetService.Transfer_App, 1000);
-            Register("Zoro.GlobalAsset.GetTransferState", globalAssetService.GetTransferState, 100);
-
-            Register("Zoro.TransferState.AssetId", transferStateService.AssetId, 1);
-            Register("Zoro.TransferState.From", transferStateService.From, 1);
-            Register("Zoro.TransferState.To", transferStateService.To, 1);
-            Register("Zoro.TransferState.Value", transferStateService.Value, 1);
 
             Register("Zoro.NativeNEP5.Create", nativeNEP5Service.Create, 1000 * 1000);
             Register("Zoro.NativeNEP5.Call", nativeNEP5Service.Call);

@@ -95,11 +95,6 @@ namespace Zoro.Persistence.LevelDB
             return new DbMetaDataCache<AppChainState>(db, null, null, Prefixes.IX_AppChainState);
         }
 
-        public override DataCache<UInt256, TransferState> GetTransfers()
-        {
-            return new DbCache<UInt256, TransferState>(db, null, null, Prefixes.ST_Transfer);
-        }
-
         public override DataCache<UInt160, NativeNEP5State> GetNativeNEP5s()
         {
             return new DbCache<UInt160, NativeNEP5State>(db, null, null, Prefixes.ST_NativeNEP5);

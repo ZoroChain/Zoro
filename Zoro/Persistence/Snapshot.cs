@@ -21,7 +21,6 @@ namespace Zoro.Persistence
         public abstract DataCache<UInt160, AccountState> Accounts { get; }
         public abstract DataCache<UInt160, AppChainState> AppChains { get; }
         public abstract DataCache<UInt160, NativeNEP5State> NativeNEP5s { get; }
-        public abstract DataCache<UInt256, TransferState> Transfers { get; }
         public abstract DataCache<UInt256, AssetState> Assets { get; }
         public abstract DataCache<UInt160, ContractState> Contracts { get; }
         public abstract DataCache<StorageKey, StorageItem> Storages { get; }
@@ -62,7 +61,6 @@ namespace Zoro.Persistence
             AppChains.Commit();
             AppChainState.Commit();
             NativeNEP5s.Commit();
-            Transfers.Commit();            
         }
 
         public virtual void Dispose()
