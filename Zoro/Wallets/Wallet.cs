@@ -16,8 +16,6 @@ namespace Zoro.Wallets
 {
     public abstract class Wallet : IDisposable
     {
-        public abstract event EventHandler<WalletTransactionEventArgs> WalletTransaction;
-
         private static readonly Random rand = new Random();
 
         public abstract string Name { get; }
@@ -30,7 +28,6 @@ namespace Zoro.Wallets
         public abstract bool DeleteAccount(UInt160 scriptHash);
         public abstract WalletAccount GetAccount(UInt160 scriptHash);
         public abstract IEnumerable<WalletAccount> GetAccounts();
-        public abstract IEnumerable<Coin> GetCoins(UInt160 chainHash, IEnumerable<UInt160> accounts);
         public abstract IEnumerable<UInt256> GetTransactions();
 
         public WalletAccount CreateAccount()
@@ -110,11 +107,6 @@ namespace Zoro.Wallets
             if (account == null)
                 account = accounts.FirstOrDefault();
             return account?.ScriptHash;
-        }
-
-        public IEnumerable<Coin> GetCoins(UInt160 chainHash)
-        {
-            return GetCoins(chainHash, GetAccounts().Select(p => p.ScriptHash));
         }
 
         public static byte[] GetPrivateKeyFromNEP2(string nep2, string passphrase, int N = 16384, int r = 8, int p = 8)

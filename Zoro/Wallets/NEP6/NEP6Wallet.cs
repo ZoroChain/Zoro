@@ -13,8 +13,6 @@ namespace Zoro.Wallets.NEP6
 {
     public class NEP6Wallet : Wallet
     {
-        public override event EventHandler<WalletTransactionEventArgs> WalletTransaction;
-
         private readonly string path;
         private string password;
         private string name;
@@ -175,17 +173,6 @@ namespace Zoro.Wallets.NEP6
             }
         }
 
-        public override IEnumerable<Coin> GetCoins(UInt160 chainHash, IEnumerable<UInt160> accounts)
-        {
-            Coin[] coins = new Coin[0];
-
-            HashSet<UInt160> accounts_set = new HashSet<UInt160>(accounts);
-            foreach (Coin coin in coins)
-            {
-                yield return coin;
-            }
-        }
-
         public override IEnumerable<UInt256> GetTransactions()
         {
             lock (unconfirmed)
@@ -305,29 +292,6 @@ namespace Zoro.Wallets.NEP6
                         return false;
                     }
                 }
-            }
-        }
-
-        private void WalletIndexer_WalletTransaction(object sender, WalletTransactionEventArgs e)
-        {
-            lock (unconfirmed)
-            {
-                unconfirmed.Remove(e.Transaction.Hash);
-            }
-            UInt160[] relatedAccounts;
-            lock (accounts)
-            {
-                relatedAccounts = e.RelatedAccounts.Where(p => accounts.ContainsKey(p)).ToArray();
-            }
-            if (relatedAccounts.Length > 0)
-            {
-                WalletTransaction?.Invoke(this, new WalletTransactionEventArgs
-                {
-                    Transaction = e.Transaction,
-                    RelatedAccounts = relatedAccounts,
-                    Height = e.Height,
-                    Time = e.Time
-                });
             }
         }
     }
