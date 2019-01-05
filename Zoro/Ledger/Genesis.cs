@@ -17,7 +17,7 @@ namespace Zoro.Ledger
 
             InvocationTransaction CreateBCP = CreateNativeNEP5Transaction("BlaCat Point", "BCP", Fixed8.FromDecimal(2000000000), 8, ECCurve.Secp256r1.Infinity, adminScriptHash);
             InvocationTransaction DeployBCP = DeployNativeNEP5Transaction(CreateBCP.Script.ToScriptHash());
-            InvocationTransaction CreateBCT = CreateNativeNEP5Transaction("BlaCat Token", "BCT", Fixed8.FromDecimal(0), 8, ECCurve.Secp256r1.Infinity, adminScriptHash);
+            InvocationTransaction CreateBCT = CreateNativeNEP5Transaction("BlaCat Token", "BCT", -Fixed8.Satoshi, 8, ECCurve.Secp256r1.Infinity, adminScriptHash);
 
             BCPHash = CreateBCP.Script.ToScriptHash();
             BCTHash = CreateBCT.Script.ToScriptHash();
