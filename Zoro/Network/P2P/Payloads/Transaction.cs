@@ -207,7 +207,7 @@ namespace Zoro.Network.P2P.Payloads
             if (sysfee <= 0)
                 return true;
 
-            BigInteger balance = NativeAPI.BalanceOf(snapshot, Genesis.BCPHash, Account);
+            BigInteger balance = NativeAPI.BalanceOf(snapshot, Genesis.BcpContractAddress, Account);
 
             if (balance < sysfee)
                 return false;

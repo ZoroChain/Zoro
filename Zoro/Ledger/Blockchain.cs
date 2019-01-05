@@ -16,7 +16,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 using System.Threading;
 
 namespace Zoro.Ledger
@@ -79,8 +78,8 @@ namespace Zoro.Ledger
         private readonly ManualResetEvent startupEvent = new ManualResetEvent(false);
 
         public UInt160 ChainHash { get; }
-        public NativeToken BCPToken { get; private set; }
-        public NativeToken BCTToken { get; private set; }
+        public NativeToken BcpToken { get; private set; }
+        public NativeToken BctToken { get; private set; }
 
         private static Blockchain root;
         public static Blockchain Root
@@ -504,7 +503,7 @@ namespace Zoro.Ledger
                     // 把手续费奖励给矿工
                     if (block.Transactions[0] is MinerTransaction minerTx)
                     {
-                        BCPToken.AddBalance(snapshot, minerTx.Account, sysfeeAmount);
+                        BcpToken.AddBalance(snapshot, minerTx.Account, sysfeeAmount);
                     }
                 }
 
@@ -569,7 +568,7 @@ namespace Zoro.Ledger
                         }
 
                         // 退回多扣的手续费
-                        BCPToken?.AddBalance(snapshot, tx.Account, tx.SystemFee - sysfee);
+                        BcpToken?.AddBalance(snapshot, tx.Account, tx.SystemFee - sysfee);
                     }
                     break;
             }
@@ -593,7 +592,7 @@ namespace Zoro.Ledger
             if (tx.Type == TransactionType.MinerTransaction) return true;
             if (tx.SystemFee <= Fixed8.Zero) return true;
 
-            return BCPToken != null ? BCPToken.SubBalance(snapshot, tx.Account, tx.SystemFee) : true;
+            return BcpToken != null ? BcpToken.SubBalance(snapshot, tx.Account, tx.SystemFee) : true;
         }
         
         protected override void PostStop()
@@ -784,14 +783,8 @@ namespace Zoro.Ledger
 
         private void InitializeNativeTokens()
         {
-            BCPToken = new NativeToken(Genesis.BCPHash);
-            BCTToken = new NativeToken(Genesis.BCTHash);
-
-            if (ChainHash.Equals(UInt160.Zero))
-            {
-                Log($"BCP:{Genesis.BCPHash}");
-                Log($"BCT:{Genesis.BCTHash}");
-            }
+            BcpToken = new NativeToken(Genesis.BcpContractAddress);
+            BctToken = new NativeToken(Genesis.BctContractAddress);
         }
     }
 

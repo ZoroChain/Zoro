@@ -7,7 +7,6 @@ using Zoro.SmartContract.NativeNEP5;
 using System;
 using System.Linq;
 using System.Text;
-using System.Numerics;
 using Neo.VM;
 
 namespace Zoro.SmartContract.Services
@@ -64,8 +63,17 @@ namespace Zoro.SmartContract.Services
             // 管理员
             UInt160 admin = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
 
-            // 用ScriptHash作为assetId
-            UInt160 assetId = engine.CurrentContext.Script.ToScriptHash();
+            UInt160 assetId;
+            if (Snapshot.PersistingBlock.Index == 0)
+            {
+                // 只有在创世块里可以自定义assetId
+                assetId = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            }
+            else
+            {
+                // 用ScriptHash作为assetId
+                assetId = engine.CurrentContext.Script.ToScriptHash();
+            }            
 
             NativeNEP5State state = Snapshot.NativeNEP5s.TryGet(assetId);
             if (state == null)
@@ -256,15 +264,21 @@ namespace Zoro.SmartContract.Services
 
         private bool API_Deploy(ExecutionEngine engine, NativeNEP5State state)
         {
-            // 创世块不做检查
+            // 创世块里的全局资产不做检查
             if (Snapshot.PersistingBlock.Index != 0 && !Service.CheckWitness(engine, state.Admin))
                 return false;
+
+            // 全局资产只在根链上做初始分配，暂时注释掉，等跨链兑换完成后再打开检查
+            //if (Snapshot.PersistingBlock.Index == 0 && !Snapshot.Blockchain.ChainHash.Equals(UInt160.Zero))
+            //    return false;
 
             byte[] total_supply = NativeAPI.StorageGet(Snapshot, state.AssetId, Encoding.ASCII.GetBytes("totalSupply"));
             if (total_supply.Length != 0)
                 return false;
 
-            var keyAdmin = new byte[] { 0x11 }.Concat(state.Admin.ToArray());
+            // 创世块里的全局资产，使用创世块的共识多签地址作为初始地址
+            UInt160 scriptHash = Snapshot.PersistingBlock.Index == 0 ? Snapshot.PersistingBlock.NextConsensus : state.Admin;
+            var keyAdmin = new byte[] { 0x11 }.Concat(scriptHash.ToArray());
 
             NativeAPI.StoragePut(Snapshot, state.AssetId, keyAdmin.ToArray(), state.TotalSupply);
             NativeAPI.StoragePut(Snapshot, state.AssetId, Encoding.ASCII.GetBytes("totalSupply"), state.TotalSupply);

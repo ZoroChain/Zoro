@@ -6,21 +6,18 @@ using Zoro.Network.P2P.Payloads;
 
 namespace Zoro.Ledger
 {
-    internal class Genesis
+    public class Genesis
     {
-        public static UInt160 BCPHash = null;
-        public static UInt160 BCTHash = null;
+        public static UInt160 BcpContractAddress = new UInt160(new byte[] { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 });
+        public static UInt160 BctContractAddress = new UInt160(new byte[] { 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 });
 
         public static Block BuildGenesisBlock(UInt160 ChainHash, ECPoint[] validators)
         {
-            UInt160 adminScriptHash = Contract.CreateMultiSigRedeemScript(validators.Length / 2 + 1, validators).ToScriptHash();
+            ECPoint owner = ECCurve.Secp256r1.Infinity;
+            UInt160 admin = (new[] { (byte)OpCode.PUSHF }).ToScriptHash();
 
-            InvocationTransaction CreateBCP = CreateNativeNEP5Transaction("BlaCat Point", "BCP", Fixed8.FromDecimal(2000000000), 8, ECCurve.Secp256r1.Infinity, adminScriptHash);
-            InvocationTransaction DeployBCP = DeployNativeNEP5Transaction(CreateBCP.Script.ToScriptHash());
-            InvocationTransaction CreateBCT = CreateNativeNEP5Transaction("BlaCat Token", "BCT", -Fixed8.Satoshi, 8, ECCurve.Secp256r1.Infinity, adminScriptHash);
-
-            BCPHash = CreateBCP.Script.ToScriptHash();
-            BCTHash = CreateBCT.Script.ToScriptHash();
+            InvocationTransaction CreateBCPTransaction = CreateNativeNEP5Transaction("BlaCat Point", "BCP", Fixed8.FromDecimal(2000000000), 8, owner, admin, BcpContractAddress);
+            InvocationTransaction CreateBCTTransaction = CreateNativeNEP5Transaction("BlaCat Token", "BCT", -Fixed8.Satoshi, 8, owner, admin, BctContractAddress);
 
             Block genesisBlock = new Block
             {
@@ -43,19 +40,19 @@ namespace Zoro.Ledger
                         Attributes = new TransactionAttribute[0],
                         Witnesses = new Witness[0]
                     },
-                    CreateBCP,
-                    DeployBCP,
-                    CreateBCT,
+                    CreateBCPTransaction,
+                    CreateBCTTransaction,
                 }
             };
 
             return genesisBlock;
         }
  
-        private static InvocationTransaction CreateNativeNEP5Transaction(string name, string symbol, Fixed8 amount, byte precision, ECPoint owner, UInt160 admin)
+        private static InvocationTransaction CreateNativeNEP5Transaction(string name, string symbol, Fixed8 amount, byte precision, ECPoint owner, UInt160 admin, UInt160 assetId)
         {
             using (ScriptBuilder sb = new ScriptBuilder())
             {
+                sb.EmitPush(assetId);
                 sb.EmitPush(admin);
                 sb.EmitPush(owner);
                 sb.EmitPush(precision);
@@ -63,26 +60,6 @@ namespace Zoro.Ledger
                 sb.EmitPush(symbol);
                 sb.EmitPush(name);
                 sb.EmitSysCall("Zoro.NativeNEP5.Create");
-
-                InvocationTransaction tx = new InvocationTransaction
-                {
-                    Nonce = 2083236893,
-                    Script = sb.ToArray(),
-                    GasPrice = Fixed8.Zero,
-                    GasLimit = Fixed8.Zero,
-                    Account = owner.EncodePoint(true).ToScriptHash(),
-                    Attributes = new TransactionAttribute[0],
-                    Witnesses = new Witness[0]
-                };
-
-                return tx;
-            }
-        }
-
-        private static InvocationTransaction DeployNativeNEP5Transaction(UInt160 assetId)
-        {
-            using (ScriptBuilder sb = new ScriptBuilder())
-            {
                 sb.EmitSysCall("Zoro.NativeNEP5.Call", "Deploy", assetId);
 
                 InvocationTransaction tx = new InvocationTransaction
