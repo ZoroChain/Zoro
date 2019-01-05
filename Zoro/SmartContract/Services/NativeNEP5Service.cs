@@ -3,8 +3,8 @@ using Zoro.Ledger;
 using Zoro.Persistence;
 using Zoro.Cryptography.ECC;
 using Zoro.Network.P2P.Payloads;
+using Zoro.SmartContract.NativeNEP5;
 using System;
-using System.IO;
 using System.Linq;
 using System.Text;
 using System.Numerics;
@@ -15,29 +15,6 @@ namespace Zoro.SmartContract.Services
     class NativeNEP5Service
     {
         public static readonly uint SysCall_MethodHash = "Zoro.NativeNEP5.Call".ToInteropMethodHash();
-
-        internal class TransferLog : ISerializable
-        {
-            public UInt160 From;
-            public UInt160 To;
-            public Fixed8 Value;
-
-            public virtual int Size => From.Size + To.Size + Value.Size;
-
-            public void Serialize(BinaryWriter writer)
-            {
-                writer.Write(From);
-                writer.Write(To);
-                writer.Write(Value);
-            }
-
-            public void Deserialize(BinaryReader reader)
-            {
-                From = reader.ReadSerializable<UInt160>();
-                To = reader.ReadSerializable<UInt160>();
-                Value = reader.ReadSerializable<Fixed8>();
-            }
-        }
 
         protected readonly ZoroService Service;
         protected readonly TriggerType Trigger;
@@ -74,9 +51,15 @@ namespace Zoro.SmartContract.Services
 
             // 发行人
             ECPoint owner = ECPoint.DecodePoint(engine.CurrentContext.EvaluationStack.Pop().GetByteArray(), ECCurve.Secp256r1);
-            if (owner.IsInfinity) return false;
-            if (!Service.CheckWitness(engine, owner))
-                return false;
+
+            // 创世块不做检查
+            if (Snapshot.PersistingBlock.Index != 0)
+            {
+                // 检查发行人的签名
+                if (owner.IsInfinity) return false;
+                if (!Service.CheckWitness(engine, owner))
+                    return false;
+            }
 
             // 管理员
             UInt160 admin = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
@@ -184,7 +167,7 @@ namespace Zoro.SmartContract.Services
 
         private bool API_TotalSupply(ExecutionEngine engine, NativeNEP5State state)
         {
-            engine.CurrentContext.EvaluationStack.Push(StorageGet(state, Encoding.ASCII.GetBytes("totalSupply")).AsBigInteger());
+            engine.CurrentContext.EvaluationStack.Push(NativeAPI.StorageGet(Snapshot, state.AssetId, Encoding.ASCII.GetBytes("totalSupply")).AsBigInteger());
             return true;
         }
 
@@ -198,7 +181,7 @@ namespace Zoro.SmartContract.Services
         {
             UInt160 address = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
             var key = new byte[] { 0x11 }.Concat(address.ToArray()).ToArray();
-            engine.CurrentContext.EvaluationStack.Push(StorageGet(state, key).AsBigInteger());
+            engine.CurrentContext.EvaluationStack.Push(NativeAPI.StorageGet(Snapshot, state.AssetId, key).AsBigInteger());
             return true;
         }
 
@@ -215,13 +198,13 @@ namespace Zoro.SmartContract.Services
             if (engine.EntryContext.ScriptHash != engine.CurrentContext.ScriptHash)
                 return false;
 
-            bool result = Transfer(state, from, to, value);
+            bool result = NativeAPI.Transfer(Snapshot, state.AssetId, from, to, value);
 
             if (result)
             {
                 if (engine.ScriptContainer is Transaction tx)
                 {
-                    SaveTransferLog(state, tx.Hash, from, to, value);
+                    NativeAPI.SaveTransferLog(Snapshot, state.AssetId, tx.Hash, from, to, value);
                 }
 
                 Service.AddTransferNotification(engine, state.AssetId, from, to, value);
@@ -241,13 +224,13 @@ namespace Zoro.SmartContract.Services
             if (from != new UInt160(engine.CurrentContext.ScriptHash))
                 return false;
 
-            bool result = Transfer(state, from, to, value);
+            bool result = NativeAPI.Transfer(Snapshot, state.AssetId, from, to, value);
 
             if (result)
             {
                 if (engine.ScriptContainer is Transaction tx)
                 {
-                    SaveTransferLog(state, tx.Hash, from, to, value);
+                    NativeAPI.SaveTransferLog(Snapshot, state.AssetId, tx.Hash, from, to, value);
                 }
 
                 Service.AddTransferNotification(engine, state.AssetId, from, to, value);
@@ -262,124 +245,31 @@ namespace Zoro.SmartContract.Services
         {
             byte[] hash = engine.CurrentContext.EvaluationStack.Pop().GetByteArray();
 
-            StorageItem item = Snapshot.Storages.TryGet(new StorageKey
-            {
-                ScriptHash = state.AssetId,
-                Key = new byte[] { 0x13 }.Concat(hash).ToArray()
-            });
+            byte[] transferLog = NativeAPI.GetTransferLog(Snapshot, state.AssetId, hash);
 
-            if (item == null)
+            if (transferLog == null)
                 return false;
 
-            engine.CurrentContext.EvaluationStack.Push(item.Value);
+            engine.CurrentContext.EvaluationStack.Push(transferLog);
             return true;
-        }
-
-        private void SaveTransferLog(NativeNEP5State state, UInt256 TransactionHash, UInt160 from, UInt160 to, Fixed8 value)
-        {
-            var transferLog = new TransferLog
-            {
-                From = from,
-                To = to,
-                Value = value
-            };
-
-            StoragePut(state, new byte[] { 0x13 }.Concat(TransactionHash.ToArray()).ToArray(), transferLog.ToArray());
         }
 
         private bool API_Deploy(ExecutionEngine engine, NativeNEP5State state)
         {
-            if (!Service.CheckWitness(engine, state.Admin))
+            // 创世块不做检查
+            if (Snapshot.PersistingBlock.Index != 0 && !Service.CheckWitness(engine, state.Admin))
                 return false;
 
-            byte[] total_supply = StorageGet(state, Encoding.ASCII.GetBytes("totalSupply"));
+            byte[] total_supply = NativeAPI.StorageGet(Snapshot, state.AssetId, Encoding.ASCII.GetBytes("totalSupply"));
             if (total_supply.Length != 0)
                 return false;
 
             var keyAdmin = new byte[] { 0x11 }.Concat(state.Admin.ToArray());
 
-            StoragePut(state, keyAdmin.ToArray(), state.TotalSupply);
-            StoragePut(state, Encoding.ASCII.GetBytes("totalSupply"), state.TotalSupply);
+            NativeAPI.StoragePut(Snapshot, state.AssetId, keyAdmin.ToArray(), state.TotalSupply);
+            NativeAPI.StoragePut(Snapshot, state.AssetId, Encoding.ASCII.GetBytes("totalSupply"), state.TotalSupply);
 
             Service.AddTransferNotification(engine, state.AssetId, new UInt160(), state.Admin, state.TotalSupply);
-            return true;
-        }
-
-        private byte[] StorageGet(NativeNEP5State state, byte[] key)
-        {
-            StorageItem item = Snapshot.Storages.TryGet(new StorageKey
-            {
-                ScriptHash = state.AssetId,
-                Key = key
-            });
-
-            return item?.Value ?? new byte[0];
-        }
-
-        private void StoragePut(NativeNEP5State state, byte[] key, Fixed8 value)
-        {
-            StoragePut(state, key, value.ToArray());
-        }
-
-        private void StoragePut(NativeNEP5State state, byte[] key, BigInteger value)
-        {
-            StoragePut(state, key, value.ToByteArray());
-        }
-
-        private void StoragePut(NativeNEP5State state, byte[] key, byte[] value)
-        {
-            Snapshot.Storages.GetAndChange(new StorageKey
-            {
-                ScriptHash = state.AssetId,
-                Key = key
-            }, () => new StorageItem()).Value = value;
-        }
-
-        private void StorageDelete(NativeNEP5State state, byte[] key)
-        {
-            Snapshot.Storages.Delete(new StorageKey
-            {
-                ScriptHash = state.AssetId,
-                Key = key
-            });
-        }
-        
-        private bool Transfer(NativeNEP5State state, UInt160 from, UInt160 to, Fixed8 amount)
-        {
-            BigInteger value = new BigInteger(amount.GetData());
-
-            if (value <= 0)
-                return false;
-
-            if (from.Equals(to))
-                return false;
-
-            if (from.ToArray().Length <= 0 || to.ToArray().Length <= 0)
-                return false;
-
-            if (from.ToArray().Length > 0)
-            {
-                var keyFrom = new byte[] { 0x11 }.Concat(from.ToArray()).ToArray();
-                BigInteger from_value = StorageGet(state, keyFrom).AsBigInteger();
-                if (from_value < value)
-                    return false;
-                if (from_value == value)
-                {
-                    StorageDelete(state, keyFrom);
-                }
-                else
-                {
-                    StoragePut(state, keyFrom, from_value - value);
-                }
-            }
-
-            if (to.ToArray().Length > 0)
-            {
-                var keyTo = new byte[] { 0x11 }.Concat(to.ToArray()).ToArray();
-                BigInteger to_value = StorageGet(state, keyTo).AsBigInteger();
-                StoragePut(state, keyTo, to_value + value);
-            }
-
             return true;
         }
     }

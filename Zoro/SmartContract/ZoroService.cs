@@ -54,18 +54,6 @@ namespace Zoro.SmartContract
             Register("Zoro.Witness.GetVerificationScript", Witness_GetVerificationScript, 100);
             Register("Zoro.Attribute.GetUsage", Attribute_GetUsage, 1);
             Register("Zoro.Attribute.GetData", Attribute_GetData, 1);
-            Register("Zoro.Account.GetScriptHash", Account_GetScriptHash, 1);
-            Register("Zoro.Account.GetVotes", Account_GetVotes, 1);
-            Register("Zoro.Account.GetBalance", Account_GetBalance, 1);
-            Register("Zoro.Account.IsStandard", Account_IsStandard, 100);
-            Register("Zoro.Asset.GetAssetId", Asset_GetAssetId, 1);
-            Register("Zoro.Asset.GetAssetType", Asset_GetAssetType, 1);
-            Register("Zoro.Asset.GetAmount", Asset_GetAmount, 1);
-            Register("Zoro.Asset.GetAvailable", Asset_GetAvailable, 1);
-            Register("Zoro.Asset.GetPrecision", Asset_GetPrecision, 1);
-            Register("Zoro.Asset.GetOwner", Asset_GetOwner, 1);
-            Register("Zoro.Asset.GetAdmin", Asset_GetAdmin, 1);
-            Register("Zoro.Asset.GetIssuer", Asset_GetIssuer, 1);
             Register("Zoro.Contract.Create", Contract_Create);
             Register("Zoro.Contract.Migrate", Contract_Migrate);
             Register("Zoro.Contract.Destroy", Contract_Destroy, 1);

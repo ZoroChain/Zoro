@@ -216,8 +216,8 @@ namespace Zoro.Consensus
                 MinerTransaction tx = new MinerTransaction
                 {
                     ChainHash = blockchain.ChainHash,
-                    Nonce = (uint)(nonce % (uint.MaxValue + 1ul)),
-                    Address = wallet.GetChangeAddress(),
+                    Nonce = nonce,
+                    Account = wallet.GetChangeAddress(),
                     Attributes = new TransactionAttribute[0],
                     Witnesses = new Witness[0]
                 };

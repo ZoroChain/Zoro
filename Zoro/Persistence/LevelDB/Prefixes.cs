@@ -5,9 +5,7 @@
         public const byte DATA_Block = 0x01;
         public const byte DATA_Transaction = 0x02;
 
-        public const byte ST_Account = 0x40;
         public const byte ST_Appchain = 0x41;
-        public const byte ST_Asset = 0x4c;
         public const byte ST_Contract = 0x50;
         public const byte ST_NativeNEP5 = 0x51;
         public const byte ST_Storage = 0x70;

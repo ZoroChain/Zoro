@@ -40,21 +40,6 @@ namespace Zoro.Ledger
         public ECPoint[] StandbyValidators { get; private set; }
         public string Name { get; private set; }
 
-#pragma warning disable CS0612
-        public static readonly RegisterTransaction UtilityToken = new RegisterTransaction
-        {
-            AssetType = AssetType.UtilityToken,
-            Name = "[{\"lang\":\"zh-CN\",\"name\":\"BCP\"},{\"lang\":\"en\",\"name\":\"BCP\"}]",
-            FullName = "[{\"lang\":\"zh-CN\",\"name\":\"BlaCat Point\"},{\"lang\":\"en\",\"name\":\"BlaCat Point\"}]",
-            Amount = Fixed8.FromDecimal(2000000000),
-            Precision = 8,
-            Owner = ECCurve.Secp256r1.Infinity,
-            Admin = (new[] { (byte)OpCode.PUSHF }).ToScriptHash(),
-            Attributes = new TransactionAttribute[0],
-            Witnesses = new Witness[0]
-        };
-#pragma warning restore CS0612
-
         private Block _genesisBlock = null;
 
         public Block GenesisBlock
@@ -516,7 +501,11 @@ namespace Zoro.Ledger
 
                 if (block.Index > 0 && sysfeeAmount > Fixed8.Zero)
                 {
-                    BCPToken.AddBalance(snapshot, block.Transactions[0].GetAccountScriptHash(snapshot), sysfeeAmount);
+                    // 把手续费奖励给矿工
+                    if (block.Transactions[0] is MinerTransaction minerTx)
+                    {
+                        BCPToken.AddBalance(snapshot, minerTx.Account, sysfeeAmount);
+                    }
                 }
 
                 snapshot.BlockHashIndex.GetAndChange().Hash = block.Hash;
@@ -550,42 +539,8 @@ namespace Zoro.Ledger
             List<ApplicationExecutionResult> execution_results = new List<ApplicationExecutionResult>();
             switch (tx)
             {
-#pragma warning disable CS0612
-                case RegisterTransaction tx_register:
-                    snapshot.Assets.Add(tx.Hash, new AssetState
-                    {
-                        AssetId = tx_register.Hash,
-                        AssetType = tx_register.AssetType,
-                        Name = tx_register.Name,
-                        FullName = tx_register.FullName,
-                        Amount = tx_register.Amount,
-                        Available = Fixed8.Zero,
-                        Precision = tx_register.Precision,
-                        Fee = Fixed8.Zero,
-                        FeeAddress = new UInt160(),
-                        Owner = tx_register.Owner,
-                        Admin = tx_register.Admin,
-                        Issuer = tx_register.Admin,
-                        BlockIndex = block.Index,
-                        IsFrozen = false
-                    });
-                    break;
-                case IssueTransaction tx_issue:
-                    // 只能在根链上发行流通BCP
-                    // 暂时不做限制，等实现跨链兑换BCP后再限制
-                    //if (tx_issue.AssetId != UtilityToken.Hash || ChainHash.Equals(UInt160.Zero)) 
-                    {
-                        snapshot.Assets.GetAndChange(tx_issue.AssetId).Available += tx_issue.Value;
-                        AccountState account = snapshot.Accounts.GetAndChange(tx_issue.Address, () => new AccountState(tx_issue.Address));
-                        if (account.Balances.ContainsKey(tx_issue.AssetId))
-                            account.Balances[tx_issue.AssetId] += tx_issue.Value;
-                        else
-                            account.Balances[tx_issue.AssetId] = tx_issue.Value;
-                    }
-                    break;
-#pragma warning restore CS0612
                 case InvocationTransaction tx_invocation:
-                    using (ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, tx_invocation, snapshot.Clone(), tx_invocation.GasLimit))
+                    using (ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, tx_invocation, snapshot.Clone(), tx_invocation.GasLimit, block.Index == 0))
                     {
                         engine.LoadScript(tx_invocation.Script);
                         if (engine.Execute())
@@ -614,7 +569,7 @@ namespace Zoro.Ledger
                         }
 
                         // 退回多扣的手续费
-                        BCPToken?.AddBalance(snapshot, tx.GetAccountScriptHash(snapshot), tx.SystemFee - sysfee);
+                        BCPToken?.AddBalance(snapshot, tx.Account, tx.SystemFee - sysfee);
                     }
                     break;
             }
@@ -638,9 +593,7 @@ namespace Zoro.Ledger
             if (tx.Type == TransactionType.MinerTransaction) return true;
             if (tx.SystemFee <= Fixed8.Zero) return true;
 
-            UInt160 scriptHash = tx.GetAccountScriptHash(snapshot);
-
-            return BCPToken != null ? BCPToken.SubBalance(snapshot, scriptHash, tx.SystemFee) : true;
+            return BCPToken != null ? BCPToken.SubBalance(snapshot, tx.Account, tx.SystemFee) : true;
         }
         
         protected override void PostStop()

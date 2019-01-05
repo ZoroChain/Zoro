@@ -33,7 +33,7 @@ namespace Zoro.SmartContract
             Register("Neo.Blockchain.GetTransactionHeight", Blockchain_GetTransactionHeight, 100);
             Register("Neo.Blockchain.GetAccount", Blockchain_GetAccount, 100);
             Register("Neo.Blockchain.GetValidators", Blockchain_GetValidators, 200);
-            Register("Neo.Blockchain.GetAsset", Blockchain_GetAsset, 100);
+            Register("Neo.Blockchain.GetAsset", Blockchain_GetAsset, 1);
             Register("Neo.Blockchain.GetContract", Blockchain_GetContract, 100);
             Register("Neo.Header.GetHash", Header_GetHash, 1);
             Register("Neo.Header.GetVersion", Header_GetVersion, 1);
@@ -166,10 +166,7 @@ namespace Zoro.SmartContract
 
         protected bool Blockchain_GetAccount(ExecutionEngine engine)
         {
-            UInt160 hash = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
-            AccountState account = Snapshot.Accounts.GetOrAdd(hash, () => new AccountState(hash));
-            engine.CurrentContext.EvaluationStack.Push(StackItem.FromInterface(account));
-            return true;
+            return false;
         }
 
         protected bool Blockchain_GetValidators(ExecutionEngine engine)
@@ -181,11 +178,7 @@ namespace Zoro.SmartContract
 
         protected bool Blockchain_GetAsset(ExecutionEngine engine)
         {
-            UInt256 hash = new UInt256(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
-            AssetState asset = Snapshot.Assets.TryGet(hash);
-            if (asset == null) return false;
-            engine.CurrentContext.EvaluationStack.Push(StackItem.FromInterface(asset));
-            return true;
+            return false;
         }
 
         protected bool Header_GetVersion(ExecutionEngine engine)
@@ -372,48 +365,21 @@ namespace Zoro.SmartContract
 
         protected bool Account_GetScriptHash(ExecutionEngine engine)
         {
-            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
-            {
-                AccountState account = _interface.GetInterface<AccountState>();
-                if (account == null) return false;
-                engine.CurrentContext.EvaluationStack.Push(account.ScriptHash.ToArray());
-                return true;
-            }
             return false;
         }
 
         protected bool Account_GetVotes(ExecutionEngine engine)
         {
-            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
-            {
-                AccountState account = _interface.GetInterface<AccountState>();
-                if (account == null) return false;
-                engine.CurrentContext.EvaluationStack.Push(account.Votes.Select(p => (StackItem)p.EncodePoint(true)).ToArray());
-                return true;
-            }
             return false;
         }
 
         protected bool Account_GetBalance(ExecutionEngine engine)
         {
-            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
-            {
-                AccountState account = _interface.GetInterface<AccountState>();
-                UInt256 asset_id = new UInt256(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
-                if (account == null) return false;
-                Fixed8 balance = account.Balances.TryGetValue(asset_id, out Fixed8 value) ? value : Fixed8.Zero;
-                engine.CurrentContext.EvaluationStack.Push(balance.GetData());
-                return true;
-            }
             return false;
         }
 
         protected bool Account_IsStandard(ExecutionEngine engine)
         {
-            UInt160 hash = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
-            ContractState contract = Snapshot.Contracts.TryGet(hash);
-            bool isStandard = contract is null || contract.Script.IsStandardContract();
-            engine.CurrentContext.EvaluationStack.Push(isStandard);
             return true;
         }
 
@@ -429,97 +395,41 @@ namespace Zoro.SmartContract
 
         protected bool Asset_GetAssetId(ExecutionEngine engine)
         {
-            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
-            {
-                AssetState asset = _interface.GetInterface<AssetState>();
-                if (asset == null) return false;
-                engine.CurrentContext.EvaluationStack.Push(asset.AssetId.ToArray());
-                return true;
-            }
             return false;
         }
 
         protected bool Asset_GetAssetType(ExecutionEngine engine)
         {
-            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
-            {
-                AssetState asset = _interface.GetInterface<AssetState>();
-                if (asset == null) return false;
-                engine.CurrentContext.EvaluationStack.Push((int)asset.AssetType);
-                return true;
-            }
             return false;
         }
 
         protected bool Asset_GetAmount(ExecutionEngine engine)
         {
-            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
-            {
-                AssetState asset = _interface.GetInterface<AssetState>();
-                if (asset == null) return false;
-                engine.CurrentContext.EvaluationStack.Push(asset.Amount.GetData());
-                return true;
-            }
             return false;
         }
 
         protected bool Asset_GetAvailable(ExecutionEngine engine)
         {
-            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
-            {
-                AssetState asset = _interface.GetInterface<AssetState>();
-                if (asset == null) return false;
-                engine.CurrentContext.EvaluationStack.Push(asset.Available.GetData());
-                return true;
-            }
             return false;
         }
 
         protected bool Asset_GetPrecision(ExecutionEngine engine)
         {
-            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
-            {
-                AssetState asset = _interface.GetInterface<AssetState>();
-                if (asset == null) return false;
-                engine.CurrentContext.EvaluationStack.Push((int)asset.Precision);
-                return true;
-            }
             return false;
         }
 
         protected bool Asset_GetOwner(ExecutionEngine engine)
         {
-            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
-            {
-                AssetState asset = _interface.GetInterface<AssetState>();
-                if (asset == null) return false;
-                engine.CurrentContext.EvaluationStack.Push(asset.Owner.EncodePoint(true));
-                return true;
-            }
             return false;
         }
 
         protected bool Asset_GetAdmin(ExecutionEngine engine)
         {
-            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
-            {
-                AssetState asset = _interface.GetInterface<AssetState>();
-                if (asset == null) return false;
-                engine.CurrentContext.EvaluationStack.Push(asset.Admin.ToArray());
-                return true;
-            }
             return false;
         }
 
         protected bool Asset_GetIssuer(ExecutionEngine engine)
         {
-            if (engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface)
-            {
-                AssetState asset = _interface.GetInterface<AssetState>();
-                if (asset == null) return false;
-                engine.CurrentContext.EvaluationStack.Push(asset.Issuer.ToArray());
-                return true;
-            }
             return false;
         }
 

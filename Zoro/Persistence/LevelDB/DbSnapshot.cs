@@ -1,5 +1,4 @@
-﻿using Zoro.Cryptography.ECC;
-using Zoro.IO.Caching;
+﻿using Zoro.IO.Caching;
 using Zoro.IO.Data.LevelDB;
 using Zoro.IO.Wrappers;
 using Zoro.Ledger;
@@ -15,10 +14,8 @@ namespace Zoro.Persistence.LevelDB
 
         public override DataCache<UInt256, BlockState> Blocks { get; }
         public override DataCache<UInt256, TransactionState> Transactions { get; }
-        public override DataCache<UInt160, AccountState> Accounts { get; }
         public override DataCache<UInt160, AppChainState> AppChains { get; }
         public override DataCache<UInt160, NativeNEP5State> NativeNEP5s { get; }
-        public override DataCache<UInt256, AssetState> Assets { get; }
         public override DataCache<UInt160, ContractState> Contracts { get; }
         public override DataCache<StorageKey, StorageItem> Storages { get; }
         public override DataCache<UInt32Wrapper, HeaderHashList> HeaderHashList { get; }
@@ -35,10 +32,8 @@ namespace Zoro.Persistence.LevelDB
             ReadOptions options = new ReadOptions { FillCache = false, Snapshot = snapshot };
             Blocks = new DbCache<UInt256, BlockState>(db, options, batch, Prefixes.DATA_Block);
             Transactions = new DbCache<UInt256, TransactionState>(db, options, batch, Prefixes.DATA_Transaction);
-            Accounts = new DbCache<UInt160, AccountState>(db, options, batch, Prefixes.ST_Account);
             AppChains = new DbCache<UInt160, AppChainState>(db, options, batch, Prefixes.ST_Appchain);
             NativeNEP5s = new DbCache<UInt160, NativeNEP5State>(db, options, batch, Prefixes.ST_NativeNEP5);
-            Assets = new DbCache<UInt256, AssetState>(db, options, batch, Prefixes.ST_Asset);
             Contracts = new DbCache<UInt160, ContractState>(db, options, batch, Prefixes.ST_Contract);
             Storages = new DbCache<StorageKey, StorageItem>(db, options, batch, Prefixes.ST_Storage);
             HeaderHashList = new DbCache<UInt32Wrapper, HeaderHashList>(db, options, batch, Prefixes.IX_HeaderHashList);

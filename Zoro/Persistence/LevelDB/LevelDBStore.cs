@@ -1,5 +1,4 @@
-﻿using Zoro.Cryptography.ECC;
-using Zoro.IO.Caching;
+﻿using Zoro.IO.Caching;
 using Zoro.IO.Data.LevelDB;
 using Zoro.IO.Wrappers;
 using Zoro.Ledger;
@@ -35,19 +34,9 @@ namespace Zoro.Persistence.LevelDB
             db.Dispose();
         }
 
-        public override DataCache<UInt160, AccountState> GetAccounts()
-        {
-            return new DbCache<UInt160, AccountState>(db, null, null, Prefixes.ST_Account);
-        }
-
         public override DataCache<UInt160, AppChainState> GetAppChains()
         {
             return new DbCache<UInt160, AppChainState>(db, null, null, Prefixes.ST_Appchain);
-        }
-
-        public override DataCache<UInt256, AssetState> GetAssets()
-        {
-            return new DbCache<UInt256, AssetState>(db, null, null, Prefixes.ST_Asset);
         }
 
         public override DataCache<UInt256, BlockState> GetBlocks()

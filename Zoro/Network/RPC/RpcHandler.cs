@@ -40,18 +40,6 @@ namespace Zoro.Network.RPC
 
                 switch (method)
                 {
-                    case "getaccountstate":
-                        {
-                            UInt160 script_hash = _params[0].AsString().ToScriptHash();
-                            AccountState account = Blockchain.Root.Store.GetAccounts().TryGet(script_hash) ?? new AccountState(script_hash);
-                            return account.ToJson();
-                        }
-                    case "getassetstate":
-                        {
-                            UInt256 asset_id = UInt256.Parse(_params[0].AsString());
-                            AssetState asset = Blockchain.Root.Store.GetAssets().TryGet(asset_id);
-                            return asset?.ToJson() ?? throw new RpcException(-100, "Unknown asset");
-                        }
                     case "getbalance":
                         if (wallet == null)
                             throw new RpcException(-400, "Access denied.");

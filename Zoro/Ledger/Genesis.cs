@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Numerics;
 using Neo.VM;
 using Zoro.SmartContract;
 using Zoro.Cryptography.ECC;
@@ -14,12 +13,14 @@ namespace Zoro.Ledger
 
         public static Block BuildGenesisBlock(UInt160 ChainHash, ECPoint[] validators)
         {
-            InvocationTransaction CreateBCP = CreateNativeNEP5Transaction("BlaCat Point", "BCP", 2000000000, 8, ECCurve.Secp256r1.Infinity, (new[] { (byte)OpCode.PUSHF }).ToScriptHash());
-            InvocationTransaction DeployBCP = DeployNativeNEP5Transaction(CreateBCP.ScriptHash, Contract.CreateMultiSigRedeemScript(validators.Length / 2 + 1, validators).ToScriptHash());
-            InvocationTransaction CreateBCT = CreateNativeNEP5Transaction("BlaCat Token", "BCT", 0, 8, ECCurve.Secp256r1.Infinity, (new[] { (byte)OpCode.PUSHF }).ToScriptHash());
+            UInt160 adminScriptHash = Contract.CreateMultiSigRedeemScript(validators.Length / 2 + 1, validators).ToScriptHash();
 
-            BCPHash = CreateBCP.ScriptHash;
-            BCTHash = CreateBCT.ScriptHash;
+            InvocationTransaction CreateBCP = CreateNativeNEP5Transaction("BlaCat Point", "BCP", Fixed8.FromDecimal(2000000000), 8, ECCurve.Secp256r1.Infinity, adminScriptHash);
+            InvocationTransaction DeployBCP = DeployNativeNEP5Transaction(CreateBCP.Script.ToScriptHash());
+            InvocationTransaction CreateBCT = CreateNativeNEP5Transaction("BlaCat Token", "BCT", Fixed8.FromDecimal(0), 8, ECCurve.Secp256r1.Infinity, adminScriptHash);
+
+            BCPHash = CreateBCP.Script.ToScriptHash();
+            BCTHash = CreateBCT.Script.ToScriptHash();
 
             Block genesisBlock = new Block
             {
@@ -51,24 +52,25 @@ namespace Zoro.Ledger
             return genesisBlock;
         }
  
-        private static InvocationTransaction CreateNativeNEP5Transaction(string name, string symbol, decimal amount, byte precision, ECPoint owner, UInt160 admin)
+        private static InvocationTransaction CreateNativeNEP5Transaction(string name, string symbol, Fixed8 amount, byte precision, ECPoint owner, UInt160 admin)
         {
             using (ScriptBuilder sb = new ScriptBuilder())
             {
                 sb.EmitPush(admin);
                 sb.EmitPush(owner);
                 sb.EmitPush(precision);
-                sb.EmitPush(new BigInteger(amount));
+                sb.EmitPush(amount);
                 sb.EmitPush(symbol);
                 sb.EmitPush(name);
                 sb.EmitSysCall("Zoro.NativeNEP5.Create");
 
                 InvocationTransaction tx = new InvocationTransaction
                 {
+                    Nonce = 2083236893,
                     Script = sb.ToArray(),
                     GasPrice = Fixed8.Zero,
                     GasLimit = Fixed8.Zero,
-                    ScriptHash = owner.EncodePoint(true).ToScriptHash(),
+                    Account = owner.EncodePoint(true).ToScriptHash(),
                     Attributes = new TransactionAttribute[0],
                     Witnesses = new Witness[0]
                 };
@@ -77,7 +79,7 @@ namespace Zoro.Ledger
             }
         }
 
-        private static InvocationTransaction DeployNativeNEP5Transaction(UInt160 assetId, UInt160 scriptHash)
+        private static InvocationTransaction DeployNativeNEP5Transaction(UInt160 assetId)
         {
             using (ScriptBuilder sb = new ScriptBuilder())
             {
@@ -85,10 +87,10 @@ namespace Zoro.Ledger
 
                 InvocationTransaction tx = new InvocationTransaction
                 {
+                    Nonce = 2083236893,
                     Script = sb.ToArray(),
                     GasPrice = Fixed8.Zero,
                     GasLimit = Fixed8.Zero,
-                    ScriptHash = scriptHash,
                     Attributes = new TransactionAttribute[0],
                     Witnesses = new Witness[0]
                 };

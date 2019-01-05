@@ -119,10 +119,6 @@ namespace Zoro.Cryptography
             if (filter.Check(tx.Hash.ToArray())) return true;
             if (tx.Witnesses.Any(p => filter.Check(p.ScriptHash.ToArray())))
                 return true;
-#pragma warning disable CS0612
-            if (tx is RegisterTransaction asset)
-                if (filter.Check(asset.Admin.ToArray())) return true;
-#pragma warning restore CS0612
             return false;
         }
 

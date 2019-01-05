@@ -5,12 +5,14 @@ using Zoro.IO.Json;
 using Zoro.Ledger;
 using Zoro.Persistence;
 using Zoro.SmartContract;
+using Zoro.SmartContract.NativeNEP5;
 using Neo.VM;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Numerics;
 
 namespace Zoro.Network.P2P.Payloads
 {
@@ -29,6 +31,8 @@ namespace Zoro.Network.P2P.Payloads
 
         public readonly TransactionType Type;
         public byte Version;
+        public ulong Nonce;
+        public UInt160 Account = (new[] { (byte) OpCode.PUSHF }).ToScriptHash(); // 交易支出账户的ScriptHash
         public TransactionAttribute[] Attributes;
         public Witness[] Witnesses { get; set; }
 
@@ -45,19 +49,25 @@ namespace Zoro.Network.P2P.Payloads
             }
         }
 
-        public abstract UInt160 GetAccountScriptHash(Snapshot snapshot);
-
         public UInt160 ChainHash { get; set; }
 
         InventoryType IInventory.InventoryType => InventoryType.TX;
 
-        public virtual int Size => sizeof(TransactionType) + sizeof(byte) + Attributes.GetVarSize() + Witnesses.GetVarSize();
+        public virtual int Size => sizeof(TransactionType) + sizeof(byte) + sizeof(ulong) + Account.Size + Attributes.GetVarSize() + Witnesses.GetVarSize();
 
         public virtual Fixed8 SystemFee => Fixed8.Zero;
 
         protected Transaction(TransactionType type)
         {
             this.Type = type;
+        }
+
+        public static ulong GetNonce()
+        {
+            byte[] nonce = new byte[sizeof(ulong)];
+            Random rand = new Random();
+            rand.NextBytes(nonce);
+            return nonce.ToUInt64(0);
         }
 
         void ISerializable.Deserialize(BinaryReader reader)
@@ -102,6 +112,8 @@ namespace Zoro.Network.P2P.Payloads
         private void DeserializeUnsignedWithoutType(BinaryReader reader)
         {
             Version = reader.ReadByte();
+            Nonce = reader.ReadUInt64();
+            Account = reader.ReadSerializable<UInt160>();
             DeserializeExclusiveData(reader);
             Attributes = reader.ReadSerializableArray<TransactionAttribute>(MaxTransactionAttributes);
         }
@@ -152,6 +164,8 @@ namespace Zoro.Network.P2P.Payloads
         {
             writer.Write((byte)Type);
             writer.Write(Version);
+            writer.Write(Nonce);
+            writer.Write(Account);
             SerializeExclusiveData(writer);
             writer.Write(Attributes);
         }
@@ -163,6 +177,8 @@ namespace Zoro.Network.P2P.Payloads
             json["size"] = Size;
             json["type"] = Type;
             json["version"] = Version;
+            json["nonce"] = Nonce.ToString();
+            json["account"] = Account.ToString();
             json["attributes"] = Attributes.Select(p => p.ToJson()).ToArray();
             json["sys_fee"] = SystemFee.ToString();
             json["scripts"] = Witnesses.Select(p => p.ToJson()).ToArray();
@@ -186,15 +202,12 @@ namespace Zoro.Network.P2P.Payloads
 
         private bool CheckBalance(Snapshot snapshot)
         {
-            Fixed8 sysfee = SystemFee;
+            long sysfee = SystemFee.GetData();
 
-            if (sysfee <= Fixed8.Zero)
+            if (sysfee <= 0)
                 return true;
 
-            AccountState account = snapshot.Accounts.TryGet(GetAccountScriptHash(snapshot));
-
-            if (account == null || !account.Balances.TryGetValue(Blockchain.UtilityToken.Hash, out Fixed8 balance))
-                return false;
+            BigInteger balance = NativeAPI.BalanceOf(snapshot, Genesis.BCPHash, Account);
 
             if (balance < sysfee)
                 return false;

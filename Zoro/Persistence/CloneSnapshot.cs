@@ -1,5 +1,4 @@
-﻿using Zoro.Cryptography.ECC;
-using Zoro.IO.Caching;
+﻿using Zoro.IO.Caching;
 using Zoro.IO.Wrappers;
 using Zoro.Ledger;
 
@@ -9,10 +8,8 @@ namespace Zoro.Persistence
     {
         public override DataCache<UInt256, BlockState> Blocks { get; }
         public override DataCache<UInt256, TransactionState> Transactions { get; }
-        public override DataCache<UInt160, AccountState> Accounts { get; }
         public override DataCache<UInt160, AppChainState> AppChains { get; }
         public override DataCache<UInt160, NativeNEP5State> NativeNEP5s { get; }
-        public override DataCache<UInt256, AssetState> Assets { get; }
         public override DataCache<UInt160, ContractState> Contracts { get; }
         public override DataCache<StorageKey, StorageItem> Storages { get; }
         public override DataCache<UInt32Wrapper, HeaderHashList> HeaderHashList { get; }
@@ -26,10 +23,8 @@ namespace Zoro.Persistence
             this.PersistingBlock = snapshot.PersistingBlock;
             this.Blocks = snapshot.Blocks.CreateSnapshot();
             this.Transactions = snapshot.Transactions.CreateSnapshot();
-            this.Accounts = snapshot.Accounts.CreateSnapshot();
             this.AppChains = snapshot.AppChains.CreateSnapshot();
             this.NativeNEP5s = snapshot.NativeNEP5s.CreateSnapshot();
-            this.Assets = snapshot.Assets.CreateSnapshot();
             this.Contracts = snapshot.Contracts.CreateSnapshot();
             this.Storages = snapshot.Storages.CreateSnapshot();
             this.HeaderHashList = snapshot.HeaderHashList.CreateSnapshot();
