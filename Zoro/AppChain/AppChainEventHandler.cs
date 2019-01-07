@@ -57,8 +57,8 @@ namespace Zoro.AppChain
 
                 foreach (var state in appchains)
                 {
-                    // 判断是否是关注的应用链
-                    if (IsInterestedChainName(state.Name.ToLower()) || IsInterestedChainHash(state.Hash))
+                    // 判断是否需要运行该应用链
+                    if (ShouldStartAppChain(state))
                     {
                         // 检查种子节点是否有效
                         if (CheckSeedList(state))
@@ -101,10 +101,10 @@ namespace Zoro.AppChain
                 return;
             }
 
-            // 检查新创建的应用链是否在关注列表中
-            if (!IsInterestedChainName(state.Name.ToLower()) && !IsInterestedChainHash(state.Hash))
+            // 判断是否需要运行新创建的应用链
+            if (!ShouldStartAppChain(state))
             {
-                Log($"The appchain is not in the key name list, name={state.Name} hash={state.Hash}", LogLevel.Warning);
+                Log($"The new appchain will not run on this client, name={state.Name} hash={state.Hash}", LogLevel.Info);
                 return;
             }
 
@@ -305,7 +305,7 @@ namespace Zoro.AppChain
 
             if (myIPAddress != null)
             {
-                // 依次判断本地节点是否是应用链的种子节点
+                // 依次比较应用链的所有种子节点的IP
                 foreach (var hostAndPort in seedList)
                 {
                     string[] p = hostAndPort.Split(':');
@@ -365,6 +365,44 @@ namespace Zoro.AppChain
         private bool IsInterestedChainHash(UInt160 chainHash)
         {
             return keyHashes.Contains(chainHash);
+        }
+
+        // 判断本地节点是否是应用链的种子节点
+        private bool IsSeedList(AppChainState state)
+        {
+            if (myIPAddress != null)
+            {
+                // 依次比较应用链的所有种子节点的IP
+                foreach (var hostAndPort in state.SeedList)
+                {
+                    string[] p = hostAndPort.Split(':');
+                    if (p.Length == 2 && p[0] != "127.0.0.1")
+                    {
+                        IPEndPoint seed;
+                        try
+                        {
+                            seed = Helper.GetIPEndpointFromHostPort(p[0], int.Parse(p[1]));
+                        }
+                        catch (AggregateException)
+                        {
+                            continue;
+                        }
+                        // 判断本地节点的IP地址是否和种子节点的IP地址相同
+                        if (seed != null && myIPAddress.Equals(seed.Address))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private bool ShouldStartAppChain(AppChainState state)
+        {
+            // 判断是否是关注的应用链，或者是该应用链的种子节点或共识节点
+            return IsInterestedChainName(state.Name.ToLower()) || IsInterestedChainHash(state.Hash) || IsSeedList(state) || CheckStartConsensus(state.StandbyValidators);
         }
 
         // 检查种子节点的地址和端口是否有效
