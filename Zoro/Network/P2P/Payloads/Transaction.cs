@@ -67,6 +67,14 @@ namespace Zoro.Network.P2P.Payloads
             byte[] nonce = new byte[sizeof(ulong)];
             Random rand = new Random();
             rand.NextBytes(nonce);
+            
+            uint timestamp = DateTime.UtcNow.ToTimestamp();
+
+            nonce[0] = (byte)(timestamp & 0xff);
+            nonce[1] = (byte)((timestamp >> 8) & 0xff);
+            nonce[2] = (byte)((timestamp >> 16) & 0xff);
+            nonce[3] = (byte)((timestamp >> 24) & 0xff);
+
             return nonce.ToUInt64(0);
         }
 
