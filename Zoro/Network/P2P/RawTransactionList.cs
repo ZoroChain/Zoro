@@ -14,7 +14,7 @@ namespace Zoro.Network.P2P
         private ZoroSystem system;
         private List<Transaction> rawtxnList = new List<Transaction>();
 
-        private static readonly TimeSpan TimerInterval = TimeSpan.FromMilliseconds(500);
+        private static readonly TimeSpan TimerInterval = TimeSpan.FromMilliseconds(100);
         private readonly ICancelable timer = Context.System.Scheduler.ScheduleTellRepeatedlyCancelable(TimerInterval, TimerInterval, Context.Self, new Timer(), ActorRefs.NoSender);
 
         public RawTransactionList(ZoroSystem system)
