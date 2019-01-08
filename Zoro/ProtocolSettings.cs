@@ -38,7 +38,7 @@ namespace Zoro
             this.MaxSecondsPerBlock = GetValueOrDefault(section.GetSection("MaxSecondsPerBlock"), 15u, p => uint.Parse(p));
             this.MaxTaskHashCount = GetValueOrDefault(section.GetSection("MaxTaskHashCount"), 0, p => int.Parse(p));
             this.MaxProtocolHashCount = GetValueOrDefault(section.GetSection("MaxProtocolHashCount"), 0, p => int.Parse(p));
-            this.MemPoolRelayCount = GetValueOrDefault(section.GetSection("MemPoolRelayCount"), 1000, p => int.Parse(p));
+            this.MemPoolRelayCount = GetValueOrDefault(section.GetSection("MemPoolRelayCount"), 0, p => int.Parse(p));
             this.NetworkType = GetValueOrDefault(section.GetSection("NetworkType"), "Unknown", p => p);
             this.ListenMessages = section.GetSection("ListenMessages").GetChildren().Select(p => p.Value).ToList();
         }
