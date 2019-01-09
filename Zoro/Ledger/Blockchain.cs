@@ -396,7 +396,7 @@ namespace Zoro.Ledger
             if (!transaction.Verify(currentSnapshot))
                 return RelayResultReason.Invalid;
             if (!PluginManager.Singleton.CheckPolicy(transaction))
-                return RelayResultReason.Unknown;
+                return RelayResultReason.PolicyFail;
             if (!mem_pool.TryAdd(transaction.Hash, transaction))
                 return RelayResultReason.OutOfMemory;
 
