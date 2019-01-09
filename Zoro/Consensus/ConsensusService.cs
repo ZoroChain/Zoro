@@ -369,8 +369,9 @@ namespace Zoro.Consensus
                 localNode.Tell(new LocalNode.SendDirectly { Inventory = context.MakePrepareRequest() });
                 if (context.TransactionHashes.Length > 1)
                 {
+                    string cmd = ProtocolSettings.Default.EnableRawTxnList ? "rawinv" : "inv";
                     foreach (InvPayload payload in InvPayload.CreateGroup(InventoryType.TX, context.TransactionHashes.Skip(1).ToArray()))
-                        localNode.Tell(Message.Create("rawinv", payload));
+                        localNode.Tell(Message.Create(cmd, payload));
                 }
                 SetNextTimer(timer.ViewNumber + 1);
             }

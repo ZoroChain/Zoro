@@ -401,7 +401,10 @@ namespace Zoro.Ledger
                 return RelayResultReason.OutOfMemory;
 
             //先把交易缓存在队列里，等待批量转发
-            system.RawTxnList.Tell(transaction);
+            if (ProtocolSettings.Default.EnableRawTxnList)
+                system.RawTxnList.Tell(transaction);
+            else
+                system.LocalNode.Tell(new LocalNode.RelayDirectly { Inventory = transaction });
             return RelayResultReason.Succeed;
         }
 
@@ -422,11 +425,13 @@ namespace Zoro.Ledger
         // 广播MemoryPool中还未上链的交易
         private void RelayMemoryPool()
         {
+            string cmd = ProtocolSettings.Default.EnableRawTxnList ? "rawinv" : "inv";
+
             // 按配置的最大数量，从交易池中取出未处理的交易
             Transaction[] trans = mem_pool.GetTransactions(MemPoolRelayCount);
             // 使用批量广播的方式来转发未处理的交易，这里先发送交易的清单数据
             foreach (InvPayload payload in InvPayload.CreateGroup(InventoryType.TX, trans.Select(p => p.Hash).ToArray()))
-                system.LocalNode.Tell(Message.Create("rawinv", payload));
+                system.LocalNode.Tell(Message.Create(cmd, payload));
         }
 
         protected override void OnReceive(object message)

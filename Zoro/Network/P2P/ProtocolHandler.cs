@@ -386,8 +386,9 @@ namespace Zoro.Network.P2P
 
         private void OnMemPoolMessageReceived()
         {
+            string cmd = ProtocolSettings.Default.EnableRawTxnList ? "rawinv" : "inv";
             foreach (InvPayload payload in InvPayload.CreateGroup(InventoryType.TX, blockchain.GetMemoryPool().Select(p => p.Hash).ToArray()))
-                Context.Parent.Tell(Message.Create("rawinv", payload));
+                Context.Parent.Tell(Message.Create(cmd, payload));
         }
 
         private void OnVerackMessageReceived()

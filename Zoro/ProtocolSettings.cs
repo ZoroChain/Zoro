@@ -19,6 +19,7 @@ namespace Zoro
         public int MemPoolRelayCount { get; }
         public string NetworkType { get; }
         public List<string> ListenMessages { get; }
+        public bool EnableRawTxnList { get; }
 
         public static ProtocolSettings Default { get; }
 
@@ -41,6 +42,7 @@ namespace Zoro
             this.MemPoolRelayCount = GetValueOrDefault(section.GetSection("MemPoolRelayCount"), 0, p => int.Parse(p));
             this.NetworkType = GetValueOrDefault(section.GetSection("NetworkType"), "Unknown", p => p);
             this.ListenMessages = section.GetSection("ListenMessages").GetChildren().Select(p => p.Value).ToList();
+            this.EnableRawTxnList = GetValueOrDefault(section.GetSection("EnableRawTxnList"), true, p => bool.Parse(p));
         }
 
         internal T GetValueOrDefault<T>(IConfigurationSection section, T defaultValue, Func<string, T> selector)
