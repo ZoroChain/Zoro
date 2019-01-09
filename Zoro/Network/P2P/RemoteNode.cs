@@ -300,6 +300,17 @@ namespace Zoro.Network.P2P
             msg_buffer = msg_buffer.Slice(length).Compact();
             return message;
         }
+
+        public void ClearRts()
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                Interlocked.Exchange(ref taskTimeoutStat[i], 0);
+                Interlocked.Exchange(ref taskCompletedStat[i], 0);
+                Interlocked.Exchange(ref dataRequestStat[i], 0);
+                Interlocked.Exchange(ref dataSendedStat[i], 0);
+            }
+        }
     }
 
     internal class RemoteNodeMailbox : PriorityMailbox
