@@ -10,7 +10,7 @@ namespace Zoro.Network.P2P.Payloads
     public class InvocationTransaction : Transaction
     {
         public byte[] Script;
-        public Fixed8 GasPrice = Fixed8.One;
+        public Fixed8 GasPrice = Fixed8.Satoshi;
         public Fixed8 GasLimit = Fixed8.Zero;
 
         public override int Size => base.Size + Script.GetVarSize() + GasPrice.Size + GasLimit.Size;

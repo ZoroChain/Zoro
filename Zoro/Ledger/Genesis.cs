@@ -71,7 +71,7 @@ namespace Zoro.Ledger
                 {
                     Nonce = 2083236893,
                     Script = sb.ToArray(),
-                    GasPrice = Fixed8.Zero,
+                    GasPrice = Fixed8.Satoshi,
                     GasLimit = Fixed8.Zero,
                     Attributes = new TransactionAttribute[0],
                     Witnesses = new Witness[0]
