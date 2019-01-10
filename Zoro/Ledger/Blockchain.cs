@@ -486,15 +486,7 @@ namespace Zoro.Ledger
                 snapshot.PersistingBlock = block;
                 foreach (Transaction tx in block.Transactions)
                 {
-                    // 先预扣手续费，如果余额不够，不执行交易
-                    if (PrepaySystemFee(snapshot, tx))
-                    {
-                        sysfeeAmount += PersistTransaction(block, snapshot, tx, all_application_executed);
-                    }
-                    else
-                    {
-                        Log($"Not enough money to pay transaction fee, block:{block.Index}, tx:{tx.Hash}, fee:{tx.SystemFee}", LogLevel.Warning);
-                    }
+                    sysfeeAmount += PersistTransaction(block, snapshot, tx, all_application_executed);
                 }
 
                 snapshot.Blocks.Add(block.Hash, new BlockState
@@ -533,61 +525,82 @@ namespace Zoro.Ledger
 
         private Fixed8 PersistTransaction(Block block, Snapshot snapshot, Transaction tx, List<ApplicationExecuted> all_application_executed)
         {
-            Fixed8 sysfee = tx.SystemFee;
+            Fixed8 sysfee = Fixed8.Zero;
+
+            // 先预扣手续费，如果余额不够，不执行交易
+            bool succeed = PrepaySystemFee(snapshot, tx);
+
+            TransactionState.ExecuteResult result = succeed ? TransactionState.ExecuteResult.Succeed : TransactionState.ExecuteResult.InsufficentFee;
+
+            if (succeed)
+            {
+                sysfee = tx.SystemFee;
+
+                List<ApplicationExecutionResult> execution_results = new List<ApplicationExecutionResult>();
+                switch (tx)
+                {
+                    case InvocationTransaction tx_invocation:
+                        using (ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, tx_invocation, snapshot.Clone(), tx_invocation.GasLimit, block.Index == 0))
+                        {
+                            engine.LoadScript(tx_invocation.Script);
+                            if (engine.Execute())
+                            {
+                                engine.Service.Commit();
+                            }
+                            else
+                            {
+                                result = TransactionState.ExecuteResult.Fault;
+                            }
+
+                            execution_results.Add(new ApplicationExecutionResult
+                            {
+                                Trigger = TriggerType.Application,
+                                ScriptHash = tx_invocation.Script.ToScriptHash(),
+                                VMState = engine.State,
+                                GasConsumed = engine.GasConsumed,
+                                Stack = engine.ResultStack.ToArray(),
+                                Notifications = engine.Service.Notifications.ToArray()
+                            });
+
+                            // 如果在GAS足够的情况下，脚本发生异常中断，需要退回手续费（这种情况脚本执行的结果不会存盘）
+                            if (engine.State.HasFlag(VMState.FAULT) && engine.GasConsumed <= tx_invocation.GasLimit)
+                            {
+                                sysfee = Fixed8.Zero;
+                            }
+                            else
+                            {
+                                //按实际消耗的GAS，计算需要的手续费
+                                sysfee = tx_invocation.GasPrice * engine.GasConsumed;
+                            }
+
+                            // 退回多扣的手续费
+                            BcpToken?.AddBalance(snapshot, tx.Account, tx.SystemFee - sysfee);
+                        }
+                        break;
+                }
+
+                if (execution_results.Count > 0)
+                {
+                    ApplicationExecuted application_executed = new ApplicationExecuted
+                    {
+                        Transaction = tx,
+                        ExecutionResults = execution_results.ToArray()
+                    };
+                    Distribute(application_executed);
+                    all_application_executed.Add(application_executed);
+                }                
+            }
+            else
+            {
+                Log($"Not enough money to pay transaction fee, block:{block.Index}, tx:{tx.Hash}, fee:{tx.SystemFee}", LogLevel.Warning);
+            }
 
             snapshot.Transactions.Add(tx.Hash, new TransactionState
             {
                 BlockIndex = block.Index,
-                Transaction = tx
+                Transaction = tx,
+                Result = result
             });
-            List<ApplicationExecutionResult> execution_results = new List<ApplicationExecutionResult>();
-            switch (tx)
-            {
-                case InvocationTransaction tx_invocation:
-                    using (ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, tx_invocation, snapshot.Clone(), tx_invocation.GasLimit, block.Index == 0))
-                    {
-                        engine.LoadScript(tx_invocation.Script);
-                        if (engine.Execute())
-                        {
-                            engine.Service.Commit();
-                        }
-                        execution_results.Add(new ApplicationExecutionResult
-                        {
-                            Trigger = TriggerType.Application,
-                            ScriptHash = tx_invocation.Script.ToScriptHash(),
-                            VMState = engine.State,
-                            GasConsumed = engine.GasConsumed,
-                            Stack = engine.ResultStack.ToArray(),
-                            Notifications = engine.Service.Notifications.ToArray()
-                        });
-
-                        // 如果在GAS足够的情况下，脚本发生异常中断，需要退回手续费
-                        if (engine.State.HasFlag(VMState.FAULT) && engine.GasConsumed <= tx_invocation.GasLimit)
-                        {
-                            sysfee = Fixed8.Zero;
-                        }
-                        else
-                        {
-                            //按实际消耗的GAS，计算需要的手续费
-                            sysfee = tx_invocation.GasPrice * engine.GasConsumed;
-                        }
-
-                        // 退回多扣的手续费
-                        BcpToken?.AddBalance(snapshot, tx.Account, tx.SystemFee - sysfee);
-                    }
-                    break;
-            }
-
-            if (execution_results.Count > 0)
-            {
-                ApplicationExecuted application_executed = new ApplicationExecuted
-                {
-                    Transaction = tx,
-                    ExecutionResults = execution_results.ToArray()
-                };
-                Distribute(application_executed);
-                all_application_executed.Add(application_executed);
-            }
 
             return sysfee;
         }
