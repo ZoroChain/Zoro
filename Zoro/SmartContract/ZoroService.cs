@@ -82,8 +82,8 @@ namespace Zoro.SmartContract
             #endregion
 
             Register("Zoro.AppChain.Create", appchainService.CreateAppChain, 5000 * 1000);
-            Register("Zoro.AppChain.ChangeSeedList", appchainService.ChangeValidators, 1000);
-            Register("Zoro.AppChain.ChangeValidators", appchainService.ChangeSeedList, 1000);
+            Register("Zoro.AppChain.ChangeSeedList", appchainService.ChangeSeedList, 1000);
+            Register("Zoro.AppChain.ChangeValidators", appchainService.ChangeValidators, 1000);
 
             Register("Zoro.NativeNEP5.Create", nativeNEP5Service.Create, 1000 * 1000);
             Register("Zoro.NativeNEP5.Call", nativeNEP5Service.Call);
