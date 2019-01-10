@@ -7,6 +7,7 @@ using Zoro.SmartContract.NativeNEP5;
 using System;
 using System.Linq;
 using System.Text;
+using System.Numerics;
 using Neo.VM;
 
 namespace Zoro.SmartContract.Services
@@ -40,12 +41,12 @@ namespace Zoro.SmartContract.Services
 
             // 货币总量
             Fixed8 amount = new Fixed8((long)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger());
-            if (amount == Fixed8.Zero || amount < -Fixed8.Satoshi) return false;
+            if (amount < Fixed8.Zero) return false;
 
             // 货币精度
             byte precision = (byte)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
             if (precision > 8) return false;
-            if (amount != -Fixed8.Satoshi && amount.GetData() % (long)Math.Pow(10, 8 - precision) != 0)
+            if (amount.GetData() % (long)Math.Pow(10, precision) != 0)
                 return false;
 
             // 发行人
@@ -120,6 +121,9 @@ namespace Zoro.SmartContract.Services
                 case "Decimals":
                     price = 1;
                     break;
+                case "MintToken":
+                    price = 1;
+                    break;
             }
 
             return price;
@@ -156,6 +160,8 @@ namespace Zoro.SmartContract.Services
                     return API_GetTransferLog(engine, state);
                 case "Deploy":
                     return API_Deploy(engine, state);
+                case "MintToken":
+                    return API_MintToken(engine, state);
             }
 
             return false;
@@ -265,8 +271,12 @@ namespace Zoro.SmartContract.Services
         private bool API_Deploy(ExecutionEngine engine, NativeNEP5State state)
         {
             // 创世块里的全局资产不做检查
-            if (Snapshot.PersistingBlock.Index != 0 && !Service.CheckWitness(engine, state.Admin))
-                return false;
+            if (Snapshot.PersistingBlock.Index != 0)
+            {
+                // 检查管理员的签名
+                if (state.Admin.Equals(UInt160.Zero) || !Service.CheckWitness(engine, state.Admin))
+                    return false;
+            }
 
             // 全局资产只在根链上做初始分配，暂时注释掉，等跨链兑换完成后再打开检查
             //if (Snapshot.PersistingBlock.Index == 0 && !Snapshot.Blockchain.ChainHash.Equals(UInt160.Zero))
@@ -283,7 +293,36 @@ namespace Zoro.SmartContract.Services
             NativeAPI.StoragePut(Snapshot, state.AssetId, keyAdmin.ToArray(), state.TotalSupply);
             NativeAPI.StoragePut(Snapshot, state.AssetId, Encoding.ASCII.GetBytes("totalSupply"), state.TotalSupply);
 
-            Service.AddTransferNotification(engine, state.AssetId, new UInt160(), state.Admin, state.TotalSupply);
+            Service.AddTransferNotification(engine, state.AssetId, UInt160.Zero, state.Admin, state.TotalSupply);
+            return true;
+        }
+
+        private bool API_MintToken(ExecutionEngine engine, NativeNEP5State state)
+        {
+            // 只有创建时总量设为0的货币才能调用发币接口
+            if (state.TotalSupply.GetData() != 0)
+                return false;
+
+            // 检查管理员的签名
+            if (state.Admin.Equals(UInt160.Zero) || !Service.CheckWitness(engine, state.Admin))
+                return false;
+
+            UInt160 address = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            Fixed8 amount = new Fixed8((long)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger());
+
+            // 变更货币总量
+            BigInteger totalSupply = NativeAPI.StorageGet(Snapshot, state.AssetId, Encoding.ASCII.GetBytes("totalSupply")).AsBigInteger();
+            NativeAPI.StoragePut(Snapshot, state.AssetId, Encoding.ASCII.GetBytes("totalSupply"), totalSupply + amount.GetData());
+
+            // 发放货币
+            NativeAPI.AddBalance(Snapshot, state.AssetId, address, amount);
+
+            if (engine.ScriptContainer is Transaction tx)
+            {
+                NativeAPI.SaveTransferLog(Snapshot, state.AssetId, tx.Hash, UInt160.Zero, address, amount);
+            }
+
+            Service.AddTransferNotification(engine, state.AssetId, UInt160.Zero, address, amount);
             return true;
         }
     }

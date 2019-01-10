@@ -14,10 +14,15 @@ namespace Zoro.Ledger
         public static Block BuildGenesisBlock(UInt160 ChainHash, ECPoint[] validators)
         {
             ECPoint owner = ECCurve.Secp256r1.Infinity;
-            UInt160 admin = (new[] { (byte)OpCode.PUSHF }).ToScriptHash();
+            UInt160 admin = UInt160.Zero;
+
+            if (ChainHash.Equals(UInt160.Zero))
+            {
+                admin = Contract.CreateMultiSigRedeemScript(validators.Length / 2 + 1, validators).ToScriptHash();
+            }
 
             InvocationTransaction CreateBCPTransaction = CreateNativeNEP5Transaction("BlaCat Point", "BCP", Fixed8.FromDecimal(2000000000), 8, owner, admin, BcpContractAddress);
-            InvocationTransaction CreateBCTTransaction = CreateNativeNEP5Transaction("BlaCat Token", "BCT", -Fixed8.Satoshi, 8, owner, admin, BctContractAddress);
+            InvocationTransaction CreateBCTTransaction = CreateNativeNEP5Transaction("BlaCat Token", "BCT", Fixed8.Zero, 8, owner, admin, BctContractAddress);
 
             Block genesisBlock = new Block
             {

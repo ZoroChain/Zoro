@@ -32,7 +32,7 @@ namespace Zoro.Network.P2P.Payloads
         public readonly TransactionType Type;
         public byte Version;
         public ulong Nonce;
-        public UInt160 Account = (new[] { (byte) OpCode.PUSHF }).ToScriptHash(); // 交易支出账户的ScriptHash
+        public UInt160 Account = UInt160.Zero; // 交易支出账户的ScriptHash
         public TransactionAttribute[] Attributes;
         public Witness[] Witnesses { get; set; }
 
