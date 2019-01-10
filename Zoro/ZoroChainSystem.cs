@@ -22,6 +22,7 @@ namespace Zoro
 {
     public class ZoroChainSystem : IDisposable
     {
+        private string relativePath;
         private RpcServer rpcserver;
         private PluginManager pluginmgr;
         private AppChainEventHandler eventHandler;
@@ -36,9 +37,11 @@ namespace Zoro
 
         public static ZoroChainSystem Singleton { get; private set; }
 
-        public ZoroChainSystem(Store store)
+        public ZoroChainSystem(Store store, string relativePath)
         {
             Singleton = this;
+
+            this.relativePath = relativePath;
 
             ActorSystem = ActorSystem.Create(nameof(ZoroChainSystem),
                 $"akka {{ log-dead-letters = off }}" +
@@ -188,7 +191,7 @@ namespace Zoro
             {
                 string path = string.Format("AppChain/{0}_{1}", Message.Magic.ToString("X8"), hashString);
 
-                string fullPath = Path.GetFullPath(path);
+                string fullPath = relativePath.Length > 0 ? relativePath + path : Path.GetFullPath(path);
 
                 Directory.CreateDirectory(fullPath);
 
