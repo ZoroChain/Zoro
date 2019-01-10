@@ -212,7 +212,7 @@ namespace Zoro.Consensus
             List<Transaction> transactions = mem_pool.ToList();
             while (true)
             {
-                ulong nonce = GetNonce();
+                ulong nonce = Transaction.GetNonce();
                 MinerTransaction tx = new MinerTransaction
                 {
                     ChainHash = blockchain.ChainHash,
@@ -232,14 +232,6 @@ namespace Zoro.Consensus
             Transactions = transactions.ToDictionary(p => p.Hash);
             NextConsensus = Blockchain.GetConsensusAddress(snapshot.GetValidators(transactions).ToArray());
             Timestamp = Math.Max(TimeProvider.Current.UtcNow.ToTimestamp(), PrevHeader.Timestamp + 1);
-        }
-
-        private static ulong GetNonce()
-        {
-            byte[] nonce = new byte[sizeof(ulong)];
-            Random rand = new Random();
-            rand.NextBytes(nonce);
-            return nonce.ToUInt64(0);
         }
 
         public bool VerifyRequest()
