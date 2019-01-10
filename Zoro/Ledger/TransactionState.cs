@@ -21,11 +21,6 @@ namespace Zoro.Ledger
 
         public override int Size => base.Size + sizeof(uint) + Transaction.Size + sizeof(byte);
 
-        public TransactionState()
-        {
-            StateVersion = 1;
-        }
-        
         TransactionState ICloneable<TransactionState>.Clone()
         {
             return new TransactionState
@@ -39,14 +34,10 @@ namespace Zoro.Ledger
 
         public override void Deserialize(BinaryReader reader)
         {
-            byte version = reader.ReadByte();
-            if (version > StateVersion)
-                throw new FormatException();
-
+            base.Deserialize(reader);
             BlockIndex = reader.ReadUInt32();
             Transaction = Transaction.DeserializeFrom(reader);
-            if (version >= 1)
-                Result = (ExecuteResult)reader.ReadByte();
+            Result = (ExecuteResult)reader.ReadByte();
         }
 
         void ICloneable<TransactionState>.FromReplica(TransactionState replica)
@@ -61,8 +52,7 @@ namespace Zoro.Ledger
             base.Serialize(writer);
             writer.Write(BlockIndex);
             writer.Write(Transaction);
-            if (StateVersion >= 1)
-                writer.Write((byte)Result);
+            writer.Write((byte)Result);
         }
 
         public override JObject ToJson()
