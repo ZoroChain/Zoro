@@ -497,10 +497,13 @@ namespace Zoro.Ledger
 
                 if (block.Index > 0 && sysfeeAmount > Fixed8.Zero)
                 {
-                    // 把手续费奖励给矿工
                     if (block.Transactions[0] is MinerTransaction minerTx)
                     {
+                        // 把手续费奖励给矿工
                         BcpToken.AddBalance(snapshot, minerTx.Account, sysfeeAmount);
+
+                        // 记录手续费转账日志
+                        NativeAPI.SaveTransferLog(snapshot, Genesis.BcpContractAddress, minerTx.Hash, UInt160.Zero, minerTx.Account, sysfeeAmount);
                     }
                 }
 
