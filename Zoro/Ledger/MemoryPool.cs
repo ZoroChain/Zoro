@@ -3,20 +3,32 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System;
 
 namespace Zoro.Ledger
 {
     internal class MemoryPool : IReadOnlyCollection<Transaction>
     {
-        internal class Index
+        internal class Index : IComparable<Index>
         {
             public UInt256 Hash;
             public Fixed8 FeeRatio;
             public Fixed8 Fee;
+
+            public int CompareTo(Index other)
+            {
+                int r = FeeRatio.CompareTo(other.FeeRatio); 
+                if (r != 0) return r;
+
+                r = Fee.CompareTo(other.Fee);
+                if (r != 0) return r;
+                
+                return Hash.CompareTo(other.Hash);
+            }
         };
 
         private readonly ConcurrentDictionary<UInt256, Transaction> _mem_pool = new ConcurrentDictionary<UInt256, Transaction>();
-        private readonly List<Index> _index_list = new List<Index>();
+        private readonly SortedDictionary<Index, UInt256> _index_dict = new SortedDictionary<Index, UInt256>();
 
         public int Capacity { get; }
         public int Count => _mem_pool.Count;
@@ -42,7 +54,7 @@ namespace Zoro.Ledger
 
         public bool TryAdd(UInt256 hash, Transaction tx)
         {
-            if (Count > Capacity)
+            if (Count >= Capacity)
             {
                 if (!RemoveLowestFee(tx))
                     return false;
@@ -59,7 +71,7 @@ namespace Zoro.Ledger
         {
             if (_mem_pool.TryRemove(hash, out tx))
             {
-                RemoveIndex(hash);
+                RemoveIndex(hash, tx);
                 return true;
             }
             else
@@ -94,38 +106,31 @@ namespace Zoro.Ledger
             }
         }
 
-        private void AddIndex(UInt256 hash, Transaction tx)
-        {
-            _index_list.Add(new Index { Hash = hash, Fee = tx.SystemFee, FeeRatio = GetFeeRatio(tx) });
-
-            _index_list.OrderBy(p => p.FeeRatio).ThenBy(p => p.Fee);
-        }
-
-        private void RemoveIndex(UInt256 hash)
-        {
-            foreach (var index in _index_list)
-            {
-                if (index.Hash.Equals(hash))
-                {
-                    _index_list.Remove(index);
-                    break;
-                }
-            }
-        }
-
         private Fixed8 GetFeeRatio(Transaction tx)
         {
             return tx.SystemFee / tx.Size;
         }
 
+        private void AddIndex(UInt256 hash, Transaction tx)
+        {
+            Index index = new Index { Hash = hash, Fee = tx.SystemFee, FeeRatio = GetFeeRatio(tx) };
+            _index_dict.Add(index, hash);
+        }
+
+        private void RemoveIndex(UInt256 hash, Transaction tx)
+        {
+            Index index = new Index { Hash = hash, Fee = tx.SystemFee, FeeRatio = GetFeeRatio(tx) };
+            _index_dict.Remove(index);
+        }
+
         private bool RemoveLowestFee(Transaction tx)
         {
-            Index index = _index_list.First();
+            Index index = _index_dict.Keys.First();
 
             if (index.FeeRatio < GetFeeRatio(tx))
             {
-                TryRemove(index.Hash, out Transaction _);
-                RemoveIndex(index.Hash);
+                _mem_pool.TryRemove(index.Hash, out Transaction _);
+                _index_dict.Remove(index);
                 return true;
             }
 
