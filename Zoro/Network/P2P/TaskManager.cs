@@ -265,7 +265,7 @@ namespace Zoro.Network.P2P
             {
                 session.Tasks[HeaderTaskHash] = new RequestTask { Type = InventoryType.Block, BeginTime = DateTime.UtcNow };
                 IncrementGlobalTask(HeaderTaskHash);
-                session.RemoteNode.Tell(Message.Create("getheaders", GetBlocksPayload.Create(blockchain.CurrentHeaderHash)));
+                session.RemoteNode.Tell(Message.Create(MessageType.GetHeaders, GetBlocksPayload.Create(blockchain.CurrentHeaderHash)));
             }
             else if (blockchain.Height < session.Version.StartHeight && blockchain.Height < blockchain.HeaderHeight)
             {
@@ -281,7 +281,7 @@ namespace Zoro.Network.P2P
                 }
                 if (hash != null)
                 {
-                    session.RemoteNode.Tell(Message.Create("getblocks", GetBlocksPayload.Create(hash)));
+                    session.RemoteNode.Tell(Message.Create(MessageType.GetBlocks, GetBlocksPayload.Create(hash)));
                 }
             }
         }
@@ -293,12 +293,12 @@ namespace Zoro.Network.P2P
 
             if (hashes.Length == 1)
             {
-                sender.Tell(Message.Create("getdata", InvPayload.Create(type, hashes[0])));
+                sender.Tell(Message.Create(MessageType.GetData, InvPayload.Create(type, hashes[0])));
             }
             else
             {
                 foreach (InvPayload group in InvPayload.CreateGroup(type, hashes))
-                    sender.Tell(Message.Create("getdatagroup", group));
+                    sender.Tell(Message.Create(MessageType.GetDataGroup, group));
             }
 
             Sender.Tell(new RemoteNode.RequestInventory { Type = type, Count = hashes.Length });
@@ -311,7 +311,7 @@ namespace Zoro.Network.P2P
                 return;
 
             foreach (InvPayload group in InvPayload.CreateGroup(InventoryType.TX, hashes))
-                sender.Tell(Message.Create("getrawtxn", group));
+                sender.Tell(Message.Create(MessageType.GetRawTxn, group));
 
             Sender.Tell(new RemoteNode.RequestInventory { Type = InventoryType.TX, Count = hashes.Length });
             blockchain.Log($"send getrawtxn, count:{hashes.Length}", Plugins.LogLevel.Debug);

@@ -37,12 +37,53 @@ namespace Zoro.Network.P2P
         private static readonly int MaxHashCount = ProtocolSettings.Default.MaxProtocolHashCount;
         private readonly ICancelable timer = Context.System.Scheduler.ScheduleTellRepeatedlyCancelable(TimerInterval, TimerInterval, Context.Self, new Timer(), ActorRefs.NoSender);
 
+        private readonly Dictionary<string, Action<Message>> msgHandlers = new Dictionary<string, Action<Message>>();
+        
         public ProtocolHandler(ZoroSystem system, LocalNode localNode, Blockchain blockchain, RemoteNode remoteNode)
         {
             this.system = system;
             this.localNode = localNode;
             this.blockchain = blockchain;
             this.remoteNode = remoteNode;
+
+            InitMessageHandlers();
+        }
+
+        private void InitMessageHandlers()
+        {
+            RegisterHandler(MessageType.GetAddr, OnGetAddrMessageReceived);
+            RegisterHandler(MessageType.Addr, OnAddrMessageReceived);
+            RegisterHandler(MessageType.GetHeaders, OnGetHeadersMessageReceived);
+            RegisterHandler(MessageType.Headers, OnHeadersMessageReceived);
+            RegisterHandler(MessageType.GetBlocks, OnGetBlocksMessageReceived);
+            RegisterHandler(MessageType.GetData, OnGetDataMessageReceived);
+            RegisterHandler(MessageType.GetDataGroup, OnGetDataGroupMessageReceived);
+            RegisterHandler(MessageType.Inv, OnInvMessageReceived);
+            RegisterHandler(MessageType.Tx, OnTxMessageReceived);
+            RegisterHandler(MessageType.Block, OnBlockMessageReceived);
+            RegisterHandler(MessageType.Consensus, OnConsensusMessageReceived);
+            RegisterHandler(MessageType.RawTxnInv, OnRawInvMessageReceived);
+            RegisterHandler(MessageType.GetRawTxn, OnGetRawTransactionMessageReceived);
+            RegisterHandler(MessageType.RawTxn, OnRawTransactionMessageReceived);
+            RegisterHandler(MessageType.MemPool, OnMemPoolMessageReceived);
+            RegisterHandler(MessageType.FilterAdd, OnFilterAddMessageReceived);
+            RegisterHandler(MessageType.FilterClear, OnFilterClearMessageReceived);
+            RegisterHandler(MessageType.FilterLoad, OnFilterLoadMessageReceived);
+            RegisterHandler(MessageType.VerAck, ThrowProtocolViolationException);
+            RegisterHandler(MessageType.Version, ThrowProtocolViolationException);
+        }
+
+        private void RegisterHandler(string command, Action<Message> handler)
+        {
+            msgHandlers.Add(command, handler);
+        }
+
+        private void HandleMessage(Message msg)
+        {
+            if (msgHandlers.TryGetValue(msg.Command, out Action<Message> handler))
+            {
+                handler(msg);
+            }
         }
 
         protected override void OnReceive(object message)
@@ -55,92 +96,31 @@ namespace Zoro.Network.P2P
             if (!(message is Message msg)) return;
             if (version == null)
             {
-                if (msg.Command != "version")
+                if (msg.Command != MessageType.Version)
                     throw new ProtocolViolationException();
                 OnVersionMessageReceived(msg.Payload.AsSerializable<VersionPayload>());
                 return;
             }
             if (!verack)
             {
-                if (msg.Command != "verack")
+                if (msg.Command != MessageType.VerAck)
                     throw new ProtocolViolationException();
                 OnVerackMessageReceived();
                 return;
             }
-            switch (msg.Command)
-            {
-                case "addr":
-                    OnAddrMessageReceived(msg.Payload.AsSerializable<AddrPayload>());
-                    break;
-                case "block":
-                    OnInventoryReceived(msg.Payload.AsSerializable<Block>());
-                    break;
-                case "consensus":
-                    OnInventoryReceived(msg.Payload.AsSerializable<ConsensusPayload>());
-                    break;
-                case "filteradd":
-                    OnFilterAddMessageReceived(msg.Payload.AsSerializable<FilterAddPayload>());
-                    break;
-                case "filterclear":
-                    OnFilterClearMessageReceived();
-                    break;
-                case "filterload":
-                    OnFilterLoadMessageReceived(msg.Payload.AsSerializable<FilterLoadPayload>());
-                    break;
-                case "getaddr":
-                    OnGetAddrMessageReceived();
-                    break;
-                case "getblocks":
-                    OnGetBlocksMessageReceived(msg.Payload.AsSerializable<GetBlocksPayload>());
-                    break;
-                case "getdata":
-                    OnGetDataMessageReceived(msg.Payload.AsSerializable<InvPayload>());
-                    break;
-                case "getdatagroup":
-                    OnGetDataGroupMessageReceived(msg.Payload.AsSerializable<InvPayload>());
-                    break;
-                case "getheaders":
-                    OnGetHeadersMessageReceived(msg.Payload.AsSerializable<GetBlocksPayload>());
-                    break;
-                case "headers":
-                    OnHeadersMessageReceived(msg.Payload.AsSerializable<HeadersPayload>());
-                    break;
-                case "inv":
-                    OnInvMessageReceived(msg.Payload.AsSerializable<InvPayload>());
-                    break;
-                case "mempool":
-                    OnMemPoolMessageReceived();
-                    break;
-                case "tx":
-                    if (msg.Payload.Length <= Transaction.MaxTransactionSize)
-                        OnInventoryReceived(Transaction.DeserializeFrom(msg.Payload));
-                    break;
-                case "rawinv":
-                    OnRawInvMessageReceived(msg.Payload.AsSerializable<InvPayload>());
-                    break;
-                case "getrawtxn":
-                    OnGetRawTransactionMessageReceived(msg.Payload.AsSerializable<InvPayload>());
-                    break;
-                case "rawtxn":
-                    OnRawTransactionMessageReceived(msg.Payload.AsSerializable<RawTransactionPayload>());
-                    break;
-                case "verack":
-                case "version":
-                    throw new ProtocolViolationException();
-                case "alert":
-                case "merkleblock":
-                case "notfound":
-                case "ping":
-                case "pong":
-                case "reject":
-                default:
-                    //暂时忽略
-                    break;
-            }
+
+            HandleMessage(msg);
         }
 
-        private void OnAddrMessageReceived(AddrPayload payload)
+        private void ThrowProtocolViolationException(Message msg)
         {
+            throw new ProtocolViolationException();
+        }
+
+        private void OnAddrMessageReceived(Message msg)
+        {
+            AddrPayload payload = msg.Payload.AsSerializable<AddrPayload>();
+
             // 过滤掉已经建立了连接的地址
             IEnumerable<IPEndPoint> Listeners = localNode.RemoteNodes.Values.Select(p => p.Listener);
             IEnumerable<IPEndPoint> AddressList = payload.AddressList.Select(p => p.EndPoint).Where(p => !Listeners.Contains(p));
@@ -154,25 +134,29 @@ namespace Zoro.Network.P2P
             });
         }
 
-        private void OnFilterAddMessageReceived(FilterAddPayload payload)
+        private void OnFilterAddMessageReceived(Message msg)
         {
+            FilterAddPayload payload = msg.Payload.AsSerializable<FilterAddPayload>();
+
             if (bloom_filter != null)
                 bloom_filter.Add(payload.Data);
         }
 
-        private void OnFilterClearMessageReceived()
+        private void OnFilterClearMessageReceived(Message msg)
         {
             bloom_filter = null;
             Context.Parent.Tell(new SetFilter { Filter = null });
         }
 
-        private void OnFilterLoadMessageReceived(FilterLoadPayload payload)
+        private void OnFilterLoadMessageReceived(Message msg)
         {
+            FilterLoadPayload payload = msg.Payload.AsSerializable<FilterLoadPayload>();
+
             bloom_filter = new BloomFilter(payload.Filter.Length * 8, payload.K, payload.Tweak, payload.Filter);
             Context.Parent.Tell(new SetFilter { Filter = bloom_filter });
         }
 
-        private void OnGetAddrMessageReceived()
+        private void OnGetAddrMessageReceived(Message msg)
         {
             Random rand = new Random();
             IEnumerable<RemoteNode> peers = localNode.RemoteNodes.Values
@@ -182,11 +166,13 @@ namespace Zoro.Network.P2P
                 .Take(AddrPayload.MaxCountToSend);
             NetworkAddressWithTime[] networkAddresses = peers.Select(p => NetworkAddressWithTime.Create(p.Listener, p.Version.Services, p.Version.Timestamp)).ToArray();
             if (networkAddresses.Length == 0) return;
-            Context.Parent.Tell(Message.Create("addr", AddrPayload.Create(networkAddresses)));
+            Context.Parent.Tell(Message.Create(MessageType.Addr, AddrPayload.Create(networkAddresses)));
         }
 
-        private void OnGetBlocksMessageReceived(GetBlocksPayload payload)
+        private void OnGetBlocksMessageReceived(Message msg)
         {
+            GetBlocksPayload payload = msg.Payload.AsSerializable<GetBlocksPayload>();
+
             UInt256 hash = payload.HashStart[0];
             if (hash == payload.HashStop) return;
             BlockState state = blockchain.Store.GetBlocks().TryGet(hash);
@@ -203,7 +189,7 @@ namespace Zoro.Network.P2P
                 hashes.Add(hash);
             }            
             if (hashes.Count == 0) return;
-            Context.Parent.Tell(Message.Create("inv", InvPayload.Create(InventoryType.Block, hashes.ToArray())));
+            Context.Parent.Tell(Message.Create(MessageType.Inv, InvPayload.Create(InventoryType.Block, hashes.ToArray())));
             blockchain.Log($"OnGetBlocks, blockIndex:{state.TrimmedBlock.Index}, count:{hashes.Count}, [{remoteNode.Remote.Address}]");
         }
 
@@ -217,7 +203,7 @@ namespace Zoro.Network.P2P
                         inventory = blockchain.GetTransaction(hash);
                     if (inventory is Transaction)
                     {
-                        Context.Parent.Tell(Message.Create("tx", inventory));
+                        Context.Parent.Tell(Message.Create(MessageType.Tx, inventory));
                         return true;
                     }
                     break;
@@ -228,12 +214,12 @@ namespace Zoro.Network.P2P
                     {
                         if (bloom_filter == null)
                         {
-                            Context.Parent.Tell(Message.Create("block", inventory));
+                            Context.Parent.Tell(Message.Create(MessageType.Block, inventory));
                         }
                         else
                         {
                             BitArray flags = new BitArray(block.Transactions.Select(p => bloom_filter.Test(p)).ToArray());
-                            Context.Parent.Tell(Message.Create("merkleblock", MerkleBlockPayload.Create(block, flags)));
+                            Context.Parent.Tell(Message.Create(MessageType.MerkleBlock, MerkleBlockPayload.Create(block, flags)));
                         }
                         return true;
                     }
@@ -241,7 +227,7 @@ namespace Zoro.Network.P2P
                 case InventoryType.Consensus:
                     if (inventory != null)
                     {
-                        Context.Parent.Tell(Message.Create("consensus", inventory));
+                        Context.Parent.Tell(Message.Create(MessageType.Consensus, inventory));
                         return true;
                     }
                     break;
@@ -249,8 +235,9 @@ namespace Zoro.Network.P2P
             return false;
         }
 
-        private void OnGetDataMessageReceived(InvPayload payload)
+        private void OnGetDataMessageReceived(Message msg)
         {
+            InvPayload payload = msg.Payload.AsSerializable<InvPayload>();
             if (sentHashes.Add(payload.Hashes[0]))
             {
                 if (OnGetInventoryData(payload.Hashes[0], payload.Type))
@@ -260,8 +247,9 @@ namespace Zoro.Network.P2P
             }
         }
 
-        private void OnGetDataGroupMessageReceived(InvPayload payload)
+        private void OnGetDataGroupMessageReceived(Message msg)
         {
+            InvPayload payload = msg.Payload.AsSerializable<InvPayload>();
             blockchain.Log($"OnGetDataGroup begin, type:{payload.Type}, count:{payload.Hashes.Length}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
             int count = 0;
             UInt256[] hashes = payload.Hashes.Where(p => sentHashes.Add(p)).ToArray();
@@ -274,8 +262,9 @@ namespace Zoro.Network.P2P
             blockchain.Log($"OnGetDataGroup end, type:{payload.Type}, count:{hashes.Length}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
         }
 
-        private void OnGetRawTransactionMessageReceived(InvPayload payload)
+        private void OnGetRawTransactionMessageReceived(Message msg)
         {
+            InvPayload payload = msg.Payload.AsSerializable<InvPayload>();
             if (payload.Type != InventoryType.TX)
                 throw new ArgumentException();
 
@@ -294,14 +283,15 @@ namespace Zoro.Network.P2P
             if (count > 0)
             {
                 foreach (RawTransactionPayload rtx_payload in RawTransactionPayload.CreateGroup(transactions.ToArray()))
-                    Context.Parent.Tell(Message.Create("rawtxn", rtx_payload));
+                    Context.Parent.Tell(Message.Create(MessageType.RawTxn, rtx_payload));
                 Context.Parent.Tell(new RemoteNode.InventorySended { Type = payload.Type, Count = count });
                 blockchain.Log($"send rawtxn, count:{payload.Hashes.Length}=>{hashes.Length}=>{count}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
             }            
         }
 
-        private void OnRawTransactionMessageReceived(RawTransactionPayload payload)
+        private void OnRawTransactionMessageReceived(Message msg)
         {
+            RawTransactionPayload payload = msg.Payload.AsSerializable<RawTransactionPayload>();
             blockchain.Log($"recv rawtxn, count:{payload.Array.Length}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
             foreach (var tx in payload.Array)
             {
@@ -311,8 +301,10 @@ namespace Zoro.Network.P2P
             }
         }
 
-        private void OnGetHeadersMessageReceived(GetBlocksPayload payload)
+        private void OnGetHeadersMessageReceived(Message msg)
         {
+            GetBlocksPayload payload = msg.Payload.AsSerializable<GetBlocksPayload>();
+
             UInt256 hash = payload.HashStart[0];
             if (hash == payload.HashStop) return;
             DataCache<UInt256, BlockState> cache = blockchain.Store.GetBlocks();
@@ -331,13 +323,31 @@ namespace Zoro.Network.P2P
             }
             blockchain.Log($"OnGetHeaders, blockIndex:{state.TrimmedBlock.Index}, count:{headers.Count}, [{remoteNode.Remote.Address}]");
             if (headers.Count == 0) return;
-            Context.Parent.Tell(Message.Create("headers", HeadersPayload.Create(headers)));
+            Context.Parent.Tell(Message.Create(MessageType.Headers, HeadersPayload.Create(headers)));
         }
 
-        private void OnHeadersMessageReceived(HeadersPayload payload)
+        private void OnHeadersMessageReceived(Message msg)
         {
+            HeadersPayload payload = msg.Payload.AsSerializable<HeadersPayload>();
+
             if (payload.Headers.Length == 0) return;
             system.Blockchain.Tell(payload.Headers, Context.Parent);
+        }
+
+        private void OnTxMessageReceived(Message msg)
+        {
+            if (msg.Payload.Length <= Transaction.MaxTransactionSize)
+                OnInventoryReceived(Transaction.DeserializeFrom(msg.Payload));           
+        }
+
+        private void OnBlockMessageReceived(Message msg)
+        {
+            OnInventoryReceived(msg.Payload.AsSerializable<Block>());
+        }
+
+        private void OnConsensusMessageReceived(Message msg)
+        {
+            OnInventoryReceived(msg.Payload.AsSerializable<ConsensusPayload>());
         }
 
         private void OnInventoryReceived(IInventory inventory)
@@ -347,8 +357,10 @@ namespace Zoro.Network.P2P
             system.LocalNode.Tell(new LocalNode.Relay { Inventory = inventory });
         }
 
-        private void OnInvMessageReceived(InvPayload payload)
+        private void OnInvMessageReceived(Message msg)
         {
+            InvPayload payload = msg.Payload.AsSerializable<InvPayload>();
+
             UInt256[] hashes = payload.Hashes.Where(p => knownHashes.Add(p)).ToArray();
             if (hashes.Length == 0) return;
             switch (payload.Type)
@@ -366,8 +378,10 @@ namespace Zoro.Network.P2P
             system.TaskManager.Tell(new TaskManager.NewTasks { Payload = InvPayload.Create(payload.Type, hashes) }, Context.Parent);
         }
 
-        private void OnRawInvMessageReceived(InvPayload payload)
+        private void OnRawInvMessageReceived(Message msg)
         {
+            InvPayload payload = msg.Payload.AsSerializable<InvPayload>();
+
             if (payload.Type != InventoryType.TX)
                 throw new ArgumentException();
 
@@ -384,11 +398,10 @@ namespace Zoro.Network.P2P
             system.TaskManager.Tell(new TaskManager.RawTransactionTask { Payload = InvPayload.Create(payload.Type, hashes) }, Context.Parent);
         }
 
-        private void OnMemPoolMessageReceived()
+        private void OnMemPoolMessageReceived(Message msg)
         {
-            string cmd = ProtocolSettings.Default.EnableRawTxnList ? "rawinv" : "inv";
             foreach (InvPayload payload in InvPayload.CreateGroup(InventoryType.TX, blockchain.GetMemoryPool().Select(p => p.Hash).ToArray()))
-                Context.Parent.Tell(Message.Create(cmd, payload));
+                Context.Parent.Tell(Message.Create(MessageType.TxnInv, payload));
         }
 
         private void OnVerackMessageReceived()
@@ -429,43 +442,48 @@ namespace Zoro.Network.P2P
 
     internal class ProtocolHandlerMailbox : PriorityMailbox
     {
+        private MessageFlagContainer container = new MessageFlagContainer();
+
         public ProtocolHandlerMailbox(Akka.Actor.Settings settings, Config config)
             : base(settings, config)
         {
+            InitMessageFlags();
+        }
+
+        private void SetMsgFlag(string command, MessageFlag flag)
+        {
+            container.SetFlag(command, flag);
+        }
+
+        private void InitMessageFlags()
+        {
+            SetMsgFlag(MessageType.Consensus, MessageFlag.HighPriority);
+            SetMsgFlag(MessageType.FilterAdd, MessageFlag.HighPriority);
+            SetMsgFlag(MessageType.FilterClear, MessageFlag.HighPriority);
+            SetMsgFlag(MessageType.FilterLoad, MessageFlag.HighPriority);
+            SetMsgFlag(MessageType.Version, MessageFlag.HighPriority);
+            SetMsgFlag(MessageType.VerAck, MessageFlag.HighPriority);
+            SetMsgFlag(MessageType.Alert, MessageFlag.HighPriority);
+
+            SetMsgFlag(MessageType.GetAddr, MessageFlag.ShallDrop);
+            SetMsgFlag(MessageType.GetBlocks, MessageFlag.ShallDrop);
+            SetMsgFlag(MessageType.GetDataGroup, MessageFlag.ShallDrop);
+            SetMsgFlag(MessageType.GetHeaders, MessageFlag.ShallDrop);
+            SetMsgFlag(MessageType.MemPool, MessageFlag.ShallDrop);
         }
 
         protected override bool IsHighPriority(object message)
         {
             if (!(message is Message msg)) return true;
-            switch (msg.Command)
-            {
-                case "consensus":
-                case "filteradd":
-                case "filterclear":
-                case "filterload":
-                case "verack":
-                case "version":
-                case "alert":
-                    return true;
-                default:
-                    return false;
-            }
+            return container.HasFlag(msg.Command, MessageFlag.HighPriority);
         }
 
         protected override bool ShallDrop(object message, IEnumerable queue)
         {
             if (!(message is Message msg)) return false;
-            switch (msg.Command)
-            {
-                case "getaddr":
-                case "getblocks":
-                case "getdatagroup":
-                case "getheaders":
-                case "mempool":
-                    return queue.OfType<Message>().Any(p => p.Command == msg.Command);
-                default:
-                    return false;
-            }
+            if (container.HasFlag(msg.Command, MessageFlag.ShallDrop))
+                return queue.OfType<Message>().Any(p => p.Command == msg.Command);
+            return false;
         }
     }
 }

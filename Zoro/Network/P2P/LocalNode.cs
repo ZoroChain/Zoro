@@ -128,7 +128,7 @@ namespace Zoro.Network.P2P
             count = Math.Max(count, 5);
             if (ConnectedPeers.Count > 0)
             {
-                BroadcastMessage("getaddr");
+                BroadcastMessage(MessageType.GetAddr);
             }
             else
             {

@@ -36,6 +36,8 @@ namespace Zoro.Network.P2P
         public VersionPayload Version { get; private set; }
 
         private readonly LocalNode localNode;
+        private static readonly MessageFlagContainer msgFlagContainer = new MessageFlagContainer();
+
         private int[] taskTimeoutStat = new int[3];
         private int[] taskCompletedStat = new int[3];
         private int[] dataRequestStat = new int[3];
@@ -46,6 +48,11 @@ namespace Zoro.Network.P2P
         public int DataRequestStat(int idx) => dataRequestStat[idx];
         public int DataSendedStat(int idx) => dataSendedStat[idx];
 
+        static RemoteNode()
+        {
+            InitMessageFlags();
+        }
+
         public RemoteNode(ZoroSystem system, object connection, IPEndPoint remote, IPEndPoint local, LocalNode localNode)
             : base(connection, remote, local)
         {
@@ -53,9 +60,37 @@ namespace Zoro.Network.P2P
             this.localNode = localNode;
             this.protocol = Context.ActorOf(ProtocolHandler.Props(system, localNode, localNode.Blockchain, this), "RemoteNode");
             localNode.RemoteNodes.TryAdd(Self, this);
-            SendMessage(Message.Create("version", VersionPayload.Create(localNode.ChainHash, localNode.ListenerPort, LocalNode.Nonce, LocalNode.UserAgent, localNode.Blockchain.Height)));
+            
+            SendMessage(Message.Create(MessageType.Version, VersionPayload.Create(localNode.ChainHash, localNode.ListenerPort, LocalNode.Nonce, LocalNode.UserAgent, localNode.Blockchain.Height)));
 
             Log($"Connected to RemoteNode {localNode.Blockchain.Name} {remote}");
+        }
+
+        private static void SetMsgFlag(string command, MessageFlag flag)
+        {
+            msgFlagContainer.SetFlag(command, flag);
+        }
+
+        private static bool HasMsgFlag(string command, MessageFlag flag)
+        {
+            return msgFlagContainer.HasFlag(command, flag);
+        }
+
+        private static void InitMessageFlags()
+        {
+            SetMsgFlag(MessageType.Addr, MessageFlag.IsSingle);
+            SetMsgFlag(MessageType.GetAddr, MessageFlag.IsSingle);
+            SetMsgFlag(MessageType.GetBlocks, MessageFlag.IsSingle);
+            SetMsgFlag(MessageType.GetHeaders, MessageFlag.IsSingle);
+            SetMsgFlag(MessageType.MemPool, MessageFlag.IsSingle);
+
+            SetMsgFlag(MessageType.Alert, MessageFlag.HighPriority);
+            SetMsgFlag(MessageType.Consensus, MessageFlag.HighPriority);
+            SetMsgFlag(MessageType.FilterAdd, MessageFlag.HighPriority);
+            SetMsgFlag(MessageType.FilterClear, MessageFlag.HighPriority);
+            SetMsgFlag(MessageType.FilterLoad, MessageFlag.HighPriority);
+            SetMsgFlag(MessageType.GetAddr, MessageFlag.HighPriority);
+            SetMsgFlag(MessageType.MemPool, MessageFlag.HighPriority);
         }
 
         private void CheckMessageQueue()
@@ -74,35 +109,13 @@ namespace Zoro.Network.P2P
 
         private void EnqueueMessage(Message message)
         {
-            bool is_single = false;
-            switch (message.Command)
-            {
-                case "addr":
-                case "getaddr":
-                case "getblocks":
-                case "getheaders":
-                case "mempool":
-                    is_single = true;
-                    break;
-            }
-            Queue<Message> message_queue;
-            switch (message.Command)
-            {
-                case "alert":
-                case "consensus":
-                case "filteradd":
-                case "filterclear":
-                case "filterload":
-                case "getaddr":
-                case "mempool":
-                    message_queue = message_queue_high;
-                    break;
-                default:
-                    message_queue = message_queue_low;
-                    break;
-            }
+            bool is_single = HasMsgFlag(message.Command, MessageFlag.IsSingle);
+
+            Queue<Message> message_queue = HasMsgFlag(message.Command, MessageFlag.HighPriority) ? message_queue_high : message_queue_low;
+
             if (!is_single || message_queue.All(p => p.Command != message.Command))
                 message_queue.Enqueue(message);
+
             CheckMessageQueue();
         }
 
@@ -177,7 +190,7 @@ namespace Zoro.Network.P2P
                 if (bloom_filter != null && !bloom_filter.Test((Transaction)inventory))
                     return;
             }
-            EnqueueMessage("inv", InvPayload.Create(inventory.InventoryType, inventory.Hash));
+            EnqueueMessage(MessageType.Inv, InvPayload.Create(inventory.InventoryType, inventory.Hash));
         }
 
         private void OnSend(IInventory inventory)
@@ -201,7 +214,7 @@ namespace Zoro.Network.P2P
             verack = true;
             system.TaskManager.Tell(new TaskManager.Register { Version = Version });
             CheckMessageQueue();
-            SendMessage(Message.Create("mempool"));
+            SendMessage(Message.Create(MessageType.MemPool));
         }
 
         private void OnSetVersion(VersionPayload version)
@@ -237,7 +250,7 @@ namespace Zoro.Network.P2P
                 Disconnect(true);
                 return;
             }
-            SendMessage(Message.Create("verack"));
+            SendMessage(Message.Create(MessageType.VerAck));
         }
 
         protected override void PostStop()

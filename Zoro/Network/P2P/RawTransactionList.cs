@@ -79,7 +79,7 @@ namespace Zoro.Network.P2P
 
             // 控制每组消息里的交易数量，向远程节点发送交易的清单
             foreach (InvPayload payload in InvPayload.CreateGroup(InventoryType.TX, rawtxnList.Select(p => p.Hash).ToArray()))
-                system.LocalNode.Tell(Message.Create("rawinv", payload));
+                system.LocalNode.Tell(Message.Create(MessageType.RawTxnInv, payload));
 
             // 清空队列
             rawtxnList.Clear();
