@@ -26,7 +26,7 @@ namespace Zoro.Network.P2P
         {
             this.Remote = remote;
             this.Local = local;
-            this.timer = Context.System.Scheduler.ScheduleTellOnceCancelable(TimeSpan.FromSeconds(45), Self, Timer.Instance, ActorRefs.NoSender);
+            this.timer = Context.System.Scheduler.ScheduleTellOnceCancelable(TimeSpan.FromSeconds(15), Self, Timer.Instance, ActorRefs.NoSender);
             switch (connection)
             {
                 case IActorRef tcp:
