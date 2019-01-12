@@ -18,6 +18,7 @@ namespace Zoro.Network.P2P
         public class TaskCompleted { public UInt256 Hash; }
         public class HeaderTaskCompleted { }
         public class RestartTasks { public InvPayload Payload; }
+        public class UpdateSession { public uint Height; public uint Latency; }
         private class Timer { }
 
         private static readonly TimeSpan TimerInterval = TimeSpan.FromSeconds(30);
@@ -136,6 +137,9 @@ namespace Zoro.Network.P2P
                 case RawTransactionTask task:
                     OnRawTransactionTask(task.Payload);
                     break;
+                case UpdateSession msg:
+                    OnUpdateSession(msg);
+                    break;
             }
         }
 
@@ -170,6 +174,15 @@ namespace Zoro.Network.P2P
                     Sender.Tell(new RemoteNode.TaskCompleted { Type = task.Type });
                 session.Tasks.Remove(hash);
                 RequestTasks(session);
+            }
+        }
+
+        private void OnUpdateSession(UpdateSession msg)
+        {
+            if (sessions.TryGetValue(Sender, out TaskSession session))
+            {
+                session.Height = msg.Height;
+                session.Latency = msg.Latency;
             }
         }
 

@@ -38,6 +38,15 @@ namespace Zoro.Network.P2P
         private readonly LocalNode localNode;
         private static readonly MessageFlagContainer msgFlagContainer = new MessageFlagContainer();
 
+        private static readonly TimeSpan TimerInterval = TimeSpan.FromSeconds(5);
+        private readonly ICancelable timer = Context.System.Scheduler.ScheduleTellRepeatedlyCancelable(TimerInterval, TimerInterval, Context.Self, new Timer(), ActorRefs.NoSender);
+
+        private int height = 0;
+        private uint[] latencyTime = new uint[6] { 0, 0, 0, 0, 0, 0 };
+
+        public int Height => height;
+        public uint Latency { get; private set; }
+
         private int[] taskTimeoutStat = new int[3];
         private int[] taskCompletedStat = new int[3];
         private int[] dataRequestStat = new int[3];
@@ -137,6 +146,11 @@ namespace Zoro.Network.P2P
 
         protected override void OnReceive(object message)
         {
+            if (message is Timer _)
+            {
+                OnTimer();
+                return;
+            }
             base.OnReceive(message);
             switch (message)
             {
@@ -157,6 +171,12 @@ namespace Zoro.Network.P2P
                     break;
                 case ProtocolHandler.SetFilter setFilter:
                     OnSetFilter(setFilter.Filter);
+                    break;
+                case ProtocolHandler.Ping ping:
+                    OnPing(ping.Payload);
+                    break;
+                case ProtocolHandler.Pong pong:
+                    OnPong(pong.Payload);
                     break;
                 case TaskTimeout msg:
                     Interlocked.Increment(ref taskTimeoutStat[GetStatIndex(msg.Type)]);
@@ -253,10 +273,39 @@ namespace Zoro.Network.P2P
             SendMessage(Message.Create(MessageType.VerAck));
         }
 
+        private void OnPing(PingPayload payload)
+        {
+            SendMessage(Message.Create(MessageType.Pong, PongPayload.Create(localNode.Blockchain.Height, payload.Timestamp)));
+        }
+
+        private void OnPong(PongPayload payload)
+        {
+            Latency = GetAverageLatency(payload.Timestamp);
+
+            Interlocked.Exchange(ref height, (int)payload.Height);
+
+            system.TaskManager.Tell(new TaskManager.UpdateSession { Height = payload.Height, Latency = Latency });
+        }
+
+        private uint GetAverageLatency(uint timestamp)
+        {
+            int last = latencyTime.Length - 1;
+            Array.Copy(latencyTime, 1, latencyTime, 0, last);
+            latencyTime[last] = DateTime.UtcNow.ToTimestamp() - timestamp;
+
+            return (uint)latencyTime.Average(p => p);
+        }
+
+        private void OnTimer()
+        {
+            SendMessage(Message.Create(MessageType.Ping, PingPayload.Create()));
+        }
+
         protected override void PostStop()
         {
             Log($"OnStop RemoteNode {localNode.Blockchain.Name} {Remote}");
             localNode.RemoteNodes.TryRemove(Self, out _);
+            timer.CancelIfNotNull();
             base.PostStop();
         }
 

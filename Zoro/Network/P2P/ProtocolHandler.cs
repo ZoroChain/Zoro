@@ -20,6 +20,8 @@ namespace Zoro.Network.P2P
         public class SetVersion { public VersionPayload Version; }
         public class SetVerack { }
         public class SetFilter { public BloomFilter Filter; }
+        public class Ping { public PingPayload Payload; }
+        public class Pong { public PongPayload Payload; }
         private class Timer { }
 
         private readonly ZoroSystem system;
@@ -69,6 +71,8 @@ namespace Zoro.Network.P2P
             RegisterHandler(MessageType.FilterAdd, OnFilterAddMessageReceived);
             RegisterHandler(MessageType.FilterClear, OnFilterClearMessageReceived);
             RegisterHandler(MessageType.FilterLoad, OnFilterLoadMessageReceived);
+            RegisterHandler(MessageType.Ping, OnPingMessageReceived);
+            RegisterHandler(MessageType.Pong, OnPongMessageReceived);
             RegisterHandler(MessageType.VerAck, ThrowProtocolViolationException);
             RegisterHandler(MessageType.Version, ThrowProtocolViolationException);
         }
@@ -414,6 +418,18 @@ namespace Zoro.Network.P2P
         {
             version = payload;
             Context.Parent.Tell(new SetVersion { Version = payload });
+        }
+
+        private void OnPingMessageReceived(Message msg)
+        {
+            PingPayload payload = msg.Payload.AsSerializable<PingPayload>();
+            Context.Parent.Tell(new Ping { Payload = payload });
+        }
+
+        private void OnPongMessageReceived(Message msg)
+        {
+            PongPayload payload = msg.Payload.AsSerializable<PongPayload>();
+            Context.Parent.Tell(new Pong { Payload = payload });
         }
 
         protected override void PostStop()
