@@ -16,7 +16,8 @@ namespace Zoro.Network.P2P.Payloads
         public override int Size => base.Size + Script.GetVarSize() + GasPrice.Size + GasLimit.Size;
         public override Fixed8 SystemFee => GasPrice * GasLimit;
 
-        private static Fixed8 GasPriceThreshold = ProtocolSettings.Default.GasPriceThreshold;
+        private static Fixed8 GasPriceLowestThreshold = ProtocolSettings.Default.GasPriceLowestThreshold;
+        private static Fixed8 GasPriceHighestThreshold = ProtocolSettings.Default.GasPriceHighestThreshold;
 
         public InvocationTransaction()
             : base(TransactionType.InvocationTransaction)
@@ -67,7 +68,8 @@ namespace Zoro.Network.P2P.Payloads
         {
             if (Account.Equals(UInt160.Zero)) return false;
             if (GasLimit.GetData() % 100000000 != 0) return false;
-            if (GasPrice < GasPriceThreshold) return false;
+            if (GasPrice < GasPriceLowestThreshold) return false;
+            if (GasPrice > GasPriceHighestThreshold) return false;
             try
             {
                 if (SystemFee <= Fixed8.Zero) return false;
