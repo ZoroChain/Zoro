@@ -8,7 +8,6 @@ namespace Zoro.Network.P2P.Payloads
     public class RawTransactionPayload : ISerializable
     {
         public const int MaxCount = 500;
-        public const int MaxPayloadSize = 128 * 1024;
 
         public Transaction[] Array;
 
@@ -24,30 +23,13 @@ namespace Zoro.Network.P2P.Payloads
 
         public static IEnumerable<RawTransactionPayload> CreateGroup(Transaction[] transactions)
         {
-            int skip = 0;
-            int size = 0;
-            int count = 0;
-            
-            for (int i = 0; i < transactions.Length; i ++, count ++)
+            for (int i = 0; i < transactions.Length; i += MaxCount)
             {
-                size += transactions[i].Size;
-                if (size >= MaxPayloadSize || count >= MaxCount)
+                yield return new RawTransactionPayload
                 {
-                    yield return new RawTransactionPayload
-                    {
-                        Array = transactions.Skip(skip).Take(count).ToArray()
-                    };
-
-                    skip = i;
-                    size = 0;
-                    count = 0;
-                }
+                    Array = transactions.Skip(i).Take(MaxCount).ToArray()
+                };
             }
-
-            yield return new RawTransactionPayload
-            {
-                Array = transactions.Skip(skip).Take(count).ToArray()
-            };
         }
 
         void ISerializable.Deserialize(BinaryReader reader)

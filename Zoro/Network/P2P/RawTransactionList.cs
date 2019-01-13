@@ -17,6 +17,8 @@ namespace Zoro.Network.P2P
         private static readonly TimeSpan TimerInterval = TimeSpan.FromMilliseconds(100);
         private readonly ICancelable timer = Context.System.Scheduler.ScheduleTellRepeatedlyCancelable(TimerInterval, TimerInterval, Context.Self, new Timer(), ActorRefs.NoSender);
 
+        public const int MaxPayloadSize = 128 * 1024;
+
         public RawTransactionList(ZoroSystem system)
         {
             this.system = system;
@@ -64,7 +66,7 @@ namespace Zoro.Network.P2P
                 size += tx.Size;
 
                 // 大小超过上限
-                if (size >= RawTransactionPayload.MaxPayloadSize)
+                if (size >= MaxPayloadSize)
                     return true;
             }
 
