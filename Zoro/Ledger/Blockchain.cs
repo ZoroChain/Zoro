@@ -429,7 +429,7 @@ namespace Zoro.Ledger
             Transaction[] trans = mem_pool.GetTransactions(MemPoolRelayCount);
             // 使用批量广播的方式来转发未处理的交易，这里先发送交易的清单数据
             foreach (InvPayload payload in InvPayload.CreateGroup(InventoryType.TX, trans.Select(p => p.Hash).ToArray()))
-                system.LocalNode.Tell(Message.Create(MessageType.TxnInv, payload));
+                system.LocalNode.Tell(Message.Create(MessageType.Inv, payload));
         }
 
         protected override void OnReceive(object message)

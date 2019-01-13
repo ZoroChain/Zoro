@@ -59,13 +59,12 @@ namespace Zoro.Network.P2P
             RegisterHandler(MessageType.Headers, OnHeadersMessageReceived);
             RegisterHandler(MessageType.GetBlocks, OnGetBlocksMessageReceived);
             RegisterHandler(MessageType.GetData, OnGetDataMessageReceived);
-            RegisterHandler(MessageType.GetDataGroup, OnGetDataGroupMessageReceived);
+            RegisterHandler(MessageType.GetTxn, OnGetTxnMessageReceived);        
+            RegisterHandler(MessageType.GetBlk, OnGetBlkMessageReceived);
             RegisterHandler(MessageType.Inv, OnInvMessageReceived);
             RegisterHandler(MessageType.Tx, OnTxMessageReceived);
             RegisterHandler(MessageType.Block, OnBlockMessageReceived);
             RegisterHandler(MessageType.Consensus, OnConsensusMessageReceived);
-            RegisterHandler(MessageType.RawTxnInv, OnRawInvMessageReceived);
-            RegisterHandler(MessageType.GetRawTxn, OnGetRawTransactionMessageReceived);
             RegisterHandler(MessageType.RawTxn, OnRawTransactionMessageReceived);
             RegisterHandler(MessageType.MemPool, OnMemPoolMessageReceived);
             RegisterHandler(MessageType.FilterAdd, OnFilterAddMessageReceived);
@@ -121,6 +120,19 @@ namespace Zoro.Network.P2P
             throw new ProtocolViolationException();
         }
 
+        private void OnGetAddrMessageReceived(Message msg)
+        {
+            Random rand = new Random();
+            IEnumerable<RemoteNode> peers = localNode.RemoteNodes.Values
+                .Where(p => p.ListenerPort > 0)
+                //.GroupBy(p => p.Remote.Address, (k, g) => g.First()) // 考虑到一台电脑上跑多个节点的情况，这里允许存在重复的IP地址
+                .OrderBy(p => rand.Next())
+                .Take(AddrPayload.MaxCountToSend);
+            NetworkAddressWithTime[] networkAddresses = peers.Select(p => NetworkAddressWithTime.Create(p.Listener, p.Version.Services, p.Version.Timestamp)).ToArray();
+            if (networkAddresses.Length == 0) return;
+            Context.Parent.Tell(Message.Create(MessageType.Addr, AddrPayload.Create(networkAddresses)));
+        }
+
         private void OnAddrMessageReceived(Message msg)
         {
             AddrPayload payload = msg.Payload.AsSerializable<AddrPayload>();
@@ -136,173 +148,6 @@ namespace Zoro.Network.P2P
             {
                 EndPoints = AddressList
             });
-        }
-
-        private void OnFilterAddMessageReceived(Message msg)
-        {
-            FilterAddPayload payload = msg.Payload.AsSerializable<FilterAddPayload>();
-
-            if (bloom_filter != null)
-                bloom_filter.Add(payload.Data);
-        }
-
-        private void OnFilterClearMessageReceived(Message msg)
-        {
-            bloom_filter = null;
-            Context.Parent.Tell(new SetFilter { Filter = null });
-        }
-
-        private void OnFilterLoadMessageReceived(Message msg)
-        {
-            FilterLoadPayload payload = msg.Payload.AsSerializable<FilterLoadPayload>();
-
-            bloom_filter = new BloomFilter(payload.Filter.Length * 8, payload.K, payload.Tweak, payload.Filter);
-            Context.Parent.Tell(new SetFilter { Filter = bloom_filter });
-        }
-
-        private void OnGetAddrMessageReceived(Message msg)
-        {
-            Random rand = new Random();
-            IEnumerable<RemoteNode> peers = localNode.RemoteNodes.Values
-                .Where(p => p.ListenerPort > 0)
-                //.GroupBy(p => p.Remote.Address, (k, g) => g.First()) // 考虑到一台电脑上跑多个节点的情况，这里允许存在重复的IP地址
-                .OrderBy(p => rand.Next())
-                .Take(AddrPayload.MaxCountToSend);
-            NetworkAddressWithTime[] networkAddresses = peers.Select(p => NetworkAddressWithTime.Create(p.Listener, p.Version.Services, p.Version.Timestamp)).ToArray();
-            if (networkAddresses.Length == 0) return;
-            Context.Parent.Tell(Message.Create(MessageType.Addr, AddrPayload.Create(networkAddresses)));
-        }
-
-        private void OnGetBlocksMessageReceived(Message msg)
-        {
-            GetBlocksPayload payload = msg.Payload.AsSerializable<GetBlocksPayload>();
-
-            UInt256 hash = payload.HashStart[0];
-            if (hash == payload.HashStop) return;
-            BlockState state = blockchain.Store.GetBlocks().TryGet(hash);
-            if (state == null) return;
-            List<UInt256> hashes = new List<UInt256>();
-            for (uint i = 1; i <= InvPayload.MaxHashesCount; i++)
-            {
-                uint index = state.TrimmedBlock.Index + i;
-                if (index > blockchain.Height)
-                    break;
-                hash = blockchain.GetBlockHash(index);
-                if (hash == null) break;
-                if (hash == payload.HashStop) break;
-                hashes.Add(hash);
-            }            
-            if (hashes.Count == 0) return;
-            Context.Parent.Tell(Message.Create(MessageType.Inv, InvPayload.Create(InventoryType.Block, hashes.ToArray())));
-            blockchain.Log($"OnGetBlocks, blockIndex:{state.TrimmedBlock.Index}, count:{hashes.Count}, [{remoteNode.Remote.Address}]");
-        }
-
-        private bool OnGetInventoryData(UInt256 hash, InventoryType type)
-        {
-            blockchain.RelayCache.TryGet(hash, out IInventory inventory);
-            switch (type)
-            {
-                case InventoryType.TX:
-                    if (inventory == null)
-                        inventory = blockchain.GetTransaction(hash);
-                    if (inventory is Transaction)
-                    {
-                        Context.Parent.Tell(Message.Create(MessageType.Tx, inventory));
-                        return true;
-                    }
-                    break;
-                case InventoryType.Block:
-                    if (inventory == null)
-                        inventory = blockchain.GetBlock(hash);
-                    if (inventory is Block block)
-                    {
-                        if (bloom_filter == null)
-                        {
-                            Context.Parent.Tell(Message.Create(MessageType.Block, inventory));
-                        }
-                        else
-                        {
-                            BitArray flags = new BitArray(block.Transactions.Select(p => bloom_filter.Test(p)).ToArray());
-                            Context.Parent.Tell(Message.Create(MessageType.MerkleBlock, MerkleBlockPayload.Create(block, flags)));
-                        }
-                        return true;
-                    }
-                    break;
-                case InventoryType.Consensus:
-                    if (inventory != null)
-                    {
-                        Context.Parent.Tell(Message.Create(MessageType.Consensus, inventory));
-                        return true;
-                    }
-                    break;
-            }
-            return false;
-        }
-
-        private void OnGetDataMessageReceived(Message msg)
-        {
-            InvPayload payload = msg.Payload.AsSerializable<InvPayload>();
-            if (sentHashes.Add(payload.Hashes[0]))
-            {
-                if (OnGetInventoryData(payload.Hashes[0], payload.Type))
-                {
-                    Context.Parent.Tell(new RemoteNode.InventorySended { Type = payload.Type, Count = 1 });
-                }
-            }
-        }
-
-        private void OnGetDataGroupMessageReceived(Message msg)
-        {
-            InvPayload payload = msg.Payload.AsSerializable<InvPayload>();
-            blockchain.Log($"OnGetDataGroup begin, type:{payload.Type}, count:{payload.Hashes.Length}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
-            int count = 0;
-            UInt256[] hashes = payload.Hashes.Where(p => sentHashes.Add(p)).ToArray();
-            foreach (UInt256 hash in hashes)
-            {
-                if (OnGetInventoryData(hash, payload.Type))
-                    count++;
-            }
-            Context.Parent.Tell(new RemoteNode.InventorySended { Type = payload.Type, Count = count });
-            blockchain.Log($"OnGetDataGroup end, type:{payload.Type}, count:{hashes.Length}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
-        }
-
-        private void OnGetRawTransactionMessageReceived(Message msg)
-        {
-            InvPayload payload = msg.Payload.AsSerializable<InvPayload>();
-            if (payload.Type != InventoryType.TX)
-                throw new ArgumentException();
-
-            UInt256[] hashes = payload.Hashes.Where(p => sentHashes.Add(p)).ToArray();
-            if (hashes.Length == 0)
-                return;
-
-            List<Transaction> transactions = new List<Transaction>();
-            foreach (UInt256 hash in hashes)
-            {
-                Transaction tx = blockchain.GetRawTransaction(hash);
-                if (tx != null)
-                    transactions.Add(tx);
-            }
-            int count = transactions.Count;
-            if (count > 0)
-            {
-                foreach (RawTransactionPayload rtx_payload in RawTransactionPayload.CreateGroup(transactions.ToArray()))
-                    Context.Parent.Tell(Message.Create(MessageType.RawTxn, rtx_payload));
-                Context.Parent.Tell(new RemoteNode.InventorySended { Type = payload.Type, Count = count });
-                blockchain.Log($"send rawtxn, count:{payload.Hashes.Length}=>{hashes.Length}=>{count}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
-            }            
-        }
-
-        private void OnRawTransactionMessageReceived(Message msg)
-        {
-            RawTransactionPayload payload = msg.Payload.AsSerializable<RawTransactionPayload>();
-            blockchain.Log($"recv rawtxn, count:{payload.Array.Length}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
-            foreach (var tx in payload.Array)
-            {
-                system.TaskManager.Tell(new TaskManager.TaskCompleted { Hash = tx.Hash }, Context.Parent);
-                if (!(tx is MinerTransaction))
-                    system.LocalNode.Tell(new LocalNode.Relay { Inventory = tx });
-            }
         }
 
         private void OnGetHeadersMessageReceived(Message msg)
@@ -338,6 +183,189 @@ namespace Zoro.Network.P2P
             system.Blockchain.Tell(payload.Headers, Context.Parent);
         }
 
+        private void OnGetBlocksMessageReceived(Message msg)
+        {
+            GetBlocksPayload payload = msg.Payload.AsSerializable<GetBlocksPayload>();
+
+            UInt256 hash = payload.HashStart[0];
+            if (hash == payload.HashStop) return;
+            BlockState state = blockchain.Store.GetBlocks().TryGet(hash);
+            if (state == null) return;
+            List<UInt256> hashes = new List<UInt256>();
+            for (uint i = 1; i <= InvPayload.MaxHashesCount; i++)
+            {
+                uint index = state.TrimmedBlock.Index + i;
+                if (index > blockchain.Height)
+                    break;
+                hash = blockchain.GetBlockHash(index);
+                if (hash == null) break;
+                if (hash == payload.HashStop) break;
+                hashes.Add(hash);
+            }            
+            if (hashes.Count == 0) return;
+            Context.Parent.Tell(Message.Create(MessageType.Inv, InvPayload.Create(InventoryType.Block, hashes.ToArray())));
+            blockchain.Log($"OnGetBlocks, blockIndex:{state.TrimmedBlock.Index}, count:{hashes.Count}, [{remoteNode.Remote.Address}]");
+        }
+
+        private void OnInvMessageReceived(Message msg)
+        {
+            InvPayload payload = msg.Payload.AsSerializable<InvPayload>();
+
+            UInt256[] hashes = payload.Hashes.Where(p => knownHashes.Add(p)).ToArray();
+            if (hashes.Length == 0) return;
+            switch (payload.Type)
+            {
+                case InventoryType.Block:
+                    using (Snapshot snapshot = blockchain.GetSnapshot())
+                        hashes = hashes.Where(p => !snapshot.ContainsBlock(p)).ToArray();
+                    break;
+                case InventoryType.TX:
+                    hashes = hashes.Where(p => !blockchain.ContainsRawTransaction(p)).ToArray();
+                    if (hashes.Length == 0) return;
+                    using (Snapshot snapshot = blockchain.GetSnapshot())
+                        hashes = hashes.Where(p => !snapshot.ContainsTransaction(p)).ToArray();
+                    break;
+            }
+            if (hashes.Length == 0) return;
+            system.TaskManager.Tell(new TaskManager.NewTasks { Payload = InvPayload.Create(payload.Type, hashes) }, Context.Parent);
+        }
+
+        private void OnGetDataMessageReceived(Message msg)
+        {
+            InvPayload payload = msg.Payload.AsSerializable<InvPayload>();
+            
+            if (sentHashes.Add(payload.Hashes[0]))
+            {
+                if (OnGetInventoryData(payload.Hashes[0], payload.Type))
+                {
+                    Context.Parent.Tell(new RemoteNode.InventorySended { Type = payload.Type, Count = 1 });
+                }
+            }
+        }
+
+        private void OnGetTxnMessageReceived(Message msg)
+        {
+            InvPayload payload = msg.Payload.AsSerializable<InvPayload>();
+            if (payload.Type != InventoryType.TX)
+                throw new InvalidOperationException();
+
+            UInt256[] hashes = payload.Hashes.Where(p => sentHashes.Add(p)).ToArray();
+            if (hashes.Length == 0)
+                return;
+
+            blockchain.Log($"OnGetTxn begin, count:{payload.Hashes.Length}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
+
+            List<Transaction> transactions = new List<Transaction>();
+            foreach (UInt256 hash in hashes)
+            {
+                Transaction tx = blockchain.GetRawTransaction(hash);
+                if (tx != null)
+                    transactions.Add(tx);
+            }
+            int count = transactions.Count;
+            if (count > 0)
+            {
+                foreach (RawTransactionPayload rtx_payload in RawTransactionPayload.CreateGroup(transactions.ToArray()))
+                    Context.Parent.Tell(Message.Create(MessageType.RawTxn, rtx_payload));
+            }
+
+            if (count > 0)
+                Context.Parent.Tell(new RemoteNode.InventorySended { Type = payload.Type, Count = count });
+
+            blockchain.Log($"OnGetTxn end, count:{hashes.Length}=>{count}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
+        }
+
+        private void OnGetBlkMessageReceived(Message msg)
+        {
+            InvPayload payload = msg.Payload.AsSerializable<InvPayload>();
+            if (payload.Type != InventoryType.Block)
+                throw new InvalidOperationException();
+
+            UInt256[] hashes = payload.Hashes.Where(p => sentHashes.Add(p)).ToArray();
+            if (hashes.Length == 0)
+                return;
+
+            blockchain.Log($"OnGetBlk begin, count:{payload.Hashes.Length}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
+
+            int count = 0;
+            foreach (UInt256 hash in hashes)
+            {
+                if (OnGetBlockData(hash))
+                    count++;
+            }
+
+            if (count > 0)
+                Context.Parent.Tell(new RemoteNode.InventorySended { Type = payload.Type, Count = count });
+
+            blockchain.Log($"OnGetBlk end, count:{hashes.Length}=>{count}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
+        }
+
+        private bool OnGetInventoryData(UInt256 hash, InventoryType type)
+        {
+            switch (type)
+            {
+                case InventoryType.Block:
+                    return OnGetBlockData(hash);
+                case InventoryType.TX:
+                    return OnGetTransactionData(hash);
+                case InventoryType.Consensus:
+                    return OnGetConsensusPayload(hash);
+            }
+            return false;
+        }
+
+        private bool OnGetBlockData(UInt256 hash)
+        {
+            Block block = blockchain.GetBlock(hash);
+            if (block == null)
+                return false;
+
+            if (bloom_filter == null)
+            {
+                Context.Parent.Tell(Message.Create(MessageType.Block, block));
+            }
+            else
+            {
+                BitArray flags = new BitArray(block.Transactions.Select(p => bloom_filter.Test(p)).ToArray());
+                Context.Parent.Tell(Message.Create(MessageType.MerkleBlock, MerkleBlockPayload.Create(block, flags)));
+            }
+            return true;
+        }
+
+        private bool OnGetTransactionData(UInt256 hash)
+        {
+            Transaction transaction = blockchain.GetTransaction(hash);
+            if (transaction != null)
+            {
+                Context.Parent.Tell(Message.Create(MessageType.Tx, transaction));
+                return true;
+            }
+            return false;
+        }
+
+        private bool OnGetConsensusPayload(UInt256 hash)
+        {
+            blockchain.RelayCache.TryGet(hash, out IInventory inventory);
+            if (inventory != null)
+            {
+                Context.Parent.Tell(Message.Create(MessageType.Consensus, inventory));
+                return true;
+            }
+            return false;
+        }
+
+        private void OnRawTransactionMessageReceived(Message msg)
+        {
+            RawTransactionPayload payload = msg.Payload.AsSerializable<RawTransactionPayload>();
+            blockchain.Log($"recv rawtxn, count:{payload.Array.Length}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
+            foreach (var tx in payload.Array)
+            {
+                system.TaskManager.Tell(new TaskManager.TaskCompleted { Hash = tx.Hash }, Context.Parent);
+                if (!(tx is MinerTransaction))
+                    system.LocalNode.Tell(new LocalNode.Relay { Inventory = tx });
+            }
+        }
+
         private void OnTxMessageReceived(Message msg)
         {
             if (msg.Payload.Length <= Transaction.MaxTransactionSize)
@@ -361,51 +389,33 @@ namespace Zoro.Network.P2P
             system.LocalNode.Tell(new LocalNode.Relay { Inventory = inventory });
         }
 
-        private void OnInvMessageReceived(Message msg)
-        {
-            InvPayload payload = msg.Payload.AsSerializable<InvPayload>();
 
-            UInt256[] hashes = payload.Hashes.Where(p => knownHashes.Add(p)).ToArray();
-            if (hashes.Length == 0) return;
-            switch (payload.Type)
-            {
-                case InventoryType.Block:
-                    using (Snapshot snapshot = blockchain.GetSnapshot())
-                        hashes = hashes.Where(p => !snapshot.ContainsBlock(p)).ToArray();
-                    break;
-                case InventoryType.TX:
-                    using (Snapshot snapshot = blockchain.GetSnapshot())
-                        hashes = hashes.Where(p => !snapshot.ContainsTransaction(p)).ToArray();
-                    break;
-            }
-            if (hashes.Length == 0) return;
-            system.TaskManager.Tell(new TaskManager.NewTasks { Payload = InvPayload.Create(payload.Type, hashes) }, Context.Parent);
+        private void OnFilterAddMessageReceived(Message msg)
+        {
+            FilterAddPayload payload = msg.Payload.AsSerializable<FilterAddPayload>();
+
+            if (bloom_filter != null)
+                bloom_filter.Add(payload.Data);
         }
 
-        private void OnRawInvMessageReceived(Message msg)
+        private void OnFilterClearMessageReceived(Message msg)
         {
-            InvPayload payload = msg.Payload.AsSerializable<InvPayload>();
+            bloom_filter = null;
+            Context.Parent.Tell(new SetFilter { Filter = null });
+        }
 
-            if (payload.Type != InventoryType.TX)
-                throw new ArgumentException();
+        private void OnFilterLoadMessageReceived(Message msg)
+        {
+            FilterLoadPayload payload = msg.Payload.AsSerializable<FilterLoadPayload>();
 
-            UInt256[] hashes = payload.Hashes.Where(p => knownHashes.Add(p)).ToArray();
-            if (hashes.Length == 0) return;
-
-            hashes = hashes.Where(p => !blockchain.ContainsRawTransaction(p)).ToArray();
-            if (hashes.Length == 0) return;
-
-            using (Snapshot snapshot = blockchain.GetSnapshot())
-                hashes = hashes.Where(p => !snapshot.ContainsTransaction(p)).ToArray();
-            if (hashes.Length == 0) return;
-
-            system.TaskManager.Tell(new TaskManager.RawTransactionTask { Payload = InvPayload.Create(payload.Type, hashes) }, Context.Parent);
+            bloom_filter = new BloomFilter(payload.Filter.Length * 8, payload.K, payload.Tweak, payload.Filter);
+            Context.Parent.Tell(new SetFilter { Filter = bloom_filter });
         }
 
         private void OnMemPoolMessageReceived(Message msg)
         {
             foreach (InvPayload payload in InvPayload.CreateGroup(InventoryType.TX, blockchain.GetMemoryPool().Select(p => p.Hash).ToArray()))
-                Context.Parent.Tell(Message.Create(MessageType.TxnInv, payload));
+                Context.Parent.Tell(Message.Create(MessageType.Inv, payload));
         }
 
         private void OnVerackMessageReceived()
@@ -483,7 +493,7 @@ namespace Zoro.Network.P2P
 
             SetMsgFlag(MessageType.GetAddr, MessageFlag.ShallDrop);
             SetMsgFlag(MessageType.GetBlocks, MessageFlag.ShallDrop);
-            SetMsgFlag(MessageType.GetDataGroup, MessageFlag.ShallDrop);
+            SetMsgFlag(MessageType.GetBlk, MessageFlag.ShallDrop);
             SetMsgFlag(MessageType.GetHeaders, MessageFlag.ShallDrop);
             SetMsgFlag(MessageType.MemPool, MessageFlag.ShallDrop);
         }
