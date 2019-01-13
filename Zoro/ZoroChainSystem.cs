@@ -31,6 +31,7 @@ namespace Zoro
         private static ConcurrentDictionary<UInt160, ZoroSystem> appSystems = new ConcurrentDictionary<UInt160, ZoroSystem>();
         private static ConcurrentDictionary<UInt160, Blockchain> appBlockchains = new ConcurrentDictionary<UInt160, Blockchain>();
         private static ConcurrentDictionary<UInt160, LocalNode> appLocalNodes = new ConcurrentDictionary<UInt160, LocalNode>();
+        private static ConcurrentDictionary<UInt160, TransactionPool> txnPools = new ConcurrentDictionary<UInt160, TransactionPool>();
 
         public IPAddress MyIPAddress { get; }
         public ActorSystem ActorSystem { get; }
@@ -49,6 +50,7 @@ namespace Zoro
                 $"task-manager-mailbox {{ mailbox-type: \"{typeof(TaskManagerMailbox).AssemblyQualifiedName}\" }}" +
                 $"remote-node-mailbox {{ mailbox-type: \"{typeof(RemoteNodeMailbox).AssemblyQualifiedName}\" }}" +
                 $"protocol-handler-mailbox {{ mailbox-type: \"{typeof(ProtocolHandlerMailbox).AssemblyQualifiedName}\" }}" +
+                $"transaction-pool-mailbox {{ mailbox-type: \"{typeof(TransactionPoolMailbox).AssemblyQualifiedName}\" }}" +
                 $"consensus-service-mailbox {{ mailbox-type: \"{typeof(ConsensusServiceMailbox).AssemblyQualifiedName}\" }}");
 
             // 加载插件
@@ -352,6 +354,37 @@ namespace Zoro
             return appSystems.TryGetValue(chainHash, out chain);
         }
 
+        // 注册TransactionPool对象
+        public void RegisterTransactionPool(UInt160 chainHash, TransactionPool txnPool)
+        {
+            if (txnPools.ContainsKey(chainHash))
+                throw new InvalidOperationException();
+
+            txnPools[chainHash] = txnPool;
+        }
+
+        // 根据Hash, 获取TransactionPool对象
+        public TransactionPool GetTransactionPool(UInt160 chainHash)
+        {
+            if (txnPools.TryGetValue(chainHash, out TransactionPool txnPool))
+            {
+                return txnPool;
+            }
+            return null;
+        }
+
+        // 在初始化时，等待某个TransactionPool对象被实例化，并返回该对象
+        public TransactionPool AskTransactionPool(UInt160 chainHash)
+        {
+            TransactionPool txnPool = null;
+            while ((txnPool = GetTransactionPool(chainHash)) == null)
+            {
+                Thread.Sleep(10);
+            }
+
+            return txnPool;
+        }
+
         // 停止所有的应用链
         public void StopAllAppChains()
         {
@@ -434,6 +467,16 @@ namespace Zoro
             return null;
         }
 
+        // 根据Hash字符串，获取对应的TransactionPool对象
+        public TransactionPool GetTransactionPool(string hashString)
+        {
+            if (TryParseChainHash(hashString, out UInt160 chainHash))
+            {
+                TransactionPool txnPool = GetTransactionPool(chainHash);
+                return txnPool;
+            }
+            return null;
+        }
 
         // 根据配置，返回本地节点的IP地址
         private IPAddress GetMyIPAddress(string networkType)

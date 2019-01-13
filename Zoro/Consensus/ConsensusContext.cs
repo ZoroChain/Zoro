@@ -34,15 +34,17 @@ namespace Zoro.Consensus
         private KeyPair keyPair;
         private readonly Wallet wallet;
         private readonly Blockchain blockchain;
+        private readonly TransactionPool txnPool;
 
         public int M => Validators.Length - (Validators.Length - 1) / 3;
         public Header PrevHeader => snapshot.GetHeader(PrevHash);
         public bool TransactionExists(UInt256 hash) => snapshot.ContainsTransaction(hash);
         public bool VerifyTransaction(Transaction tx) => tx.Verify(snapshot);
 
-        public ConsensusContext(Blockchain blockchain, Wallet wallet)
+        public ConsensusContext(Blockchain blockchain, TransactionPool txnPool, Wallet wallet)
         {
             this.blockchain = blockchain;
+            this.txnPool = txnPool;
             this.wallet = wallet;
         }
 
@@ -206,7 +208,7 @@ namespace Zoro.Consensus
 
         public void Fill()
         {
-            IEnumerable<Transaction> mem_pool = blockchain.GetMemoryPool();
+            IEnumerable<Transaction> mem_pool = txnPool.GetVerifiedTransactions();
             foreach (IPolicyPlugin plugin in PluginManager.Singleton.Policies)
                 mem_pool = plugin.FilterForBlock(mem_pool);
             List<Transaction> transactions = mem_pool.ToList();

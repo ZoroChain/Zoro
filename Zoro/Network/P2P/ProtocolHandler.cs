@@ -28,6 +28,7 @@ namespace Zoro.Network.P2P
         private readonly LocalNode localNode;
         private readonly Blockchain blockchain;
         private readonly RemoteNode remoteNode;
+        private readonly TransactionPool txnPool;
 
         private readonly HashSet<UInt256> knownHashes = new HashSet<UInt256>();
         private readonly HashSet<UInt256> sentHashes = new HashSet<UInt256>();
@@ -41,12 +42,13 @@ namespace Zoro.Network.P2P
 
         private readonly Dictionary<string, Action<Message>> msgHandlers = new Dictionary<string, Action<Message>>();
         
-        public ProtocolHandler(ZoroSystem system, LocalNode localNode, Blockchain blockchain, RemoteNode remoteNode)
+        public ProtocolHandler(ZoroSystem system, LocalNode localNode, Blockchain blockchain, TransactionPool txnPool, RemoteNode remoteNode)
         {
             this.system = system;
             this.localNode = localNode;
             this.blockchain = blockchain;
             this.remoteNode = remoteNode;
+            this.txnPool = txnPool;
 
             InitMessageHandlers();
         }
@@ -220,7 +222,7 @@ namespace Zoro.Network.P2P
                         hashes = hashes.Where(p => !snapshot.ContainsBlock(p)).ToArray();
                     break;
                 case InventoryType.TX:
-                    hashes = hashes.Where(p => !blockchain.ContainsRawTransaction(p)).ToArray();
+                    hashes = hashes.Where(p => !txnPool.ContainsRawTransaction(p)).ToArray();
                     if (hashes.Length == 0) return;
                     using (Snapshot snapshot = blockchain.GetSnapshot())
                         hashes = hashes.Where(p => !snapshot.ContainsTransaction(p)).ToArray();
@@ -258,7 +260,9 @@ namespace Zoro.Network.P2P
             List<Transaction> transactions = new List<Transaction>();
             foreach (UInt256 hash in hashes)
             {
-                Transaction tx = blockchain.GetRawTransaction(hash);
+                Transaction tx = txnPool.GetRawTransaction(hash);
+                if (tx == null)
+                    tx = blockchain.GetTransaction(hash);
                 if (tx != null)
                     transactions.Add(tx);
             }
@@ -267,10 +271,9 @@ namespace Zoro.Network.P2P
             {
                 foreach (RawTransactionPayload rtx_payload in RawTransactionPayload.CreateGroup(transactions.ToArray()))
                     Context.Parent.Tell(Message.Create(MessageType.RawTxn, rtx_payload));
-            }
 
-            if (count > 0)
                 Context.Parent.Tell(new RemoteNode.InventorySended { Type = payload.Type, Count = count });
+            }
 
             blockchain.Log($"OnGetTxn end, count:{hashes.Length}=>{count}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
         }
@@ -334,10 +337,13 @@ namespace Zoro.Network.P2P
 
         private bool OnGetTransactionData(UInt256 hash)
         {
-            Transaction transaction = blockchain.GetTransaction(hash);
-            if (transaction != null)
+            Transaction tx = txnPool.GetRawTransaction(hash);
+            if (tx == null)
+                tx = blockchain.GetTransaction(hash);
+
+            if (tx != null)
             {
-                Context.Parent.Tell(Message.Create(MessageType.Tx, transaction));
+                Context.Parent.Tell(Message.Create(MessageType.Tx, tx));
                 return true;
             }
             return false;
@@ -414,7 +420,7 @@ namespace Zoro.Network.P2P
 
         private void OnMemPoolMessageReceived(Message msg)
         {
-            foreach (InvPayload payload in InvPayload.CreateGroup(InventoryType.TX, blockchain.GetMemoryPool().Select(p => p.Hash).ToArray()))
+            foreach (InvPayload payload in InvPayload.CreateGroup(InventoryType.TX, txnPool.GetMemoryPool().Select(p => p.Hash).ToArray()))
                 Context.Parent.Tell(Message.Create(MessageType.Inv, payload));
         }
 
@@ -448,9 +454,9 @@ namespace Zoro.Network.P2P
             base.PostStop();
         }
 
-        public static Props Props(ZoroSystem system, LocalNode localNode, Blockchain blockchain, RemoteNode remoteNode)
+        public static Props Props(ZoroSystem system, LocalNode localNode, Blockchain blockchain, TransactionPool txnPool, RemoteNode remoteNode)
         {
-            return Akka.Actor.Props.Create(() => new ProtocolHandler(system, localNode, blockchain, remoteNode)).WithMailbox("protocol-handler-mailbox");
+            return Akka.Actor.Props.Create(() => new ProtocolHandler(system, localNode, blockchain, txnPool, remoteNode)).WithMailbox("protocol-handler-mailbox");
         }
 
         private void OnTimer()

@@ -33,6 +33,7 @@ namespace Zoro.Network.P2P
 
         public UInt160 ChainHash { get; }
         public Blockchain Blockchain { get; }
+        public TransactionPool TxnPool { get; }
 
         private static LocalNode root;
         public static LocalNode Root
@@ -65,16 +66,17 @@ namespace Zoro.Network.P2P
 
                     root = this;
 
-                    this.SeedList = ProtocolSettings.Default.SeedList;
+                    SeedList = ProtocolSettings.Default.SeedList;
                 }
                 else
                 {
                     AppChainState state = ZoroChainSystem.Singleton.RegisterAppChainLocalNode(chainHash, this);
 
-                    this.SeedList = state.SeedList;
+                    SeedList = state.SeedList;
                 }
 
-                this.Blockchain = ZoroChainSystem.Singleton.AskBlockchain(chainHash);
+                Blockchain = ZoroChainSystem.Singleton.AskBlockchain(chainHash);
+                TxnPool = ZoroChainSystem.Singleton.AskTransactionPool(chainHash);
             }
         }
 
@@ -162,8 +164,14 @@ namespace Zoro.Network.P2P
         {
             inventory.ChainHash = ChainHash;
             if (inventory is Transaction transaction)
+            {
                 system.Consensus?.Tell(transaction);
-            system.Blockchain.Tell(inventory);
+                system.TxnPool.Tell(transaction);
+            }
+            else
+            {
+                system.Blockchain.Tell(inventory);
+            }
         }
 
         private void OnRelayDirectly(IInventory inventory)
@@ -189,7 +197,7 @@ namespace Zoro.Network.P2P
 
         protected override Props ProtocolProps(object connection, IPEndPoint remote, IPEndPoint local)
         {
-            return RemoteNode.Props(system, connection, remote, local, this);
+            return RemoteNode.Props(system, connection, remote, local, Blockchain, this);
         }
 
         public void ChangeSeedList(string[] seedList)

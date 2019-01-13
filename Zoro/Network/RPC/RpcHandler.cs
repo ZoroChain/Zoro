@@ -58,7 +58,7 @@ namespace Zoro.Network.RPC
                         {
                             Blockchain blockchain = GetTargetChain(_params[0]);
                             if (blockchain == null)
-                                throw new RpcException(-100, "Unknown blockchain");
+                                throw new RpcException(-100, "Invalid chain hash");
                             return blockchain.CurrentBlockHash.ToString();
                         }
                     case "getblock":
@@ -66,7 +66,7 @@ namespace Zoro.Network.RPC
                             Block block;
                             Blockchain blockchain = GetTargetChain(_params[0]);
                             if (blockchain == null)
-                                throw new RpcException(-100, "Unknown blockchain");
+                                throw new RpcException(-100, "Invalid chain hash");
                             if (_params[1] is JNumber)
                             {
                                 uint index = (uint)_params[1].AsNumber();
@@ -95,14 +95,14 @@ namespace Zoro.Network.RPC
                         {
                             Blockchain blockchain = GetTargetChain(_params[0]);
                             if (blockchain == null)
-                                throw new RpcException(-100, "Unknown blockchain");
+                                throw new RpcException(-100, "Invalid chain hash");
                             return blockchain.Height + 1;
                         }
                     case "getblockhash":
                         {
                             Blockchain blockchain = GetTargetChain(_params[0]);
                             if (blockchain == null)
-                                throw new RpcException(-100, "Unknown blockchain");
+                                throw new RpcException(-100, "Invalid chain hash");
                             uint height = (uint)_params[1].AsNumber();
                             if (height <= blockchain.Height)
                             {
@@ -115,7 +115,7 @@ namespace Zoro.Network.RPC
                             Header header;
                             Blockchain blockchain = GetTargetChain(_params[0]);
                             if (blockchain == null)
-                                throw new RpcException(-100, "Unknown blockchain");
+                                throw new RpcException(-100, "Invalid chain hash");
                             if (_params[1] is JNumber)
                             {
                                 uint height = (uint)_params[1].AsNumber();
@@ -146,7 +146,7 @@ namespace Zoro.Network.RPC
                         {
                             Blockchain blockchain = GetTargetChain(_params[0]);
                             if (blockchain == null)
-                                throw new RpcException(-100, "Unknown blockchain");
+                                throw new RpcException(-100, "Invalid chain hash");
 
                             uint height = (uint)_params[1].AsNumber();
                             if (height <= blockchain.Height)
@@ -207,29 +207,32 @@ namespace Zoro.Network.RPC
                         }
                     case "getrawmempool":
                         {
-                            Blockchain blockchain = GetTargetChain(_params[0]);
-                            if (blockchain == null)
-                                throw new RpcException(-100, "Unknown blockchain");
+                            TransactionPool txnPool = GetTransactionPool(_params[0]);
+                            if (txnPool == null)
+                                throw new RpcException(-100, "Invalid chain hash");
 
-                            return new JArray(blockchain.GetMemoryPool().Select(p => (JObject)p.Hash.ToString()));
+                            return new JArray(txnPool.GetMemoryPool().Select(p => (JObject)p.Hash.ToString()));
                         }
                     case "getrawmempoolcount":
                         {
-                            Blockchain blockchain = GetTargetChain(_params[0]);
-                            if (blockchain == null)
-                                throw new RpcException(-100, "Unknown blockchain");
+                            TransactionPool txnPool = GetTransactionPool(_params[0]);
+                            if (txnPool == null)
+                                throw new RpcException(-100, "Invalid chain hash");
 
-                            return blockchain.GetMemoryPoolCount();
+                            return txnPool.GetMemoryPoolCount();
                         }
                     case "getrawtransaction":
                         {
+                            TransactionPool txnPool = GetTransactionPool(_params[0]);
                             Blockchain blockchain = GetTargetChain(_params[0]);
-                            if (blockchain == null)
-                                throw new RpcException(-100, "Unknown blockchain");
+                            if (txnPool == null || blockchain == null)
+                                throw new RpcException(-100, "Invalid chain hash");
 
                             UInt256 hash = UInt256.Parse(_params[1].AsString());
                             bool verbose = _params.Count >= 3 && _params[2].AsBooleanOrDefault(false);
-                            Transaction tx = blockchain.GetTransaction(hash);
+                            Transaction tx = txnPool.GetRawTransaction(hash);
+                            if (tx == null)
+                                tx = blockchain.GetTransaction(hash);
                             if (tx == null)
                                 throw new RpcException(-100, "Unknown transaction");
                             if (verbose)
@@ -251,7 +254,7 @@ namespace Zoro.Network.RPC
                         {
                             Blockchain blockchain = GetTargetChain(_params[0]);
                             if (blockchain == null)
-                                throw new RpcException(-100, "Unknown blockchain");
+                                throw new RpcException(-100, "Invalid chain hash");
 
                             UInt160 script_hash = UInt160.Parse(_params[1].AsString());
                             byte[] key = _params[1].AsString().HexToBytes();
@@ -266,7 +269,7 @@ namespace Zoro.Network.RPC
                         {
                             Blockchain blockchain = GetTargetChain(_params[0]);
                             if (blockchain == null)
-                                throw new RpcException(-100, "Unknown blockchain");
+                                throw new RpcException(-100, "Invalid chain hash");
 
                             using (Snapshot snapshot = blockchain.GetSnapshot())
                             {
@@ -334,7 +337,7 @@ namespace Zoro.Network.RPC
                             if (targetSystem != null)
                             {
                                 Transaction tx = Transaction.DeserializeFrom(_params[1].AsString().HexToBytes());
-                                RelayResultReason reason = targetSystem.Blockchain.Ask<RelayResultReason>(tx).Result;
+                                RelayResultReason reason = targetSystem.TxnPool.Ask<RelayResultReason>(tx).Result;
                                 return GetRelayResult(reason);
                             }
                             return RelayResultReason.Invalid;
@@ -428,7 +431,7 @@ namespace Zoro.Network.RPC
         {
             Blockchain blockchain = GetTargetChain(param);
             if (blockchain == null)
-                throw new RpcException(-100, "Unknown blockchain");
+                throw new RpcException(-100, "Invalid chain hash");
 
             ApplicationEngine engine = ApplicationEngine.Run(script, blockchain.GetSnapshot(), null, null, true);
 
@@ -499,6 +502,11 @@ namespace Zoro.Network.RPC
         private ZoroSystem GetTargetSystem(JObject param)
         {
             return ZoroChainSystem.Singleton.GetZoroSystem(param.AsString());
+        }
+
+        private TransactionPool GetTransactionPool(JObject param)
+        {
+            return ZoroChainSystem.Singleton.GetTransactionPool(param.AsString());
         }
     }
 }

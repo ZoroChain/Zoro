@@ -1,5 +1,4 @@
 ﻿using Zoro.Network.P2P.Payloads;
-using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +6,7 @@ using System;
 
 namespace Zoro.Ledger
 {
-    internal class MemoryPool : IReadOnlyCollection<Transaction>
+    internal class MemoryPool
     {
         internal class Index : IComparable<Index>
         {
@@ -27,32 +26,31 @@ namespace Zoro.Ledger
             }
         };
 
-        private readonly ConcurrentDictionary<UInt256, Transaction> _mem_pool = new ConcurrentDictionary<UInt256, Transaction>();
+        private readonly ConcurrentDictionary<UInt256, Transaction> _verified = new ConcurrentDictionary<UInt256, Transaction>();
+        private readonly ConcurrentDictionary<UInt256, Transaction> _unverified = new ConcurrentDictionary<UInt256, Transaction>();
         private readonly SortedSet<Index> _index_set = new SortedSet<Index>();
 
         public int Capacity { get; }
-        public int Count => _mem_pool.Count;
+        public int Count => _verified.Count + _unverified.Count;
+        public int VerifiedCount => _verified.Count;
+        public int UnverifiedCount => _unverified.Count;
 
         public MemoryPool(int capacity)
         {
             Capacity = capacity;
         }
 
-        public void Clear()
+        public bool ContainsKey(UInt256 hash)
         {
-            _mem_pool.Clear();
+            if (_verified.ContainsKey(hash))
+                return true;
+            else if (_unverified.ContainsKey(hash))
+                return true;
+
+            return false;
         }
 
-        public bool ContainsKey(UInt256 hash) => _mem_pool.ContainsKey(hash);
-
-        public IEnumerator<Transaction> GetEnumerator()
-        {
-            return _mem_pool.Values.GetEnumerator();
-        }
-
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-        public bool TryAdd(UInt256 hash, Transaction tx)
+        public bool TryAddVerified(Transaction tx)
         {
             if (Count >= Capacity)
             {
@@ -60,18 +58,51 @@ namespace Zoro.Ledger
                     return false;
             }
 
-            _mem_pool.TryAdd(hash, tx);
+            if (_verified.TryAdd(tx.Hash, tx))
+            {
+                AddIndex(tx);
+                return true;
+            }
 
-            AddIndex(hash, tx);
-
-            return true;
+            return false;
         }
 
-        public bool TryRemove(UInt256 hash, out Transaction tx)
+        public bool TryAddUnverified(Transaction tx)
         {
-            if (_mem_pool.TryRemove(hash, out tx))
+            if (Count >= Capacity)
             {
-                RemoveIndex(hash, tx);
+                if (!RemoveLowestFee(tx))
+                    return false;
+            }
+
+            if (_unverified.TryAdd(tx.Hash, tx))
+            {
+                AddIndex(tx);
+                return true;
+            }
+
+            return false;
+        }
+
+        public bool TryRemoveVerified(UInt256 hash, out Transaction tx)
+        {
+            if (_verified.TryRemove(hash, out tx))
+            {
+                RemoveIndex(tx);
+                return true;
+            }
+            else
+            {
+                tx = null;
+                return false;
+            }
+        }
+
+        public bool TryRemoveUnverified(UInt256 hash, out Transaction tx)
+        {
+            if (_unverified.TryRemove(hash, out tx))
+            {
+                RemoveIndex(tx);
                 return true;
             }
             else
@@ -83,7 +114,11 @@ namespace Zoro.Ledger
 
         public bool TryGetValue(UInt256 hash, out Transaction tx)
         {
-            if (_mem_pool.TryGetValue(hash, out tx))
+            if (_verified.TryGetValue(hash, out tx))
+            {
+                return true;
+            }
+            else if (_unverified.TryGetValue(hash, out tx))
             {
                 return true;
             }
@@ -94,16 +129,67 @@ namespace Zoro.Ledger
             }
         }
 
-        public Transaction[] GetTransactions(int count)
+        public bool TryGetVerified(UInt256 hash, out Transaction tx)
         {
-            if (count > 0)
+            if (_verified.TryGetValue(hash, out tx))
             {
-                return _mem_pool.Values.Take(count).ToArray();
+                return true;
             }
             else
             {
-                return _mem_pool.Values.ToArray();
+                tx = null;
+                return false;
             }
+        }
+
+        public bool TryGetUnverified(UInt256 hash, out Transaction tx)
+        {
+            if (_unverified.TryGetValue(hash, out tx))
+            {
+                return true;
+            }
+            else
+            {
+                tx = null;
+                return false;
+            }
+        }
+
+        public void ClearVerified()
+        {
+            foreach (var tx in _verified.Values)
+                RemoveIndex(tx);
+
+            _verified.Clear();
+        }
+
+        public void ClearUnverified()
+        {
+            foreach (var tx in _unverified.Values)
+                RemoveIndex(tx);
+
+            _unverified.Clear();
+        }
+
+        public void ResetToUnverified()
+        {
+            _unverified.Union(_verified);
+            _verified.Clear();
+        }
+
+        public IEnumerable<Transaction> GetVerified()
+        {
+            return _verified.Values;
+        }
+
+        public IEnumerable<Transaction> GetUnverified()
+        {
+            return _unverified.Values;
+        }
+
+        public IEnumerable<Transaction> GetAll()
+        {
+            return _verified.Values.Union(_unverified.Values);
         }
 
         private Fixed8 GetFeeRatio(Transaction tx)
@@ -111,15 +197,15 @@ namespace Zoro.Ledger
             return tx.SystemFee / tx.Size;
         }
 
-        private void AddIndex(UInt256 hash, Transaction tx)
+        private void AddIndex(Transaction tx)
         {
-            Index index = new Index { Hash = hash, Fee = tx.SystemFee, FeeRatio = GetFeeRatio(tx) };
+            Index index = new Index { Hash = tx.Hash, Fee = tx.SystemFee, FeeRatio = GetFeeRatio(tx) };
             _index_set.Add(index);
         }
 
-        private void RemoveIndex(UInt256 hash, Transaction tx)
+        private void RemoveIndex(Transaction tx)
         {
-            Index index = new Index { Hash = hash, Fee = tx.SystemFee, FeeRatio = GetFeeRatio(tx) };
+            Index index = new Index { Hash = tx.Hash, Fee = tx.SystemFee, FeeRatio = GetFeeRatio(tx) };
             _index_set.Remove(index);
         }
 
@@ -129,7 +215,8 @@ namespace Zoro.Ledger
 
             if (index.FeeRatio < GetFeeRatio(tx))
             {
-                _mem_pool.TryRemove(index.Hash, out Transaction _);
+                _verified.TryRemove(index.Hash, out Transaction _);
+                _unverified.TryRemove(index.Hash, out Transaction _);
                 _index_set.Remove(index);
                 return true;
             }
