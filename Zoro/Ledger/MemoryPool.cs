@@ -28,7 +28,7 @@ namespace Zoro.Ledger
         };
 
         private readonly ConcurrentDictionary<UInt256, Transaction> _mem_pool = new ConcurrentDictionary<UInt256, Transaction>();
-        private readonly SortedDictionary<Index, UInt256> _index_dict = new SortedDictionary<Index, UInt256>();
+        private readonly SortedSet<Index> _index_set = new SortedSet<Index>();
 
         public int Capacity { get; }
         public int Count => _mem_pool.Count;
@@ -114,23 +114,23 @@ namespace Zoro.Ledger
         private void AddIndex(UInt256 hash, Transaction tx)
         {
             Index index = new Index { Hash = hash, Fee = tx.SystemFee, FeeRatio = GetFeeRatio(tx) };
-            _index_dict.Add(index, hash);
+            _index_set.Add(index);
         }
 
         private void RemoveIndex(UInt256 hash, Transaction tx)
         {
             Index index = new Index { Hash = hash, Fee = tx.SystemFee, FeeRatio = GetFeeRatio(tx) };
-            _index_dict.Remove(index);
+            _index_set.Remove(index);
         }
 
         private bool RemoveLowestFee(Transaction tx)
         {
-            Index index = _index_dict.Keys.First();
+            Index index = _index_set.First();
 
             if (index.FeeRatio < GetFeeRatio(tx))
             {
                 _mem_pool.TryRemove(index.Hash, out Transaction _);
-                _index_dict.Remove(index);
+                _index_set.Remove(index);
                 return true;
             }
 
