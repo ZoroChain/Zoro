@@ -14,10 +14,10 @@ namespace Zoro.Network.P2P
     {
         public class Register { public VersionPayload Version; }
         public class NewTasks { public InvPayload Payload; }
-        public class RawTransactionTask { public InvPayload Payload; }
         public class TaskCompleted { public UInt256 Hash; }
         public class HeaderTaskCompleted { }
         public class RestartTasks { public InvPayload Payload; }
+        public class UpdateSession { public uint Height; public uint Latency; }
         private class Timer { }
 
         private static readonly TimeSpan TimerInterval = TimeSpan.FromSeconds(30);
@@ -59,7 +59,7 @@ namespace Zoro.Network.P2P
         {
             if (!sessions.TryGetValue(Sender, out TaskSession session))
                 return;
-            if (payload.Type == InventoryType.TX && blockchain.Height < blockchain.HeaderHeight)
+            if (payload.Type == InventoryType.TX && blockchain.Height < (int)blockchain.HeaderHeight - 100)
             {
                 RequestTasks(session);
                 return;
@@ -82,30 +82,6 @@ namespace Zoro.Network.P2P
                 session.Tasks[hash] = new RequestTask { Type = payload.Type, BeginTime = DateTime.UtcNow };
             }
             RequestInventoryData(payload.Type, hashes.ToArray(), Sender);
-        }
-
-        // 向远程节点发送获取未处理交易的消息
-        private void OnRawTransactionTask(InvPayload payload)
-        {
-            if (!sessions.TryGetValue(Sender, out TaskSession session))
-                return;
-
-            HashSet<UInt256> hashes = new HashSet<UInt256>(payload.Hashes);
-            hashes.ExceptWith(knownHashes);
-
-            hashes.ExceptWith(globalTasks.Keys);
-            if (hashes.Count == 0)
-            {
-                RequestTasks(session);
-                return;
-            }
-
-            foreach (UInt256 hash in hashes)
-            {
-                IncrementGlobalTask(hash);
-                session.Tasks[hash] = new RequestTask { Type = payload.Type, BeginTime = DateTime.UtcNow };
-            }
-            RequestRawTransactions(hashes.ToArray(), Sender);
         }
 
         protected override void OnReceive(object message)
@@ -133,8 +109,8 @@ namespace Zoro.Network.P2P
                 case Terminated terminated:
                     OnTerminated(terminated.ActorRef);
                     break;
-                case RawTransactionTask task:
-                    OnRawTransactionTask(task.Payload);
+                case UpdateSession msg:
+                    OnUpdateSession(msg);
                     break;
             }
         }
@@ -152,10 +128,7 @@ namespace Zoro.Network.P2P
             knownHashes.ExceptWith(payload.Hashes);
             foreach (UInt256 hash in payload.Hashes)
                 globalTasks.Remove(hash);
-            if (payload.Type == InventoryType.TX)
-                RequestRawTransactions(payload.Hashes, system.LocalNode);
-            else
-                throw new ArgumentException();
+            RequestInventoryData(payload.Type, payload.Hashes, system.LocalNode);
         }
 
         private void OnTaskCompleted(UInt256 hash)
@@ -170,6 +143,15 @@ namespace Zoro.Network.P2P
                     Sender.Tell(new RemoteNode.TaskCompleted { Type = task.Type });
                 session.Tasks.Remove(hash);
                 RequestTasks(session);
+            }
+        }
+
+        private void OnUpdateSession(UpdateSession msg)
+        {
+            if (sessions.TryGetValue(Sender, out TaskSession session))
+            {
+                session.Height = msg.Height;
+                session.Latency = msg.Latency;
             }
         }
 
@@ -297,24 +279,25 @@ namespace Zoro.Network.P2P
             }
             else
             {
+                string cmd;
+                if (type == InventoryType.Block)
+                {
+                    cmd = MessageType.GetBlk;
+                }
+                else if (type == InventoryType.TX)
+                {
+                    cmd = MessageType.GetTxn;
+                }
+                else
+                {
+                    return;
+                }
+
                 foreach (InvPayload group in InvPayload.CreateGroup(type, hashes))
-                    sender.Tell(Message.Create(MessageType.GetDataGroup, group));
+                    sender.Tell(Message.Create(cmd, group));
             }
 
             Sender.Tell(new RemoteNode.RequestInventory { Type = type, Count = hashes.Length });
-        }
-
-        // 向远程节点发送获取未处理交易的消息
-        private void RequestRawTransactions(UInt256[] hashes, IActorRef sender)
-        {
-            if (hashes.Length == 0)
-                return;
-
-            foreach (InvPayload group in InvPayload.CreateGroup(InventoryType.TX, hashes))
-                sender.Tell(Message.Create(MessageType.GetRawTxn, group));
-
-            Sender.Tell(new RemoteNode.RequestInventory { Type = InventoryType.TX, Count = hashes.Length });
-            blockchain.Log($"send getrawtxn, count:{hashes.Length}", Plugins.LogLevel.Debug);
         }
 
         private void ClearKnownHashes()

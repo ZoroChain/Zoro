@@ -20,7 +20,8 @@ namespace Zoro
         public string NetworkType { get; }
         public List<string> ListenMessages { get; }
         public bool EnableRawTxnList { get; }
-        public Fixed8 GasPriceThreshold { get; }
+        public Fixed8 GasPriceLowestThreshold { get; }
+        public Fixed8 GasPriceHighestThreshold { get; }
 
         public static ProtocolSettings Default { get; }
 
@@ -44,7 +45,8 @@ namespace Zoro
             this.NetworkType = GetValueOrDefault(section.GetSection("NetworkType"), "Unknown", p => p);
             this.ListenMessages = section.GetSection("ListenMessages").GetChildren().Select(p => p.Value).ToList();
             this.EnableRawTxnList = GetValueOrDefault(section.GetSection("EnableRawTxnList"), true, p => bool.Parse(p));
-            this.GasPriceThreshold = GetValueOrDefault(section.GetSection("GasPriceThreshold"), Fixed8.FromDecimal(0.0001m), p => Fixed8.Parse(p));
+            this.GasPriceLowestThreshold = GetValueOrDefault(section.GetSection("GasPriceLowestThreshold"), Fixed8.FromDecimal(0.0001m), p => Fixed8.Parse(p));
+            this.GasPriceHighestThreshold = GetValueOrDefault(section.GetSection("GasPriceHighestThreshold"), Fixed8.FromDecimal(100), p => Fixed8.Parse(p));
         }
 
         internal T GetValueOrDefault<T>(IConfigurationSection section, T defaultValue, Func<string, T> selector)

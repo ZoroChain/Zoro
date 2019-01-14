@@ -17,6 +17,8 @@ namespace Zoro.Network.P2P
         private static readonly TimeSpan TimerInterval = TimeSpan.FromMilliseconds(100);
         private readonly ICancelable timer = Context.System.Scheduler.ScheduleTellRepeatedlyCancelable(TimerInterval, TimerInterval, Context.Self, new Timer(), ActorRefs.NoSender);
 
+        public const int MaxPayloadSize = 128 * 1024;
+
         public RawTransactionList(ZoroSystem system)
         {
             this.system = system;
@@ -64,7 +66,7 @@ namespace Zoro.Network.P2P
                 size += tx.Size;
 
                 // 大小超过上限
-                if (size >= RawTransactionPayload.MaxPayloadSize)
+                if (size >= MaxPayloadSize)
                     return true;
             }
 
@@ -79,7 +81,7 @@ namespace Zoro.Network.P2P
 
             // 控制每组消息里的交易数量，向远程节点发送交易的清单
             foreach (InvPayload payload in InvPayload.CreateGroup(InventoryType.TX, rawtxnList.Select(p => p.Hash).ToArray()))
-                system.LocalNode.Tell(Message.Create(MessageType.RawTxnInv, payload));
+                system.LocalNode.Tell(Message.Create(MessageType.Inv, payload));
 
             // 清空队列
             rawtxnList.Clear();

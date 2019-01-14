@@ -21,10 +21,14 @@ namespace Zoro.Network.P2P
         public bool HasTask => Tasks.Count > 0;
         public bool HeaderTask => Tasks.ContainsKey(UInt256.Zero);
 
+        public uint Height = 0;
+        public uint Latency = 0;
+
         public TaskSession(IActorRef node, VersionPayload version)
         {
             this.RemoteNode = node;
             this.Version = version;
+            this.Height = version.StartHeight;
         }
     }
 }
