@@ -6,38 +6,89 @@ using System;
 
 namespace Zoro.Ledger
 {
-    internal class MemoryPool
+    public class MemoryPool
     {
-        internal class Index : IComparable<Index>
+        internal class SortedItem : IComparable<SortedItem>, IEquatable<SortedItem>
         {
-            public UInt256 Hash;
-            public Fixed8 FeeRatio;
-            public Fixed8 Fee;
+            public Transaction tx;
+            public bool verified;
+            public bool reverse;
 
-            public int CompareTo(Index other)
+            public int CompareTo(SortedItem other)
             {
-                int r = FeeRatio.CompareTo(other.FeeRatio); 
-                if (r != 0) return r;
+                int r = tx.FeePerByte.CompareTo(other.tx.FeePerByte); 
+                if (r != 0) return reverse ? -r : r;
 
-                r = Fee.CompareTo(other.Fee);
-                if (r != 0) return r;
+                r = tx.SystemFee.CompareTo(other.tx.SystemFee);
+                if (r != 0) return reverse ? -r : r;
                 
-                return Hash.CompareTo(other.Hash);
+                r = tx.Hash.CompareTo(other.tx.Hash);
+                if (r != 0) return reverse ? -r : r;
+
+                return 0;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return Equals(obj as SortedItem);
+            }
+
+            public bool Equals(SortedItem other)
+            {
+                if (ReferenceEquals(this, other)) return true;
+                if (other is null) return false;
+                return tx.Equals(other.tx);
+            }
+
+            public override int GetHashCode()
+            {
+                return tx.GetHashCode();
             }
         };
 
         private readonly ConcurrentDictionary<UInt256, Transaction> _verified = new ConcurrentDictionary<UInt256, Transaction>();
         private readonly ConcurrentDictionary<UInt256, Transaction> _unverified = new ConcurrentDictionary<UInt256, Transaction>();
-        private readonly SortedSet<Index> _index_set = new SortedSet<Index>();
+        private readonly SortedSet<SortedItem> _item_sorted = new SortedSet<SortedItem>();
+        private readonly SortedSet<SortedItem> _item_reverse_sorted = new SortedSet<SortedItem>();
 
         public int Capacity { get; }
         public int Count => _verified.Count + _unverified.Count;
         public int VerifiedCount => _verified.Count;
         public int UnverifiedCount => _unverified.Count;
+        public bool HasVerified => !_verified.IsEmpty;
+        public bool HasUnverified => !_unverified.IsEmpty;
 
         public MemoryPool(int capacity)
         {
             Capacity = capacity;
+        }
+        
+        public void Clear()
+        {
+            _verified.Clear();
+            _unverified.Clear();
+            _item_sorted.Clear();
+            _item_reverse_sorted.Clear();
+        }
+
+        public IEnumerable<Transaction> GetVerified()
+        {
+            return _verified.Values;
+        }
+
+        public IEnumerable<Transaction> GetUnverified()
+        {
+            return _unverified.Values;
+        }
+
+        public IEnumerable<Transaction> GetAll()
+        {
+            return _verified.Values.Union(_unverified.Values);
+        }
+
+        public IEnumerable<Transaction> TakeUnverifiedTransactions(int count)
+        {
+            return _item_reverse_sorted.Where(p => !p.verified).Select(p => p.tx).Take(count).ToArray();
         }
 
         public bool ContainsKey(UInt256 hash)
@@ -60,35 +111,23 @@ namespace Zoro.Ledger
 
             if (_verified.TryAdd(tx.Hash, tx))
             {
-                AddIndex(tx);
+                AddToSortedSet(tx, true);
                 return true;
             }
 
             return false;
         }
 
-        public bool TryAddUnverified(Transaction tx)
-        {
-            if (Count >= Capacity)
-            {
-                if (!RemoveLowestFee(tx))
-                    return false;
-            }
-
-            if (_unverified.TryAdd(tx.Hash, tx))
-            {
-                AddIndex(tx);
-                return true;
-            }
-
-            return false;
-        }
-
-        public bool TryRemoveVerified(UInt256 hash, out Transaction tx)
+        public bool TryRemove(UInt256 hash, out Transaction tx)
         {
             if (_verified.TryRemove(hash, out tx))
             {
-                RemoveIndex(tx);
+                RemoveSortedItem(tx, true);
+                return true;
+            }
+            else if(_unverified.TryRemove(hash, out tx))
+            {
+                RemoveSortedItem(tx, false);
                 return true;
             }
             else
@@ -102,7 +141,7 @@ namespace Zoro.Ledger
         {
             if (_unverified.TryRemove(hash, out tx))
             {
-                RemoveIndex(tx);
+                RemoveSortedItem(tx, false);
                 return true;
             }
             else
@@ -155,69 +194,50 @@ namespace Zoro.Ledger
             }
         }
 
-        public void ClearVerified()
-        {
-            foreach (var tx in _verified.Values)
-                RemoveIndex(tx);
-
-            _verified.Clear();
-        }
-
-        public void ClearUnverified()
-        {
-            foreach (var tx in _unverified.Values)
-                RemoveIndex(tx);
-
-            _unverified.Clear();
-        }
-
         public void ResetToUnverified()
         {
-            _unverified.Union(_verified);
+            if (_verified.IsEmpty)
+                return;
+
+            foreach (var item in _verified)
+            {
+                _unverified.TryAdd(item.Key, item.Value);
+            }
+            
             _verified.Clear();
+
+            foreach (var item in _item_sorted)
+            {
+                item.verified = false;
+            }
+
+            foreach (var item in _item_reverse_sorted)
+            {
+                item.verified = false;
+            }
         }
 
-        public IEnumerable<Transaction> GetVerified()
+        private void AddToSortedSet(Transaction tx, bool verified)
         {
-            return _verified.Values;
+            _item_sorted.Add(new SortedItem { tx = tx, verified = verified, reverse = false });
+            _item_reverse_sorted.Add(new SortedItem { tx = tx, verified = verified, reverse = true });
         }
 
-        public IEnumerable<Transaction> GetUnverified()
+        private void RemoveSortedItem(Transaction tx, bool verified)
         {
-            return _unverified.Values;
-        }
-
-        public IEnumerable<Transaction> GetAll()
-        {
-            return _verified.Values.Union(_unverified.Values);
-        }
-
-        private Fixed8 GetFeeRatio(Transaction tx)
-        {
-            return tx.SystemFee / tx.Size;
-        }
-
-        private void AddIndex(Transaction tx)
-        {
-            Index index = new Index { Hash = tx.Hash, Fee = tx.SystemFee, FeeRatio = GetFeeRatio(tx) };
-            _index_set.Add(index);
-        }
-
-        private void RemoveIndex(Transaction tx)
-        {
-            Index index = new Index { Hash = tx.Hash, Fee = tx.SystemFee, FeeRatio = GetFeeRatio(tx) };
-            _index_set.Remove(index);
+            _item_sorted.Remove(new SortedItem { tx = tx, verified = verified, reverse = false });
+            _item_reverse_sorted.Remove(new SortedItem { tx = tx, verified = verified, reverse = true });
         }
 
         private bool RemoveLowestFee(Transaction tx)
         {
-            Index index = _index_set.First();
+            SortedItem item = _item_sorted.First();
 
-            if (index.FeeRatio < GetFeeRatio(tx))
+            if (item != null && item.tx.FeePerByte < tx.FeePerByte)
             {
-                _verified.TryRemove(index.Hash, out Transaction _);
-                _unverified.TryRemove(index.Hash, out Transaction _);
-                _index_set.Remove(index);
+                _verified.TryRemove(item.tx.Hash, out Transaction _);
+                _unverified.TryRemove(item.tx.Hash, out Transaction _);
+                _item_sorted.Remove(item);
                 return true;
             }
 

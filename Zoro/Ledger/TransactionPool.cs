@@ -82,6 +82,16 @@ namespace Zoro.Ledger
             return mem_pool.UnverifiedCount;
         }
 
+        public bool HasVerifiedTransaction()
+        {
+            return mem_pool.HasVerified;
+        }
+
+        public bool HasUnverifiedTransaction()
+        {
+            return mem_pool.HasUnverified;
+        }
+
         public int GetMemoryPoolCount()
         {
             return mem_pool.Count;
@@ -142,6 +152,8 @@ namespace Zoro.Ledger
             transaction.ChainHash = blockchain.ChainHash;
             if (transaction.Type == TransactionType.MinerTransaction)
                 return RelayResultReason.Invalid;
+            if (mem_pool.ContainsKey(transaction.Hash))
+                return RelayResultReason.AlreadyExists;
             if (blockchain.ContainsTransaction(transaction.Hash))
                 return RelayResultReason.AlreadyExists;
             if (!transaction.Verify(snapshot))
@@ -202,18 +214,19 @@ namespace Zoro.Ledger
 
         private void OnPersistCompleted(Block block)
         {
+            // 先删除MemPool里已经上链的交易
             foreach (Transaction tx in block.Transactions)
             {
-                mem_pool.TryRemoveVerified(tx.Hash, out _);
+                mem_pool.TryRemove(tx.Hash, out _);
             }
 
-            RelayMemoryPool();
+            // 把MemPool里未处理的交易设置为未验证状态
+            mem_pool.ResetToUnverified();
 
-            //ResetMemoryPool();
+            // 重新投递待验证的交易
+            PostUnverifedTransactions();
 
-            //PostUnverifedTransactions();
-
-            blockchain.Log($"Block Persisted:{block.Index}, tx:{block.Transactions.Length}, mempool:{GetMemoryPoolCount()}, unverfied:{GetUnverifiedTransactionCount()}");
+            blockchain.Log($"Block Persisted:{block.Index}, tx:{block.Transactions.Length}, mempool:{GetMemoryPoolCount()}");
         }
 
         // 广播MemoryPool中还未上链的交易
@@ -226,24 +239,19 @@ namespace Zoro.Ledger
                 system.LocalNode.Tell(Message.Create(MessageType.Inv, payload));
         }
 
-        // 把MemPool里未处理的交易设置为未验证状态
-        private void ResetMemoryPool()
-        {
-            mem_pool.ResetToUnverified();
-        }
-
         // 按配置的最大数量，取出需要重新验证的交易, 重新投递到消息队列里
         private void PostUnverifedTransactions()
         {
-            if (GetUnverifiedTransactionCount() == 0)
+            if (!HasUnverifiedTransaction())
                 return;
 
-            IEnumerable<Transaction> unverfied = mem_pool.GetUnverified().Take(MemPoolRelayCount).ToArray();
+            IEnumerable<Transaction> unverfied = mem_pool.TakeUnverifiedTransactions(MemPoolRelayCount);
             foreach (var tx in unverfied)
             {
                 mem_pool.TryRemoveUnverified(tx.Hash, out _);
 
-                Self.Tell(tx, ActorRefs.NoSender);
+                if (tx.Verify(snapshot))
+                    mem_pool.TryAddVerified(tx);
             }
         }
 

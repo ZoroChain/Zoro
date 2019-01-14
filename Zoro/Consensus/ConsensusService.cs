@@ -354,7 +354,7 @@ namespace Zoro.Consensus
             if (context.State.HasFlag(ConsensusState.Primary) && !context.State.HasFlag(ConsensusState.RequestSent))
             {
                 // MemoryPool里没有交易请求，并且没有到最长出块时间
-                if (txnPool.GetMemoryPoolCount() == 0 && TimeProvider.Current.UtcNow - block_received_time < MaxTimeSpanPerBlock)
+                if (!txnPool.HasVerifiedTransaction() && TimeProvider.Current.UtcNow - block_received_time < MaxTimeSpanPerBlock)
                 {
                     // 等待下一次出块时间再判断是否需要出块
                     ChangeTimer(Blockchain.TimePerBlock);
