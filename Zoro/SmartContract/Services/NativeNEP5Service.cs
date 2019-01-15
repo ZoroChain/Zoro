@@ -268,12 +268,12 @@ namespace Zoro.SmartContract.Services
         {
             byte[] hash = engine.CurrentContext.EvaluationStack.Pop().GetByteArray();
 
-            byte[] transferLog = NativeAPI.GetTransferLog(Snapshot, state.AssetId, hash);
+            TransferLog transferLog = NativeAPI.GetTransferLog(Snapshot, state.AssetId, hash);
 
             if (transferLog == null)
                 return false;
 
-            engine.CurrentContext.EvaluationStack.Push(transferLog);
+            engine.CurrentContext.EvaluationStack.Push(StackItem.FromInterface(transferLog));
             return true;
         }
 
