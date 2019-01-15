@@ -101,6 +101,15 @@ namespace Zoro.SmartContract.Services
             return true;
         }
 
+        public bool GetTransferLog(ExecutionEngine engine)
+        {
+            UInt160 assetId = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            NativeNEP5State state = Snapshot.NativeNEP5s.TryGet(assetId);
+            if (state == null) return false;
+
+            return API_GetTransferLog(engine, state);
+        }
+
         public static long GetPrice(ExecutionEngine engine)
         {
             long price = 0;

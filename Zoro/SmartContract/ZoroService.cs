@@ -89,6 +89,7 @@ namespace Zoro.SmartContract
 
             Register("Zoro.NativeNEP5.Create", nativeNEP5Service.Create, 1000 * 1000);
             Register("Zoro.NativeNEP5.Call", nativeNEP5Service.Call);
+            Register("Zoro.NativeNEP5.GetTransferLog", nativeNEP5Service.GetTransferLog, 100);
 
             Register("Zoro.NativeNEP5.TransferLog.GetFrom", transferLogService.GetFrom, 1);
             Register("Zoro.NativeNEP5.TransferLog.GetTo", transferLogService.GetTo, 1);
