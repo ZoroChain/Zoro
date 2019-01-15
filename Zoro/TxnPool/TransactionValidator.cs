@@ -45,7 +45,7 @@ namespace Zoro.TxnPool
             {
                 bool result = tx.Verify(snapshot);
 
-                Sender.Tell(new TransactionPool.VerifyResult { Hash = tx.Hash, Result = result });
+                Sender.Tell(new TransactionPool.VerifyResult { tx = tx, Result = result });
             }
         }
 

@@ -46,6 +46,7 @@ namespace Zoro.Ledger
             _verified.Clear();
             _unverified.Clear();
             _sorted_items.Clear();
+            _reverifying_items.Clear();
         }
 
         public IEnumerable<Transaction> GetVerified()
@@ -95,6 +96,7 @@ namespace Zoro.Ledger
             if (_verified.TryRemove(hash, out tx) || _unverified.TryRemove(hash, out tx))
             {
                 RemoveSortedItem(tx);
+                RemoveReverifyingItem(hash);
                 return true;
             }
             else
@@ -172,9 +174,7 @@ namespace Zoro.Ledger
 
         public bool SetVerifyState(UInt256 hash, bool verifyResult)
         {
-            _reverifying_items.Remove(hash);
-
-            if (_unverified.TryRemove(hash, out Transaction tx))
+            if (RemoveReverifyingItem(hash) && _unverified.TryRemove(hash, out Transaction tx))
             {
                 if (verifyResult)
                 {
@@ -187,14 +187,19 @@ namespace Zoro.Ledger
             return false;            
         }
 
-        private void AddToSortedSet(Transaction tx)
+        private bool AddToSortedSet(Transaction tx)
         {
-            _sorted_items.Add(new SortedItem { tx = tx });
+            return _sorted_items.Add(new SortedItem { tx = tx });
         }
 
-        private void RemoveSortedItem(Transaction tx)
+        private bool RemoveSortedItem(Transaction tx)
         {
-            _sorted_items.Remove(new SortedItem { tx = tx });
+            return _sorted_items.Remove(new SortedItem { tx = tx });
+        }
+
+        public bool RemoveReverifyingItem(UInt256 hash)
+        {
+            return _reverifying_items.Remove(hash);
         }
 
         private bool RemoveLowestFee(Transaction tx)

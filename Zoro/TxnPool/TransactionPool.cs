@@ -15,10 +15,10 @@ namespace Zoro.TxnPool
     public class TransactionPool : UntypedActor
     {
         private class Timer { }
-        public class VerifyResult { public UInt256 Hash; public bool Result; }
+        public class VerifyResult { public Transaction tx; public bool Result; }
 
         private IActorRef dispatcher;
-        private IActorRef validator;        
+        private IActorRef validator;
 
         private ZoroSystem system;
         private Blockchain blockchain;
@@ -26,6 +26,8 @@ namespace Zoro.TxnPool
 
         private readonly MemoryPool mem_pool = new MemoryPool(50_000);
         private readonly int reverify_txn_count = 1000;
+        private int reverify_waste_count = 0;
+        private int reverify_removed_count = 0;
 
         public TransactionPool(ZoroSystem system, UInt160 chainHash)
         {
@@ -112,7 +114,7 @@ namespace Zoro.TxnPool
                     OnPersistCompleted(completed.Block);
                     break;
                 case VerifyResult result:
-                    OnVerifyResult(result.Hash, result.Result);
+                    OnVerifyResult(result.tx, result.Result);
                     break;
             }
         }
@@ -165,6 +167,9 @@ namespace Zoro.TxnPool
             // 先删除MemPool里已经上链的交易
             foreach (Transaction tx in block.Transactions)
             {
+                if (mem_pool.RemoveReverifyingItem(tx.Hash))
+                    reverify_removed_count++;
+
                 mem_pool.TryRemove(tx.Hash, out _);
             }
 
@@ -174,7 +179,7 @@ namespace Zoro.TxnPool
             // 重新投递待验证的交易
             ReverifyTransactions();
 
-            blockchain.Log($"Block Persisted:{block.Index}, tx:{block.Transactions.Length}, mempool:{GetMemoryPoolCount()}");
+            blockchain.Log($"Block Persisted:{block.Index}, tx:{block.Transactions.Length}, mempool:{GetMemoryPoolCount()}, removed:{reverify_removed_count}, waste:{reverify_waste_count}");
         }
 
         // 广播MemoryPool中还未上链的交易
@@ -206,11 +211,20 @@ namespace Zoro.TxnPool
             }
         }
 
-        private void OnVerifyResult(UInt256 hash, bool verifyResult)
+        private void OnVerifyResult(Transaction tx, bool verifyResult)
         {
+            UInt256 hash = tx.Hash;
             if (!mem_pool.SetVerifyState(hash, verifyResult))
             {
-                blockchain.Log($"can't find reverified tx:{hash}, verify result:{verifyResult}", LogLevel.Warning);
+                reverify_waste_count++;
+                blockchain.Log($"can't find reverified tx:{hash}, verify result:{verifyResult}", LogLevel.Debug);
+            }
+            else
+            {                
+                if (verifyResult && ProtocolSettings.Default.EnableRawTxnMsg)
+                {
+                    dispatcher.Tell(tx);
+                }
             }
 
             if (!verifyResult)
@@ -243,10 +257,11 @@ namespace Zoro.TxnPool
         {
             switch (message)
             {
-                case Transaction _:
-                    return false;
-                default:
+                case Blockchain.UpdateSnapshot _:
+                case Blockchain.PersistCompleted _:
                     return true;
+                default:
+                    return false;
             }
         }
     }
