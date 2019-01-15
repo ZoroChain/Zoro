@@ -1,5 +1,4 @@
 ﻿using Zoro.IO;
-using System;
 using System.IO;
 
 namespace Zoro.Network.P2P.Payloads

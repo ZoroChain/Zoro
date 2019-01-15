@@ -213,6 +213,13 @@ namespace Zoro.Network.P2P.Payloads
             return this.VerifyWitnesses(snapshot);
         }
 
+        public virtual bool Reverify(Snapshot snapshot)
+        {
+            if (!CheckBalance(snapshot)) return false;
+
+            return this.ReverifyWitnesses(snapshot);
+        }
+
         private bool CheckBalance(Snapshot snapshot)
         {
             long sysfee = SystemFee.GetData();

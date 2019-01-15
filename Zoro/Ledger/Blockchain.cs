@@ -442,8 +442,6 @@ namespace Zoro.Ledger
                 foreach (IPersistencePlugin plugin in PluginManager.PersistencePlugins)
                     plugin.OnPersist(snapshot, all_application_executed);
 
-                Log($"Commit Snapshot:{block.Index}, tx:{block.Transactions.Length}");
-
                 snapshot.Commit();
             }
             UpdateCurrentSnapshot();

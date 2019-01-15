@@ -43,7 +43,7 @@ namespace Zoro.TxnPool
         {
             foreach (var tx in txns)
             {
-                bool result = tx.Verify(snapshot);
+                bool result = tx.Reverify(snapshot);
 
                 Sender.Tell(new TransactionPool.VerifyResult { tx = tx, Result = result });
             }

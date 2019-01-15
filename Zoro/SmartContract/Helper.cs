@@ -122,6 +122,48 @@ namespace Zoro.SmartContract
             return true;
         }
 
+        internal static bool ReverifyWitnesses(this IVerifiable verifiable, Snapshot snapshot)
+        {
+            UInt160[] hashes;
+            try
+            {
+                hashes = verifiable.GetScriptHashesForVerifying(snapshot);
+            }
+            catch (InvalidOperationException)
+            {
+                return false;
+            }
+            if (hashes.Length != verifiable.Witnesses.Length) return false;
+            for (int i = 0; i < hashes.Length; i++)
+            {
+                byte[] verification = verifiable.Witnesses[i].VerificationScript;
+                if (verification.Length == 0)
+                {
+                    using (ScriptBuilder sb = new ScriptBuilder())
+                    {
+                        sb.EmitAppCall(hashes[i].ToArray());
+                        verification = sb.ToArray();
+                    }
+                }
+                else
+                {
+                    if (hashes[i] != verifiable.Witnesses[i].ScriptHash) return false;
+                }
+
+                if (!verification.IsSignatureContract() && !verification.IsMultiSigContract())
+                {
+                    using (ApplicationEngine engine = new ApplicationEngine(TriggerType.Verification, verifiable, snapshot, Fixed8.Zero, true))
+                    {
+                        engine.LoadScript(verification);
+                        engine.LoadScript(verifiable.Witnesses[i].InvocationScript);
+                        if (!engine.Execute()) return false;
+                        if (engine.ResultStack.Count != 1 || !engine.ResultStack.Pop().GetBoolean()) return false;
+                    }
+                }
+            }
+            return true;
+        }
+
         public static BigInteger AsBigInteger(this byte[] bytes)
         {
             return new BigInteger(bytes);

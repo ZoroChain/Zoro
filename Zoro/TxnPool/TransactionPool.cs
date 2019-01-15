@@ -27,7 +27,6 @@ namespace Zoro.TxnPool
         private readonly MemoryPool mem_pool = new MemoryPool(50_000);
         private readonly int reverify_txn_count = 1000;
         private int reverify_waste_count = 0;
-        private int reverify_removed_count = 0;
 
         public TransactionPool(ZoroSystem system, UInt160 chainHash)
         {
@@ -167,9 +166,6 @@ namespace Zoro.TxnPool
             // 先删除MemPool里已经上链的交易
             foreach (Transaction tx in block.Transactions)
             {
-                if (mem_pool.RemoveReverifyingItem(tx.Hash))
-                    reverify_removed_count++;
-
                 mem_pool.TryRemove(tx.Hash, out _);
             }
 
@@ -179,7 +175,7 @@ namespace Zoro.TxnPool
             // 重新投递待验证的交易
             ReverifyTransactions();
 
-            blockchain.Log($"Block Persisted:{block.Index}, tx:{block.Transactions.Length}, mempool:{GetMemoryPoolCount()}, removed:{reverify_removed_count}, waste:{reverify_waste_count}");
+            blockchain.Log($"Block Persisted:{block.Index}, tx:{block.Transactions.Length}, mempool:{GetMemoryPoolCount()}, waste:{reverify_waste_count}");
         }
 
         // 广播MemoryPool中还未上链的交易
@@ -231,8 +227,6 @@ namespace Zoro.TxnPool
             {
                 blockchain.Log($"transaction reverify failed:{hash}");
             }
-
-            ReverifyTransactions();
         }
 
         protected override void PostStop()
@@ -246,22 +240,25 @@ namespace Zoro.TxnPool
         }
     }
 
-    internal class TransactionPoolMailbox : PriorityMailbox
+    internal class TransactionPoolMailbox : MultiPriorityMailbox
     {
         public TransactionPoolMailbox(Akka.Actor.Settings settings, Config config)
             : base(settings, config)
         {
+            numQueues = 3;
         }
 
-        protected override bool IsHighPriority(object message)
+        protected override int IsHighPriority(object message)
         {
             switch (message)
             {
-                case Blockchain.UpdateSnapshot _:
                 case Blockchain.PersistCompleted _:
-                    return true;
+                case Blockchain.UpdateSnapshot _:
+                    return 2;
+                case TransactionPool.VerifyResult _:
+                    return 1;
                 default:
-                    return false;
+                    return 0;
             }
         }
     }
