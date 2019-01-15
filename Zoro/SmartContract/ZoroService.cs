@@ -12,12 +12,14 @@ namespace Zoro.SmartContract
     {
         private AppChainService appchainService;
         private NativeNEP5Service nativeNEP5Service;
+        private TransferLogServices transferLogService;
 
         public ZoroService(TriggerType trigger, Snapshot snapshot)
             : base(trigger, snapshot)
         {
             appchainService = new AppChainService(this, trigger, snapshot);
             nativeNEP5Service = new NativeNEP5Service(this, trigger, snapshot);
+            transferLogService = new TransferLogServices();
 
             Register("Zoro.Runtime.GetTrigger", Runtime_GetTrigger, 1);
             Register("Zoro.Runtime.CheckWitness", Runtime_CheckWitness, 200);
@@ -87,6 +89,10 @@ namespace Zoro.SmartContract
 
             Register("Zoro.NativeNEP5.Create", nativeNEP5Service.Create, 1000 * 1000);
             Register("Zoro.NativeNEP5.Call", nativeNEP5Service.Call);
+
+            Register("Zoro.NativeNEP5.TransferLog.GetFrom", transferLogService.GetFrom, 1);
+            Register("Zoro.NativeNEP5.TransferLog.GetTo", transferLogService.GetTo, 1);
+            Register("Zoro.NativeNEP5.TransferLog.GetValue", transferLogService.GetValue, 1);
         }
 
         public void AddTransferNotification(ExecutionEngine engine, UIntBase assetId, UInt160 from, UInt160 to, Fixed8 value)
