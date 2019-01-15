@@ -208,7 +208,15 @@ namespace Zoro.TxnPool
 
         private void OnVerifyResult(UInt256 hash, bool verifyResult)
         {
-            mem_pool.SetVerifyState(hash, verifyResult);
+            if (!mem_pool.SetVerifyState(hash, verifyResult))
+            {
+                blockchain.Log($"can't find reverified tx:{hash}, verify result:{verifyResult}", LogLevel.Warning);
+            }
+
+            if (!verifyResult)
+            {
+                blockchain.Log($"transaction reverify failed:{hash}");
+            }
 
             ReverifyTransactions();
         }

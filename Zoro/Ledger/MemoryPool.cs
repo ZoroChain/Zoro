@@ -8,11 +8,11 @@ namespace Zoro.Ledger
 {
     public class MemoryPool
     {
-        internal class AscendingSortedItem : IComparable<AscendingSortedItem>
+        internal class SortedItem : IComparable<SortedItem>
         {
             public Transaction tx;
 
-            public int CompareTo(AscendingSortedItem other)
+            public int CompareTo(SortedItem other)
             {
                 int r = tx.FeePerByte.CompareTo(other.tx.FeePerByte); 
                 if (r != 0) return r;
@@ -24,29 +24,10 @@ namespace Zoro.Ledger
             }
         };
 
-        internal class DescendingSortedItem : IComparable<DescendingSortedItem>
-        {
-            public Transaction tx;
-
-            public int CompareTo(DescendingSortedItem other)
-            {
-                int r = tx.FeePerByte.CompareTo(other.tx.FeePerByte);
-                if (r != 0) return -r;
-
-                r = tx.SystemFee.CompareTo(other.tx.SystemFee);
-                if (r != 0) return -r;
-
-                r = tx.Hash.CompareTo(other.tx.Hash);
-                if (r != 0) return -r;
-
-                return 0;
-            }
-        };
-
         private readonly ConcurrentDictionary<UInt256, Transaction> _verified = new ConcurrentDictionary<UInt256, Transaction>();
         private readonly ConcurrentDictionary<UInt256, Transaction> _unverified = new ConcurrentDictionary<UInt256, Transaction>();
-        private readonly SortedSet<AscendingSortedItem> _ascending_order_items = new SortedSet<AscendingSortedItem>();
-        private readonly SortedSet<DescendingSortedItem> _descending_order_items = new SortedSet<DescendingSortedItem>();
+        private readonly SortedSet<SortedItem> _sorted_items = new SortedSet<SortedItem>();
+        private readonly HashSet<UInt256> _reverifying_items = new HashSet<UInt256>();
 
         public int Capacity { get; }
         public int Count => _verified.Count + _unverified.Count;
@@ -64,8 +45,7 @@ namespace Zoro.Ledger
         {
             _verified.Clear();
             _unverified.Clear();
-            _ascending_order_items.Clear();
-            _descending_order_items.Clear();
+            _sorted_items.Clear();
         }
 
         public IEnumerable<Transaction> GetVerified()
@@ -81,20 +61,6 @@ namespace Zoro.Ledger
         public IEnumerable<Transaction> GetAll()
         {
             return _verified.Values.Union(_unverified.Values);
-        }
-
-        public Transaction[] TakeUnverifiedTransactions(int count)
-        {
-            IEnumerable<AscendingSortedItem> items = _ascending_order_items.Take(count);
-
-            Transaction[] txns = items.Select(p => p.tx).ToArray();
-
-            foreach (var item in items.ToArray())
-            {
-                _ascending_order_items.Remove(item);
-            }
-
-            return txns;
         }
 
         public bool ContainsKey(UInt256 hash)
@@ -194,57 +160,50 @@ namespace Zoro.Ledger
             _verified.Clear();
         }
 
-        public void SetVerifyState(UInt256 hash, bool verifyResult)
+        public Transaction[] TakeUnverifiedTransactions(int count)
         {
+            return _sorted_items.Where(p => !_reverifying_items.Contains(p.tx.Hash) && _unverified.ContainsKey(p.tx.Hash))
+                .Take(count)
+                .Select(p => {
+                    _reverifying_items.Add(p.tx.Hash);
+                    return p.tx;
+                }).ToArray();
+        }
+
+        public bool SetVerifyState(UInt256 hash, bool verifyResult)
+        {
+            _reverifying_items.Remove(hash);
+
             if (_unverified.TryRemove(hash, out Transaction tx))
             {
                 if (verifyResult)
                 {
                     _verified.TryAdd(hash, tx);
-                    AddToSortedSet(tx, true);
                 }
-                else
-                {
-                    RemoveSortedItem(tx, false);
-                }
+
+                return true;
             }
+
+            return false;            
         }
 
         private void AddToSortedSet(Transaction tx)
         {
-            _ascending_order_items.Add(new AscendingSortedItem { tx = tx });
-            _descending_order_items.Add(new DescendingSortedItem { tx = tx });
-        }
-
-        private void AddToSortedSet(Transaction tx, bool ascending)
-        {
-            if (ascending)
-                _ascending_order_items.Add(new AscendingSortedItem { tx = tx });
-            else
-                _descending_order_items.Add(new DescendingSortedItem { tx = tx });
+            _sorted_items.Add(new SortedItem { tx = tx });
         }
 
         private void RemoveSortedItem(Transaction tx)
         {
-            _ascending_order_items.Remove(new AscendingSortedItem { tx = tx });
-            _descending_order_items.Remove(new DescendingSortedItem { tx = tx });
-        }
-
-        private void RemoveSortedItem(Transaction tx, bool ascending)
-        {
-            if (ascending)
-                _ascending_order_items.Remove(new AscendingSortedItem { tx = tx });
-            else
-                _descending_order_items.Remove(new DescendingSortedItem { tx = tx });
+            _sorted_items.Remove(new SortedItem { tx = tx });
         }
 
         private bool RemoveLowestFee(Transaction tx)
         {
-            DescendingSortedItem item = _descending_order_items.Min;
+            SortedItem min = _sorted_items.Min;
 
-            if (item != null && item.tx.FeePerByte < tx.FeePerByte)
+            if (min != null && min.tx.FeePerByte < tx.FeePerByte)
             {
-                TryRemove(item.tx.Hash, out _);
+                TryRemove(min.tx.Hash, out _);
                 return true;
             }
 
