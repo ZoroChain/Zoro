@@ -6,7 +6,7 @@ using System.Numerics;
 
 namespace Zoro.SmartContract.NativeNEP5
 {
-    internal class NativeAPI
+    public class NativeAPI
     {
         public static BigInteger BalanceOf(Snapshot snapshot, UInt160 assetId, UInt160 address)
         {
