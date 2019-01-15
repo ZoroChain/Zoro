@@ -7,6 +7,7 @@ using Zoro.Network.P2P.Payloads;
 
 namespace Zoro.TxnPool
 {
+    // 缓存新收到的交易，按策略批量转发
     internal class TransactionDispatcher : UntypedActor
     {
         private class Timer { }

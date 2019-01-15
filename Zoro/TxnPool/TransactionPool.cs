@@ -11,7 +11,7 @@ using Zoro.Network.P2P.Payloads;
 
 namespace Zoro.TxnPool
 {
-    // 缓存新收到的交易，按策略批量转发
+    // 管理和转发等待处理的交易
     public class TransactionPool : UntypedActor
     {
         private class Timer { }
@@ -198,9 +198,12 @@ namespace Zoro.TxnPool
             if (!HasUnverifiedTransaction())
                 return;
 
-            IEnumerable<Transaction> txns = mem_pool.TakeUnverifiedTransactions(reverify_txn_count);
+            Transaction[] txns = mem_pool.TakeUnverifiedTransactions(reverify_txn_count);
 
-            validator.Tell(txns);
+            if (txns.Length > 0)
+            {
+                validator.Tell(txns);
+            }
         }
 
         private void OnVerifyResult(UInt256 hash, bool verifyResult)

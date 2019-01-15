@@ -7,6 +7,7 @@ using Zoro.Network.P2P.Payloads;
 
 namespace Zoro.TxnPool
 {
+    // 重新验证交易
     internal class TransactionValidator : UntypedActor
     {
         private Snapshot snapshot;
