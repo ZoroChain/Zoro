@@ -5,6 +5,7 @@ using Zoro.Cryptography;
 using Zoro.IO;
 using Zoro.IO.Actors;
 using Zoro.Plugins;
+using Zoro.TxnPool;
 using Zoro.Ledger;
 using Zoro.Network.P2P.Payloads;
 using System;

@@ -7,6 +7,7 @@ using Zoro.Persistence;
 using Zoro.Plugins;
 using Zoro.SmartContract;
 using Zoro.Wallets;
+using Zoro.TxnPool;
 using System;
 using System.Collections.Generic;
 using System.Linq;

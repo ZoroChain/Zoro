@@ -1,38 +1,39 @@
 ﻿using Akka.Actor;
 using Akka.Configuration;
-using System;
 using System.Linq;
 using System.Collections.Generic;
-using System.Collections.Concurrent;
 using Zoro.IO.Actors;
+using Zoro.Ledger;
 using Zoro.Plugins;
 using Zoro.Persistence;
 using Zoro.Network.P2P;
 using Zoro.Network.P2P.Payloads;
 
-namespace Zoro.Ledger
+namespace Zoro.TxnPool
 {
     // 缓存新收到的交易，按策略批量转发
     public class TransactionPool : UntypedActor
     {
         private class Timer { }
+        public class VerifyResult { public UInt256 Hash; public bool Result; }
+
+        private IActorRef dispatcher;
+        private IActorRef validator;        
 
         private ZoroSystem system;
         private Blockchain blockchain;
         private Snapshot snapshot;
-        private List<Transaction> rawtxnList = new List<Transaction>();
 
-        private readonly MemoryPool mem_pool = new MemoryPool(50_000);        
-
-        private static readonly TimeSpan TimerInterval = TimeSpan.FromMilliseconds(100);
-        private readonly ICancelable timer = Context.System.Scheduler.ScheduleTellRepeatedlyCancelable(TimerInterval, TimerInterval, Context.Self, new Timer(), ActorRefs.NoSender);
-
-        public static readonly int MemPoolRelayCount = ProtocolSettings.Default.MemPoolRelayCount;
+        private readonly MemoryPool mem_pool = new MemoryPool(50_000);
+        private readonly int reverify_txn_count = 1000;
 
         public TransactionPool(ZoroSystem system, UInt160 chainHash)
         {
             this.system = system;
             this.blockchain = ZoroChainSystem.Singleton.AskBlockchain(chainHash);
+
+            this.dispatcher = Context.ActorOf(TransactionDispatcher.Props(system), "TransactionDispatcher");
+            this.validator = Context.ActorOf(TransactionValidator.Props(system, chainHash), "TransactionValidator");            
 
             ZoroChainSystem.Singleton.RegisterTransactionPool(chainHash, this);
         }
@@ -101,9 +102,6 @@ namespace Zoro.Ledger
         {
             switch (message)
             {
-                case Timer timer:
-                    OnTimer();
-                    break;
                 case Transaction tx:
                     Sender.Tell(OnRawTransaction(tx));
                     break;
@@ -113,21 +111,17 @@ namespace Zoro.Ledger
                 case Blockchain.PersistCompleted completed:
                     OnPersistCompleted(completed.Block);
                     break;
-                case Idle _:
-                    PostUnverifedTransactions();
+                case VerifyResult result:
+                    OnVerifyResult(result.Hash, result.Result);
                     break;
             }
-        }
-
-        // 定时器触发时，立刻广播缓存的所有的交易
-        private void OnTimer()
-        {
-            BroadcastRawTransactions();
         }
 
         private void OnUpdateSnapshot()
         {
             snapshot = blockchain.GetSnapshot();
+
+            validator.Tell(new Blockchain.UpdateSnapshot());
         }
 
         private RelayResultReason OnRawTransaction(Transaction tx)
@@ -137,7 +131,7 @@ namespace Zoro.Ledger
             {
                 if (ProtocolSettings.Default.EnableRawTxnMsg)
                 {
-                    AddRawTransaction(tx);
+                    dispatcher.Tell(tx);
                 }
                 else
                 {
@@ -166,52 +160,6 @@ namespace Zoro.Ledger
             return RelayResultReason.Succeed;
         }
 
-        private void AddRawTransaction(Transaction tx)
-        {
-            // 缓存交易数据
-            rawtxnList.Add(tx);
-
-            // 如果缓存的交易数量或大小超过设定的上限，则立刻广播缓存的所有交易
-            if (CheckRawTransactions())
-                BroadcastRawTransactions();
-        }
-
-        // 判断缓存队列中的交易数据是否需要被广播
-        private bool CheckRawTransactions()
-        {
-            // 数量超过上限
-            if (rawtxnList.Count >= InvPayload.MaxHashesCount)
-                return true;
-            
-            int size = 0;
-            foreach (var tx in rawtxnList)
-            {
-                size += tx.Size;
-
-                // 大小超过上限
-                if (size >= RawTransactionPayload.MaxPayloadSize)
-                    return true;
-            }
-
-            return false;
-        }
-
-        // 广播并清空缓存队列中的交易数据
-        private void BroadcastRawTransactions()
-        {
-            if (rawtxnList.Count == 0)
-                return;
-
-            // 控制每组消息里的交易数量，向远程节点发送交易的清单
-            foreach (InvPayload payload in InvPayload.CreateGroup(InventoryType.TX, rawtxnList.Select(p => p.Hash).ToArray()))
-            {
-                system.LocalNode.Tell(Message.Create(MessageType.Inv, payload));
-            }
-
-            // 清空队列
-            rawtxnList.Clear();
-        }
-
         private void OnPersistCompleted(Block block)
         {
             // 先删除MemPool里已经上链的交易
@@ -224,7 +172,7 @@ namespace Zoro.Ledger
             mem_pool.ResetToUnverified();
 
             // 重新投递待验证的交易
-            PostUnverifedTransactions();
+            ReverifyTransactions();
 
             blockchain.Log($"Block Persisted:{block.Index}, tx:{block.Transactions.Length}, mempool:{GetMemoryPoolCount()}");
         }
@@ -232,32 +180,38 @@ namespace Zoro.Ledger
         // 广播MemoryPool中还未上链的交易
         private void RelayMemoryPool()
         {
-            // 按配置的最大数量，从交易池中取出未处理的交易
+            // 从交易池中取出未处理的交易
             IEnumerable<Transaction> trans = mem_pool.GetVerified();
+
+            // 按配置的最大数量
+            if (ProtocolSettings.Default.MemPoolRelayCount > 0)
+                trans = trans.Take(ProtocolSettings.Default.MemPoolRelayCount);
+
             // 使用批量广播的方式来转发未处理的交易，这里先发送交易的清单数据
             foreach (InvPayload payload in InvPayload.CreateGroup(InventoryType.TX, trans.Select(p => p.Hash).ToArray()))
                 system.LocalNode.Tell(Message.Create(MessageType.Inv, payload));
         }
 
-        // 按配置的最大数量，取出需要重新验证的交易, 重新投递到消息队列里
-        private void PostUnverifedTransactions()
+        // 重新验证交易
+        private void ReverifyTransactions()
         {
             if (!HasUnverifiedTransaction())
                 return;
 
-            IEnumerable<Transaction> unverfied = mem_pool.TakeUnverifiedTransactions(MemPoolRelayCount);
-            foreach (var tx in unverfied)
-            {
-                mem_pool.TryRemoveUnverified(tx.Hash, out _);
+            IEnumerable<Transaction> txns = mem_pool.TakeUnverifiedTransactions(reverify_txn_count);
 
-                if (tx.Verify(snapshot))
-                    mem_pool.TryAddVerified(tx);
-            }
+            validator.Tell(txns);
+        }
+
+        private void OnVerifyResult(UInt256 hash, bool verifyResult)
+        {
+            mem_pool.SetVerifyState(hash, verifyResult);
+
+            ReverifyTransactions();
         }
 
         protected override void PostStop()
         {
-            timer.CancelIfNotNull();
             base.PostStop();
         }
 

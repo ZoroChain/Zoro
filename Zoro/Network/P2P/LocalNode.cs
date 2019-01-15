@@ -1,6 +1,7 @@
 ﻿using Akka.Actor;
 using Zoro.IO;
 using Zoro.Ledger;
+using Zoro.TxnPool;
 using Zoro.Network.P2P.Payloads;
 using System;
 using System.Collections.Concurrent;

@@ -16,6 +16,7 @@ using Zoro.Network.P2P;
 using Zoro.Network.RPC;
 using Zoro.Persistence;
 using Zoro.Persistence.LevelDB;
+using Zoro.TxnPool;
 using Akka.Actor;
 
 namespace Zoro
@@ -51,6 +52,7 @@ namespace Zoro
                 $"remote-node-mailbox {{ mailbox-type: \"{typeof(RemoteNodeMailbox).AssemblyQualifiedName}\" }}" +
                 $"protocol-handler-mailbox {{ mailbox-type: \"{typeof(ProtocolHandlerMailbox).AssemblyQualifiedName}\" }}" +
                 $"transaction-pool-mailbox {{ mailbox-type: \"{typeof(TransactionPoolMailbox).AssemblyQualifiedName}\" }}" +
+                $"transaction-validator-mailbox {{ mailbox-type: \"{typeof(TransactionValidatorMailbox).AssemblyQualifiedName}\" }}" +
                 $"consensus-service-mailbox {{ mailbox-type: \"{typeof(ConsensusServiceMailbox).AssemblyQualifiedName}\" }}");
 
             // 加载插件

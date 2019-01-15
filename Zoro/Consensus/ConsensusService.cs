@@ -6,7 +6,7 @@ using Zoro.IO.Actors;
 using Zoro.Ledger;
 using Zoro.Network.P2P;
 using Zoro.Network.P2P.Payloads;
-using Zoro.Persistence;
+using Zoro.TxnPool;
 using Zoro.Plugins;
 using Zoro.Wallets;
 using System;

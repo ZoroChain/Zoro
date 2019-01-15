@@ -10,6 +10,7 @@ using Zoro.Persistence;
 using Zoro.SmartContract;
 using Zoro.Wallets;
 using Zoro.Wallets.NEP6;
+using Zoro.TxnPool;
 using Neo.VM;
 using Akka.Actor;
 

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading;
 using Akka.Actor;
-using Zoro.Ledger;
+using Zoro.TxnPool;
 using Zoro.Plugins;
 using Zoro.Wallets;
 using Zoro.Consensus;
