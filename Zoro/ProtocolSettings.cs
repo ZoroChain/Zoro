@@ -19,7 +19,7 @@ namespace Zoro
         public int MemPoolRelayCount { get; }
         public string NetworkType { get; }
         public List<string> ListenMessages { get; }
-        public bool EnableRawTxnList { get; }
+        public bool EnableRawTxnMsg { get; }
         public Fixed8 GasPriceLowestThreshold { get; }
         public Fixed8 GasPriceHighestThreshold { get; }
 
@@ -41,10 +41,10 @@ namespace Zoro
             this.MaxSecondsPerBlock = GetValueOrDefault(section.GetSection("MaxSecondsPerBlock"), 15u, p => uint.Parse(p));
             this.MaxTaskHashCount = GetValueOrDefault(section.GetSection("MaxTaskHashCount"), 100000, p => int.Parse(p));
             this.MaxProtocolHashCount = GetValueOrDefault(section.GetSection("MaxProtocolHashCount"), 100000, p => int.Parse(p));
-            this.MemPoolRelayCount = GetValueOrDefault(section.GetSection("MemPoolRelayCount"), 0, p => int.Parse(p));
+            this.MemPoolRelayCount = GetValueOrDefault(section.GetSection("MemPoolRelayCount"), 1000, p => int.Parse(p));
             this.NetworkType = GetValueOrDefault(section.GetSection("NetworkType"), "Unknown", p => p);
             this.ListenMessages = section.GetSection("ListenMessages").GetChildren().Select(p => p.Value).ToList();
-            this.EnableRawTxnList = GetValueOrDefault(section.GetSection("EnableRawTxnList"), true, p => bool.Parse(p));
+            this.EnableRawTxnMsg = GetValueOrDefault(section.GetSection("EnableRawTxnMsg"), true, p => bool.Parse(p));
             this.GasPriceLowestThreshold = GetValueOrDefault(section.GetSection("GasPriceLowestThreshold"), Fixed8.FromDecimal(0.0001m), p => Fixed8.Parse(p));
             this.GasPriceHighestThreshold = GetValueOrDefault(section.GetSection("GasPriceHighestThreshold"), Fixed8.FromDecimal(100), p => Fixed8.Parse(p));
         }

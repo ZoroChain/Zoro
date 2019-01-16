@@ -2,12 +2,13 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using Zoro.Network.P2P;
 using Zoro.Network.P2P.Payloads;
 
-namespace Zoro.Network.P2P
+namespace Zoro.TxnPool
 {
     // 缓存新收到的交易，按策略批量转发
-    class RawTransactionList : UntypedActor
+    internal class TransactionDispatcher : UntypedActor
     {
         private class Timer { }
 
@@ -17,9 +18,7 @@ namespace Zoro.Network.P2P
         private static readonly TimeSpan TimerInterval = TimeSpan.FromMilliseconds(100);
         private readonly ICancelable timer = Context.System.Scheduler.ScheduleTellRepeatedlyCancelable(TimerInterval, TimerInterval, Context.Self, new Timer(), ActorRefs.NoSender);
 
-        public const int MaxPayloadSize = 128 * 1024;
-
-        public RawTransactionList(ZoroSystem system)
+        public TransactionDispatcher(ZoroSystem system)
         {
             this.system = system;
         }
@@ -32,7 +31,7 @@ namespace Zoro.Network.P2P
                     OnTimer();
                     break;
                 case Transaction tx:
-                    OnRawTransaction(tx);
+                    AddRawTransaction(tx);
                     break;
             }
         }
@@ -43,7 +42,7 @@ namespace Zoro.Network.P2P
             BroadcastRawTransactions();
         }
 
-        private void OnRawTransaction(Transaction tx)
+        private void AddRawTransaction(Transaction tx)
         {
             // 缓存交易数据
             rawtxnList.Add(tx);
@@ -59,14 +58,14 @@ namespace Zoro.Network.P2P
             // 数量超过上限
             if (rawtxnList.Count >= InvPayload.MaxHashesCount)
                 return true;
-            
+
             int size = 0;
             foreach (var tx in rawtxnList)
             {
                 size += tx.Size;
 
                 // 大小超过上限
-                if (size >= MaxPayloadSize)
+                if (size >= RawTransactionPayload.MaxPayloadSize)
                     return true;
             }
 
@@ -81,21 +80,17 @@ namespace Zoro.Network.P2P
 
             // 控制每组消息里的交易数量，向远程节点发送交易的清单
             foreach (InvPayload payload in InvPayload.CreateGroup(InventoryType.TX, rawtxnList.Select(p => p.Hash).ToArray()))
+            {
                 system.LocalNode.Tell(Message.Create(MessageType.Inv, payload));
+            }
 
             // 清空队列
             rawtxnList.Clear();
         }
 
-        protected override void PostStop()
-        {
-            timer.CancelIfNotNull();
-            base.PostStop();
-        }
-
         public static Props Props(ZoroSystem system)
         {
-            return Akka.Actor.Props.Create(() => new RawTransactionList(system));
+            return Akka.Actor.Props.Create(() => new TransactionDispatcher(system));
         }
     }
 }

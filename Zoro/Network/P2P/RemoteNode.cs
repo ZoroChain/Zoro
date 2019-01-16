@@ -5,6 +5,8 @@ using Zoro.Cryptography;
 using Zoro.IO;
 using Zoro.IO.Actors;
 using Zoro.Plugins;
+using Zoro.TxnPool;
+using Zoro.Ledger;
 using Zoro.Network.P2P.Payloads;
 using System;
 using System.Collections.Generic;
@@ -36,6 +38,7 @@ namespace Zoro.Network.P2P
         public VersionPayload Version { get; private set; }
 
         private readonly LocalNode localNode;
+        private readonly Blockchain blockchain;
         private static readonly MessageFlagContainer msgFlagContainer = new MessageFlagContainer();
 
         private static readonly TimeSpan TimerInterval = TimeSpan.FromSeconds(5);
@@ -62,17 +65,20 @@ namespace Zoro.Network.P2P
             InitMessageFlags();
         }
 
-        public RemoteNode(ZoroSystem system, object connection, IPEndPoint remote, IPEndPoint local, LocalNode localNode)
+        public RemoteNode(ZoroSystem system, object connection, IPEndPoint remote, IPEndPoint local, Blockchain blockchain, LocalNode localNode)
             : base(connection, remote, local)
         {
             this.system = system;
             this.localNode = localNode;
-            this.protocol = Context.ActorOf(ProtocolHandler.Props(system, localNode, localNode.Blockchain, this), "RemoteNode");
+            this.blockchain = blockchain;
+
+            TransactionPool txnPool = ZoroChainSystem.Singleton.AskTransactionPool(blockchain.ChainHash);
+            this.protocol = Context.ActorOf(ProtocolHandler.Props(system, localNode, blockchain, txnPool, this), "RemoteNode");
             localNode.RemoteNodes.TryAdd(Self, this);
             
-            SendMessage(Message.Create(MessageType.Version, VersionPayload.Create(localNode.ChainHash, localNode.ListenerPort, LocalNode.Nonce, LocalNode.UserAgent, localNode.Blockchain.Height)));
+            SendMessage(Message.Create(MessageType.Version, VersionPayload.Create(localNode.ChainHash, localNode.ListenerPort, LocalNode.Nonce, LocalNode.UserAgent, blockchain.Height)));
 
-            Log($"Connected to RemoteNode {localNode.Blockchain.Name} {remote}");
+            Log($"Connected to RemoteNode {blockchain.Name} {remote}");
         }
 
         private static void SetMsgFlag(string command, MessageFlag flag)
@@ -275,7 +281,7 @@ namespace Zoro.Network.P2P
 
         private void OnPing(PingPayload payload)
         {
-            SendMessage(Message.Create(MessageType.Pong, PongPayload.Create(localNode.Blockchain.Height, payload.Timestamp)));
+            SendMessage(Message.Create(MessageType.Pong, PongPayload.Create(blockchain.Height, payload.Timestamp)));
         }
 
         private void OnPong(PongPayload payload)
@@ -303,15 +309,15 @@ namespace Zoro.Network.P2P
 
         protected override void PostStop()
         {
-            Log($"OnStop RemoteNode {localNode.Blockchain.Name} {Remote}");
+            Log($"OnStop RemoteNode {blockchain.Name} {Remote}");
             localNode.RemoteNodes.TryRemove(Self, out _);
             timer.CancelIfNotNull();
             base.PostStop();
         }
 
-        internal static Props Props(ZoroSystem system, object connection, IPEndPoint remote, IPEndPoint local, LocalNode localNode)
+        internal static Props Props(ZoroSystem system, object connection, IPEndPoint remote, IPEndPoint local, Blockchain blockchain, LocalNode localNode)
         {
-            return Akka.Actor.Props.Create(() => new RemoteNode(system, connection, remote, local, localNode)).WithMailbox("remote-node-mailbox");
+            return Akka.Actor.Props.Create(() => new RemoteNode(system, connection, remote, local, blockchain, localNode)).WithMailbox("remote-node-mailbox");
         }
 
         protected override void Log(string message, LogLevel level = LogLevel.Info)

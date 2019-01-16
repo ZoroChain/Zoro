@@ -1,5 +1,4 @@
 ﻿using Zoro.IO;
-using System;
 using System.IO;
 
 namespace Zoro.Network.P2P.Payloads
@@ -29,7 +28,7 @@ namespace Zoro.Network.P2P.Payloads
         void ISerializable.Serialize(BinaryWriter writer)
         {
             writer.Write(Height);
-            writer.Write(Timestamp);            
+            writer.Write(Timestamp);
         }
     }
 }

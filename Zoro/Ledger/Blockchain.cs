@@ -22,14 +22,14 @@ namespace Zoro.Ledger
 {
     public sealed class Blockchain : UntypedActor
     {
-        public class ChangeAppChainSeedList { public UInt160 ChainHash; public string[] SeedList; }
-        public class ChangeAppChainValidators { public UInt160 ChainHash; public ECPoint[] Validators; }
-
         public class Register { }
         public class ApplicationExecuted { public Transaction Transaction; public ApplicationExecutionResult[] ExecutionResults; }
         public class PersistCompleted { public Block Block; }
         public class Import { public IEnumerable<Block> Blocks; }
         public class ImportCompleted { }
+        public class UpdateSnapshot { };
+        public class ChangeAppChainSeedList { public UInt160 ChainHash; public string[] SeedList; }
+        public class ChangeAppChainValidators { public UInt160 ChainHash; public ECPoint[] Validators; }
 
         public static readonly uint SecondsPerBlock = ProtocolSettings.Default.SecondsPerBlock;
         public static readonly uint MaxSecondsPerBlock = ProtocolSettings.Default.MaxSecondsPerBlock;
@@ -54,13 +54,13 @@ namespace Zoro.Ledger
         }
 
         private static readonly object lockObj = new object();
+        private readonly ManualResetEvent startupEvent = new ManualResetEvent(false);
+
         private readonly ZoroSystem system;
         private readonly List<UInt256> header_index = new List<UInt256>();
         private uint stored_header_count = 0;
         private readonly ConcurrentDictionary<UInt256, Block> block_cache = new ConcurrentDictionary<UInt256, Block>();
         private readonly Dictionary<uint, LinkedList<Block>> block_cache_unverified = new Dictionary<uint, LinkedList<Block>>();
-        private readonly MemoryPool mem_pool = new MemoryPool(50_000);
-        private readonly ConcurrentDictionary<UInt256, Transaction> mem_pool_unverified = new ConcurrentDictionary<UInt256, Transaction>();
         internal readonly RelayCache RelayCache = new RelayCache(100);
         private readonly HashSet<IActorRef> subscribers = new HashSet<IActorRef>();
         private Snapshot currentSnapshot;
@@ -73,9 +73,6 @@ namespace Zoro.Ledger
 
         private readonly List<AppChainEventArgs> appchainNotifications = new List<AppChainEventArgs>();
         public static event EventHandler<AppChainEventArgs> AppChainNofity;
-
-        public static readonly int MemPoolRelayCount = ProtocolSettings.Default.MemPoolRelayCount;
-        private readonly ManualResetEvent startupEvent = new ManualResetEvent(false);
 
         public UInt160 ChainHash { get; }
         public NativeToken BcpToken { get; private set; }
@@ -173,14 +170,7 @@ namespace Zoro.Ledger
 
         public bool ContainsTransaction(UInt256 hash)
         {
-            if (mem_pool.ContainsKey(hash)) return true;
             return Store.ContainsTransaction(hash);
-        }
-
-        public bool ContainsRawTransaction(UInt256 hash)
-        {
-            if (mem_pool.ContainsKey(hash)) return true;
-            return false;
         }
 
         private void Distribute(object message)
@@ -207,16 +197,6 @@ namespace Zoro.Ledger
             return Contract.CreateMultiSigRedeemScript(validators.Length - (validators.Length - 1) / 3, validators).ToScriptHash();
         }
 
-        public IEnumerable<Transaction> GetMemoryPool()
-        {
-            return mem_pool;
-        }
-
-        public int GetMemoryPoolCount()
-        {
-            return mem_pool.Count;
-        }
-
         public Snapshot GetSnapshot()
         {
             return Store.GetSnapshot();
@@ -224,23 +204,7 @@ namespace Zoro.Ledger
 
         public Transaction GetTransaction(UInt256 hash)
         {
-            if (mem_pool.TryGetValue(hash, out Transaction transaction))
-                return transaction;
             return Store.GetTransaction(hash);
-        }
-
-        public Transaction GetRawTransaction(UInt256 hash)
-        {
-            if (mem_pool.TryGetValue(hash, out Transaction transaction))
-                return transaction;
-
-            return null;
-        }
-
-        internal Transaction GetUnverifiedTransaction(UInt256 hash)
-        {
-            mem_pool_unverified.TryGetValue(hash, out Transaction transaction);
-            return transaction;
         }
 
         private void OnImport(IEnumerable<Block> blocks)
@@ -386,50 +350,15 @@ namespace Zoro.Ledger
             Log($"OnNewHeaders end {headers.Length} height:{header_index.Count}", LogLevel.Debug);
         }
 
-        private RelayResultReason OnNewTransaction(Transaction transaction)
-        {
-            transaction.ChainHash = ChainHash;
-            if (transaction.Type == TransactionType.MinerTransaction)
-                return RelayResultReason.Invalid;
-            if (ContainsTransaction(transaction.Hash))
-                return RelayResultReason.AlreadyExists;
-            if (!transaction.Verify(currentSnapshot))
-                return RelayResultReason.Invalid;
-            if (!PluginManager.Singleton.CheckPolicy(transaction))
-                return RelayResultReason.PolicyFail;
-            if (!mem_pool.TryAdd(transaction.Hash, transaction))
-                return RelayResultReason.OutOfMemory;
-
-            //先把交易缓存在队列里，等待批量转发
-            if (ProtocolSettings.Default.EnableRawTxnList)
-                system.RawTxnList.Tell(transaction);
-            else
-                system.LocalNode.Tell(new LocalNode.RelayDirectly { Inventory = transaction });
-            return RelayResultReason.Succeed;
-        }
-
         private void OnPersistCompleted(Block block)
         {
             block_cache.TryRemove(block.Hash, out Block _);
-            foreach (Transaction tx in block.Transactions)
-                mem_pool.TryRemove(tx.Hash, out _);
-            RelayMemoryPool();
+
             InvokeAppChainNotifications();
             PersistCompleted completed = new PersistCompleted { Block = block };
+            system.TxnPool.Tell(completed);
             system.Consensus?.Tell(completed);
             Distribute(completed);
-            if (system.Consensus == null)
-                Log($"Block Persisted:{block.Index}, tx:{block.Transactions.Length}, mempool:{mem_pool.Count}");
-        }
-
-        // 广播MemoryPool中还未上链的交易
-        private void RelayMemoryPool()
-        {
-            // 按配置的最大数量，从交易池中取出未处理的交易
-            Transaction[] trans = mem_pool.GetTransactions(MemPoolRelayCount);
-            // 使用批量广播的方式来转发未处理的交易，这里先发送交易的清单数据
-            foreach (InvPayload payload in InvPayload.CreateGroup(InventoryType.TX, trans.Select(p => p.Hash).ToArray()))
-                system.LocalNode.Tell(Message.Create(MessageType.Inv, payload));
         }
 
         protected override void OnReceive(object message)
@@ -447,9 +376,6 @@ namespace Zoro.Ledger
                     break;
                 case Block block:
                     Sender.Tell(OnNewBlock(block));
-                    break;
-                case Transaction transaction:
-                    Sender.Tell(OnNewTransaction(transaction));
                     break;
                 case ConsensusPayload payload:
                     Sender.Tell(OnNewConsensus(payload));
@@ -515,8 +441,6 @@ namespace Zoro.Ledger
                 }
                 foreach (IPersistencePlugin plugin in PluginManager.PersistencePlugins)
                     plugin.OnPersist(snapshot, all_application_executed);
-
-                Log($"Commit Snapshot:{block.Index}, tx:{block.Transactions.Length}");
 
                 snapshot.Commit();
             }
@@ -654,6 +578,7 @@ namespace Zoro.Ledger
         private void UpdateCurrentSnapshot()
         {
             Interlocked.Exchange(ref currentSnapshot, GetSnapshot())?.Dispose();
+            system.TxnPool.Tell(new UpdateSnapshot());
         }
 
         private void SaveAppChainState()

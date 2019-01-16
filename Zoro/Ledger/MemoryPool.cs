@@ -1,5 +1,4 @@
 ﻿using Zoro.Network.P2P.Payloads;
-using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,52 +6,75 @@ using System;
 
 namespace Zoro.Ledger
 {
-    internal class MemoryPool : IReadOnlyCollection<Transaction>
+    public class MemoryPool
     {
-        internal class Index : IComparable<Index>
+        internal class SortedItem : IComparable<SortedItem>
         {
-            public UInt256 Hash;
-            public Fixed8 FeeRatio;
-            public Fixed8 Fee;
+            public Transaction tx;
 
-            public int CompareTo(Index other)
+            public int CompareTo(SortedItem other)
             {
-                int r = FeeRatio.CompareTo(other.FeeRatio); 
+                int r = tx.FeePerByte.CompareTo(other.tx.FeePerByte); 
                 if (r != 0) return r;
 
-                r = Fee.CompareTo(other.Fee);
+                r = tx.SystemFee.CompareTo(other.tx.SystemFee);
                 if (r != 0) return r;
                 
-                return Hash.CompareTo(other.Hash);
+                return tx.Hash.CompareTo(other.tx.Hash);
             }
         };
 
-        private readonly ConcurrentDictionary<UInt256, Transaction> _mem_pool = new ConcurrentDictionary<UInt256, Transaction>();
-        private readonly SortedSet<Index> _index_set = new SortedSet<Index>();
+        private readonly ConcurrentDictionary<UInt256, Transaction> _verified = new ConcurrentDictionary<UInt256, Transaction>();
+        private readonly ConcurrentDictionary<UInt256, Transaction> _unverified = new ConcurrentDictionary<UInt256, Transaction>();
+        private readonly SortedSet<SortedItem> _sorted_items = new SortedSet<SortedItem>();
+        private readonly HashSet<UInt256> _reverifying_items = new HashSet<UInt256>();
 
         public int Capacity { get; }
-        public int Count => _mem_pool.Count;
+        public int Count => _verified.Count + _unverified.Count;
+        public int VerifiedCount => _verified.Count;
+        public int UnverifiedCount => _unverified.Count;
+        public bool HasVerified => !_verified.IsEmpty;
+        public bool HasUnverified => !_unverified.IsEmpty;
 
         public MemoryPool(int capacity)
         {
             Capacity = capacity;
         }
-
+        
         public void Clear()
         {
-            _mem_pool.Clear();
+            _verified.Clear();
+            _unverified.Clear();
+            _sorted_items.Clear();
+            _reverifying_items.Clear();
         }
 
-        public bool ContainsKey(UInt256 hash) => _mem_pool.ContainsKey(hash);
-
-        public IEnumerator<Transaction> GetEnumerator()
+        public IEnumerable<Transaction> GetVerified()
         {
-            return _mem_pool.Values.GetEnumerator();
+            return _verified.Values;
         }
 
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+        public IEnumerable<Transaction> GetUnverified()
+        {
+            return _unverified.Values;
+        }
 
-        public bool TryAdd(UInt256 hash, Transaction tx)
+        public IEnumerable<Transaction> GetAll()
+        {
+            return _verified.Values.Union(_unverified.Values);
+        }
+
+        public bool ContainsKey(UInt256 hash)
+        {
+            if (_verified.ContainsKey(hash))
+                return true;
+            else if (_unverified.ContainsKey(hash))
+                return true;
+
+            return false;
+        }
+
+        public bool TryAddVerified(Transaction tx)
         {
             if (Count >= Capacity)
             {
@@ -60,18 +82,21 @@ namespace Zoro.Ledger
                     return false;
             }
 
-            _mem_pool.TryAdd(hash, tx);
+            if (_verified.TryAdd(tx.Hash, tx))
+            {
+                AddToSortedSet(tx);
+                return true;
+            }
 
-            AddIndex(hash, tx);
-
-            return true;
+            return false;
         }
 
         public bool TryRemove(UInt256 hash, out Transaction tx)
         {
-            if (_mem_pool.TryRemove(hash, out tx))
+            if (_verified.TryRemove(hash, out tx) || _unverified.TryRemove(hash, out tx))
             {
-                RemoveIndex(hash, tx);
+                RemoveSortedItem(tx);
+                RemoveReverifyingItem(hash);
                 return true;
             }
             else
@@ -83,7 +108,11 @@ namespace Zoro.Ledger
 
         public bool TryGetValue(UInt256 hash, out Transaction tx)
         {
-            if (_mem_pool.TryGetValue(hash, out tx))
+            if (_verified.TryGetValue(hash, out tx))
+            {
+                return true;
+            }
+            else if (_unverified.TryGetValue(hash, out tx))
             {
                 return true;
             }
@@ -94,43 +123,92 @@ namespace Zoro.Ledger
             }
         }
 
-        public Transaction[] GetTransactions(int count)
+        public bool TryGetVerified(UInt256 hash, out Transaction tx)
         {
-            if (count > 0)
+            if (_verified.TryGetValue(hash, out tx))
             {
-                return _mem_pool.Values.Take(count).ToArray();
+                return true;
             }
             else
             {
-                return _mem_pool.Values.ToArray();
+                tx = null;
+                return false;
             }
         }
 
-        private Fixed8 GetFeeRatio(Transaction tx)
+        public bool TryGetUnverified(UInt256 hash, out Transaction tx)
         {
-            return tx.SystemFee / tx.Size;
+            if (_unverified.TryGetValue(hash, out tx))
+            {
+                return true;
+            }
+            else
+            {
+                tx = null;
+                return false;
+            }
         }
 
-        private void AddIndex(UInt256 hash, Transaction tx)
+        public void ResetToUnverified()
         {
-            Index index = new Index { Hash = hash, Fee = tx.SystemFee, FeeRatio = GetFeeRatio(tx) };
-            _index_set.Add(index);
+            if (_verified.IsEmpty)
+                return;
+
+            foreach (var item in _verified)
+            {
+                _unverified.TryAdd(item.Key, item.Value);
+            }
+            
+            _verified.Clear();
         }
 
-        private void RemoveIndex(UInt256 hash, Transaction tx)
+        public Transaction[] TakeUnverifiedTransactions(int count)
         {
-            Index index = new Index { Hash = hash, Fee = tx.SystemFee, FeeRatio = GetFeeRatio(tx) };
-            _index_set.Remove(index);
+            return _sorted_items.Where(p => !_reverifying_items.Contains(p.tx.Hash) && _unverified.ContainsKey(p.tx.Hash))
+                .Take(count)
+                .Select(p => {
+                    _reverifying_items.Add(p.tx.Hash);
+                    return p.tx;
+                }).ToArray();
+        }
+
+        public bool SetVerifyState(UInt256 hash, bool verifyResult)
+        {
+            if (RemoveReverifyingItem(hash) && _unverified.TryRemove(hash, out Transaction tx))
+            {
+                if (verifyResult)
+                {
+                    _verified.TryAdd(hash, tx);
+                }
+
+                return true;
+            }
+
+            return false;            
+        }
+
+        private bool AddToSortedSet(Transaction tx)
+        {
+            return _sorted_items.Add(new SortedItem { tx = tx });
+        }
+
+        private bool RemoveSortedItem(Transaction tx)
+        {
+            return _sorted_items.Remove(new SortedItem { tx = tx });
+        }
+
+        public bool RemoveReverifyingItem(UInt256 hash)
+        {
+            return _reverifying_items.Remove(hash);
         }
 
         private bool RemoveLowestFee(Transaction tx)
         {
-            Index index = _index_set.First();
+            SortedItem min = _sorted_items.Min;
 
-            if (index.FeeRatio < GetFeeRatio(tx))
+            if (min != null && min.tx.FeePerByte < tx.FeePerByte)
             {
-                _mem_pool.TryRemove(index.Hash, out Transaction _);
-                _index_set.Remove(index);
+                TryRemove(min.tx.Hash, out _);
                 return true;
             }
 
