@@ -142,7 +142,7 @@ namespace Zoro.SmartContract.NativeNEP5
             StoragePut(snapshot, assetId, new byte[] { 0x13 }.Concat(TransactionHash.ToArray()).ToArray(), transferLog.ToArray());
         }
 
-        public static byte[] GetTransferLog(Snapshot snapshot, UInt160 assetId, byte[] key)
+        public static TransferLog GetTransferLog(Snapshot snapshot, UInt160 assetId, byte[] key)
         {
             StorageItem item = snapshot.Storages.TryGet(new StorageKey
             {
@@ -150,7 +150,7 @@ namespace Zoro.SmartContract.NativeNEP5
                 Key = new byte[] { 0x13 }.Concat(key).ToArray()
             });
 
-            return item?.Value;
+            return (TransferLog) item?.Value.AsSerializable(typeof(TransferLog));
         }
     }
 }

@@ -101,6 +101,15 @@ namespace Zoro.SmartContract.Services
             return true;
         }
 
+        public bool GetTransferLog(ExecutionEngine engine)
+        {
+            UInt160 assetId = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            NativeNEP5State state = Snapshot.NativeNEP5s.TryGet(assetId);
+            if (state == null) return false;
+
+            return API_GetTransferLog(engine, state);
+        }
+
         public static long GetPrice(ExecutionEngine engine)
         {
             long price = 0;
@@ -135,6 +144,19 @@ namespace Zoro.SmartContract.Services
 
             if (engine.CurrentContext.EvaluationStack.Peek().GetByteArray().Length > 252) return false;
             string method = Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+
+            // 兼容用json数组来打包的参数
+            StackItem stackItem = engine.CurrentContext.EvaluationStack.Peek();
+            if (stackItem is Neo.VM.Types.Array array)
+            {
+                engine.CurrentContext.EvaluationStack.Pop();
+
+                int count = array.Count();
+                for (int i = count - 1; i >= 0; i--)
+                {
+                    engine.CurrentContext.EvaluationStack.Push(array[i]);
+                }
+            }
 
             UInt160 assetId = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
             NativeNEP5State state = Snapshot.NativeNEP5s.TryGet(assetId);
@@ -259,12 +281,12 @@ namespace Zoro.SmartContract.Services
         {
             byte[] hash = engine.CurrentContext.EvaluationStack.Pop().GetByteArray();
 
-            byte[] transferLog = NativeAPI.GetTransferLog(Snapshot, state.AssetId, hash);
+            TransferLog transferLog = NativeAPI.GetTransferLog(Snapshot, state.AssetId, hash);
 
             if (transferLog == null)
                 return false;
 
-            engine.CurrentContext.EvaluationStack.Push(transferLog);
+            engine.CurrentContext.EvaluationStack.Push(StackItem.FromInterface(transferLog));
             return true;
         }
 
