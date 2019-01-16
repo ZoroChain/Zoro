@@ -3,7 +3,7 @@ using System.IO;
 
 namespace Zoro.SmartContract.NativeNEP5
 {
-    internal class TransferLog : ISerializable
+    public class TransferLog : ISerializable
     {
         public UInt160 From;
         public UInt160 To;
