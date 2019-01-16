@@ -145,6 +145,19 @@ namespace Zoro.SmartContract.Services
             if (engine.CurrentContext.EvaluationStack.Peek().GetByteArray().Length > 252) return false;
             string method = Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
 
+            // 兼容用json数组来打包的参数
+            StackItem stackItem = engine.CurrentContext.EvaluationStack.Peek();
+            if (stackItem is Neo.VM.Types.Array array)
+            {
+                engine.CurrentContext.EvaluationStack.Pop();
+
+                int count = array.Count();
+                for (int i = count - 1; i >= 0; i--)
+                {
+                    engine.CurrentContext.EvaluationStack.Push(array[i]);
+                }
+            }
+
             UInt160 assetId = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
             NativeNEP5State state = Snapshot.NativeNEP5s.TryGet(assetId);
             if (state == null) return false;
