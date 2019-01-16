@@ -266,6 +266,17 @@ namespace Zoro.Network.RPC
                             }) ?? new StorageItem();
                             return item.Value?.ToHexString();
                         }
+                    case "gettransactionheight":
+                        {
+                            Blockchain blockchain = GetTargetChain(_params[0]);
+                            if (blockchain == null)
+                                throw new RpcException(-100, "Invalid chain hash");
+
+                            UInt256 hash = UInt256.Parse(_params[1].AsString());
+                            uint? height = blockchain.Store.GetTransactions().TryGet(hash)?.BlockIndex;
+                            if (height.HasValue) return height.Value;
+                            throw new RpcException(-100, "Unknown transaction");
+                        }
                     case "getvalidators":
                         {
                             Blockchain blockchain = GetTargetChain(_params[0]);
@@ -485,6 +496,8 @@ namespace Zoro.Network.RPC
                     throw new RpcException(-503, "The block cannot be validated.");
                 case RelayResultReason.Invalid:
                     throw new RpcException(-504, "Block or transaction validation failed.");
+                case RelayResultReason.PolicyFail:
+                    throw new RpcException(-505, "One of the Policy filters failed.");
                 default:
                     throw new RpcException(-500, "Unknown error.");
             }
