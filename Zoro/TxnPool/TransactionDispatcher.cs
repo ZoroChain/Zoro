@@ -18,6 +18,8 @@ namespace Zoro.TxnPool
         private static readonly TimeSpan TimerInterval = TimeSpan.FromMilliseconds(100);
         private readonly ICancelable timer = Context.System.Scheduler.ScheduleTellRepeatedlyCancelable(TimerInterval, TimerInterval, Context.Self, new Timer(), ActorRefs.NoSender);
 
+        public const int MaxPayloadSize = 256 * 1024;
+
         public TransactionDispatcher(ZoroSystem system)
         {
             this.system = system;
@@ -65,7 +67,7 @@ namespace Zoro.TxnPool
                 size += tx.Size;
 
                 // 大小超过上限
-                if (size >= RawTransactionPayload.MaxPayloadSize)
+                if (size >= MaxPayloadSize)
                     return true;
             }
 
