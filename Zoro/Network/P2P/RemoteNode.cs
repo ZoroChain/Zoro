@@ -50,6 +50,10 @@ namespace Zoro.Network.P2P
         public int Height => height;
         public uint Latency { get; private set; }
 
+        private ulong tx_bytes = 0;
+        private double tx_rate = 0;
+        public double TXRate => tx_rate;
+
         private int[] taskTimeoutStat = new int[3];
         private int[] taskCompletedStat = new int[3];
         private int[] dataRequestStat = new int[3];
@@ -305,6 +309,9 @@ namespace Zoro.Network.P2P
         private void OnTimer()
         {
             SendMessage(Message.Create(MessageType.Ping, PingPayload.Create()));
+
+            Interlocked.Exchange(ref tx_rate, tx_bytes / TimerInterval.TotalSeconds);
+            tx_bytes = 0;
         }
 
         protected override void PostStop()
@@ -341,6 +348,7 @@ namespace Zoro.Network.P2P
             ack = false;
             SendData(ByteString.FromBytes(message.ToArray()));
             LogMsg("send", message);
+            tx_bytes += (ulong)message.Size;
         }
 
         protected override SupervisorStrategy SupervisorStrategy()

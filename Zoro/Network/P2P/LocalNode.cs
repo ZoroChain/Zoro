@@ -27,6 +27,7 @@ namespace Zoro.Network.P2P
 
         public int ConnectedCount => RemoteNodes.Count;
         public int UnconnectedCount => UnconnectedPeers.Count;
+        public double TxRate => RemoteNodes.Sum(p => p.Value.TXRate);
         public static readonly uint Nonce;
         public static string UserAgent { get; set; }
 
