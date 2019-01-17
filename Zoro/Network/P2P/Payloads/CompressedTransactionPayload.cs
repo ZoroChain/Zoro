@@ -48,7 +48,7 @@ namespace Zoro.Network.P2P.Payloads
             }
         }
 
-        public static Transaction[] DecompressTransactions(int count, byte[] data)
+        public static Transaction[] DecompressTransactions(byte[] data)
         {
             using (var ms = new MemoryStream(data) { Position = 0 })
             {
@@ -62,10 +62,13 @@ namespace Zoro.Network.P2P.Payloads
                             outputms.Write(buf, 0, len);
                     }
 
+                    outputms.Seek(0, SeekOrigin.Begin);
+
                     using (BinaryReader reader = new BinaryReader(outputms, Encoding.UTF8))
                     {
+                        ulong count = reader.ReadVarInt();
                         Transaction[] txn = new Transaction[count];
-                        for (int i = 0;i < count; i++)
+                        for (ulong i = 0;i < count; i++)
                         {
                             txn[i] = Transaction.DeserializeFrom(reader);
                         }

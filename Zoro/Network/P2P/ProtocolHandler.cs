@@ -274,7 +274,7 @@ namespace Zoro.Network.P2P
                 if (ProtocolSettings.Default.EnableCompressedRawTxn)
                 {
                     foreach (CompressedTransactionPayload ctx_payload in CompressedTransactionPayload.CreateGroup(transactions.ToArray()))
-                        Context.Parent.Tell(Message.Create(MessageType.RawTxn, ctx_payload));
+                        Context.Parent.Tell(Message.Create(MessageType.CompressedTxn, ctx_payload));
                 }
                 else
                 {
@@ -387,7 +387,7 @@ namespace Zoro.Network.P2P
             CompressedTransactionPayload payload = msg.Payload.AsSerializable<CompressedTransactionPayload>();
             blockchain.Log($"recv ziptxn, count:{payload.TransactionCount}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
 
-            Transaction[] txn = CompressedTransactionPayload.DecompressTransactions(payload.TransactionCount, payload.CompressedData);
+            Transaction[] txn = CompressedTransactionPayload.DecompressTransactions(payload.CompressedData);
             foreach (var tx in txn)
             {
                 system.TaskManager.Tell(new TaskManager.TaskCompleted { Hash = tx.Hash }, Context.Parent);
