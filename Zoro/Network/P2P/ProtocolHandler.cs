@@ -69,6 +69,7 @@ namespace Zoro.Network.P2P
             RegisterHandler(MessageType.Block, OnBlockMessageReceived);
             RegisterHandler(MessageType.Consensus, OnConsensusMessageReceived);
             RegisterHandler(MessageType.RawTxn, OnRawTransactionMessageReceived);
+            RegisterHandler(MessageType.CompressedTxn, OnCompressedTransactionMessageReceived);
             RegisterHandler(MessageType.MemPool, OnMemPoolMessageReceived);
             RegisterHandler(MessageType.FilterAdd, OnFilterAddMessageReceived);
             RegisterHandler(MessageType.FilterClear, OnFilterClearMessageReceived);
@@ -270,8 +271,16 @@ namespace Zoro.Network.P2P
             int count = transactions.Count;
             if (count > 0)
             {
-                foreach (RawTransactionPayload rtx_payload in RawTransactionPayload.CreateGroup(transactions.ToArray()))
-                    Context.Parent.Tell(Message.Create(MessageType.RawTxn, rtx_payload));
+                if (ProtocolSettings.Default.EnableCompressedRawTxn)
+                {
+                    foreach (CompressedTransactionPayload ctx_payload in CompressedTransactionPayload.CreateGroup(transactions.ToArray()))
+                        Context.Parent.Tell(Message.Create(MessageType.RawTxn, ctx_payload));
+                }
+                else
+                {
+                    foreach (RawTransactionPayload rtx_payload in RawTransactionPayload.CreateGroup(transactions.ToArray()))
+                        Context.Parent.Tell(Message.Create(MessageType.RawTxn, rtx_payload));
+                }
 
                 Context.Parent.Tell(new RemoteNode.InventorySended { Type = payload.Type, Count = count });
             }
@@ -366,6 +375,20 @@ namespace Zoro.Network.P2P
             RawTransactionPayload payload = msg.Payload.AsSerializable<RawTransactionPayload>();
             blockchain.Log($"recv rawtxn, count:{payload.Array.Length}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
             foreach (var tx in payload.Array)
+            {
+                system.TaskManager.Tell(new TaskManager.TaskCompleted { Hash = tx.Hash }, Context.Parent);
+                if (!(tx is MinerTransaction))
+                    system.LocalNode.Tell(new LocalNode.Relay { Inventory = tx });
+            }
+        }
+
+        private void OnCompressedTransactionMessageReceived(Message msg)
+        {
+            CompressedTransactionPayload payload = msg.Payload.AsSerializable<CompressedTransactionPayload>();
+            blockchain.Log($"recv ziptxn, count:{payload.TransactionCount}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
+
+            Transaction[] txn = CompressedTransactionPayload.DecompressTransactions(payload.TransactionCount, payload.CompressedData);
+            foreach (var tx in txn)
             {
                 system.TaskManager.Tell(new TaskManager.TaskCompleted { Hash = tx.Hash }, Context.Parent);
                 if (!(tx is MinerTransaction))

@@ -18,6 +18,7 @@
         public static string Consensus = "consensus";
         public static string MerkleBlock = "merkleblock";
         public static string RawTxn = "rawtxn";
+        public static string CompressedTxn = "ziptxn";
         public static string MemPool = "mempool";
         public static string FilterAdd = "filteradd";
         public static string FilterClear = "filterclear";
