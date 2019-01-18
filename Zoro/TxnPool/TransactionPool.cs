@@ -32,6 +32,7 @@ namespace Zoro.TxnPool
         {
             this.system = system;
             this.blockchain = ZoroChainSystem.Singleton.AskBlockchain(chainHash);
+            this.snapshot = blockchain.GetSnapshot();
 
             this.dispatcher = Context.ActorOf(TransactionDispatcher.Props(system), "TransactionDispatcher");
             this.validator = Context.ActorOf(TransactionValidator.Props(system, chainHash), "TransactionValidator");            
@@ -120,6 +121,7 @@ namespace Zoro.TxnPool
 
         private void OnUpdateSnapshot()
         {
+            snapshot?.Dispose();
             snapshot = blockchain.GetSnapshot();
 
             validator.Tell(new Blockchain.UpdateSnapshot());
@@ -231,6 +233,7 @@ namespace Zoro.TxnPool
 
         protected override void PostStop()
         {
+            snapshot?.Dispose();
             base.PostStop();
         }
 

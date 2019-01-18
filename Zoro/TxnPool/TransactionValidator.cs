@@ -18,6 +18,7 @@ namespace Zoro.TxnPool
         {
             this.system = system;
             this.blockchain = ZoroChainSystem.Singleton.AskBlockchain(chainHash);
+            this.snapshot = blockchain.GetSnapshot();
         }
 
         protected override void OnReceive(object message)
@@ -36,6 +37,7 @@ namespace Zoro.TxnPool
 
         private void OnUpdateSnapshot()
         {
+            snapshot?.Dispose();
             snapshot = blockchain.GetSnapshot();
         }
 
@@ -47,6 +49,12 @@ namespace Zoro.TxnPool
 
                 Sender.Tell(new TransactionPool.VerifyResult { tx = tx, Result = result });
             }
+        }
+
+        protected override void PostStop()
+        {
+            snapshot?.Dispose();
+            base.PostStop();
         }
 
         public static Props Props(ZoroSystem system, UInt160 chainHash)

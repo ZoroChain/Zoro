@@ -609,21 +609,26 @@ namespace Zoro.Ledger
             }
             else
             {
-                if (snapshot == null)
-                    snapshot = GetSnapshot();
-
-                // 先查询应用链数据库里的记录
-                AppChainState appchainState = snapshot.AppChainState.Get();
-
-                if (appchainState != null && appchainState.Hash != null)
+                bool snapshot_created = snapshot == null;
+                if (snapshot_created) snapshot = GetSnapshot();
+                try
                 {
-                    return appchainState.StandbyValidators;
+                    // 先查询应用链数据库里的记录
+                    AppChainState appchainState = snapshot.AppChainState.Get();
+
+                    if (appchainState != null && appchainState.Hash != null)
+                    {
+                        return appchainState.StandbyValidators;
+                    }
+
+                    // 如果应用链数据库里还没有对应的记录，再查询根链数据库里的记录
+                    AppChainState state = Root.Store.GetAppChains().TryGet(ChainHash);
+                    return state.StandbyValidators;
                 }
-
-                // 如果应用链数据库里还没有对应的记录，再查询根链数据库里的记录
-                AppChainState state = Root.Store.GetAppChains().TryGet(ChainHash);
-
-                return state.StandbyValidators;
+                finally
+                {
+                    if (snapshot_created) snapshot.Dispose();
+                }
             }
         }
 
