@@ -149,7 +149,7 @@ namespace Zoro.TxnPool
                 return RelayResultReason.Invalid;
             if (mem_pool.ContainsKey(transaction.Hash))
                 return RelayResultReason.AlreadyExists;
-            if (blockchain.ContainsTransaction(transaction.Hash))
+            if (snapshot.ContainsTransaction(transaction.Hash))
                 return RelayResultReason.AlreadyExists;
             if (!transaction.Verify(snapshot))
                 return RelayResultReason.Invalid;
