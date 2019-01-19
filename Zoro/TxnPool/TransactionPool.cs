@@ -172,10 +172,12 @@ namespace Zoro.TxnPool
             }
 
             // 把MemPool里未处理的交易设置为未验证状态
-            mem_pool.ResetToUnverified();
+            //mem_pool.ResetToUnverified();
 
             // 重新投递待验证的交易
-            ReverifyTransactions();
+            //ReverifyTransactions();
+
+            RelayMemoryPool();
 
             blockchain.Log($"Block Persisted:{block.Index}, tx:{block.Transactions.Length}, mempool:{GetMemoryPoolCount()}, waste:{reverify_waste_count}");
         }
