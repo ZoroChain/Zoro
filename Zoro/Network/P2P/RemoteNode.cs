@@ -5,7 +5,6 @@ using Zoro.Cryptography;
 using Zoro.IO;
 using Zoro.IO.Actors;
 using Zoro.Plugins;
-using Zoro.TxnPool;
 using Zoro.Ledger;
 using Zoro.Network.P2P.Payloads;
 using System;
@@ -76,8 +75,7 @@ namespace Zoro.Network.P2P
             this.localNode = localNode;
             this.blockchain = blockchain;
 
-            TransactionPool txnPool = ZoroChainSystem.Singleton.AskTransactionPool(blockchain.ChainHash);
-            this.protocol = Context.ActorOf(ProtocolHandler.Props(system, localNode, blockchain, txnPool, this), "RemoteNode");
+            this.protocol = Context.ActorOf(ProtocolHandler.Props(system, localNode, blockchain, this), "RemoteNode");
             localNode.RemoteNodes.TryAdd(Self, this);
             
             SendMessage(Message.Create(MessageType.Version, VersionPayload.Create(localNode.ChainHash, localNode.ListenerPort, LocalNode.Nonce, LocalNode.UserAgent, blockchain.Height)));

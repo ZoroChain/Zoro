@@ -1,7 +1,6 @@
 ﻿using Akka.Actor;
 using Zoro.IO;
 using Zoro.Ledger;
-using Zoro.TxnPool;
 using Zoro.Network.P2P.Payloads;
 using System;
 using System.Collections.Concurrent;
@@ -35,7 +34,6 @@ namespace Zoro.Network.P2P
 
         public UInt160 ChainHash { get; }
         public Blockchain Blockchain { get; }
-        public TransactionPool TxnPool { get; }
 
         private static LocalNode root;
         public static LocalNode Root
@@ -78,7 +76,6 @@ namespace Zoro.Network.P2P
                 }
 
                 Blockchain = ZoroChainSystem.Singleton.AskBlockchain(chainHash);
-                TxnPool = ZoroChainSystem.Singleton.AskTransactionPool(chainHash);
             }
         }
 
@@ -166,14 +163,8 @@ namespace Zoro.Network.P2P
         {
             inventory.ChainHash = ChainHash;
             if (inventory is Transaction transaction)
-            {
                 system.Consensus?.Tell(transaction);
-                system.TxnPool.Tell(transaction);
-            }
-            else
-            {
-                system.Blockchain.Tell(inventory);
-            }
+            system.Blockchain.Tell(inventory);
         }
 
         private void OnRelayDirectly(IInventory inventory)

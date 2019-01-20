@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Threading;
 using Akka.Actor;
-using Zoro.TxnPool;
 using Zoro.Plugins;
 using Zoro.Wallets;
 using Zoro.Consensus;
@@ -24,7 +23,6 @@ namespace Zoro
         public IActorRef LocalNode { get; }
         internal IActorRef TaskManager { get; }
         public IActorRef Consensus { get; private set; }
-        public IActorRef TxnPool { get; }
 
         public bool HasConsensusService => Consensus != null;
 
@@ -59,7 +57,6 @@ namespace Zoro
             Blockchain = Context.ActorOf(Ledger.Blockchain.Props(this, store, chainHash), "Blockchain");
             LocalNode = Context.ActorOf(Network.P2P.LocalNode.Props(this, chainHash), "LocalNode");
             TaskManager = Context.ActorOf(Network.P2P.TaskManager.Props(this, chainHash), "TaskManager");
-            TxnPool = Context.ActorOf(TransactionPool.Props(this, chainHash), "TxnPool");
         }
 
         public IActorRef ActorOf(Props props, string name = null)

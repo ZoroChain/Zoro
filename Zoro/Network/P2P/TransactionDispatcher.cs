@@ -2,10 +2,9 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
-using Zoro.Network.P2P;
 using Zoro.Network.P2P.Payloads;
 
-namespace Zoro.TxnPool
+namespace Zoro.Network.P2P
 {
     // 缓存新收到的交易，按策略批量转发
     internal class TransactionDispatcher : UntypedActor
