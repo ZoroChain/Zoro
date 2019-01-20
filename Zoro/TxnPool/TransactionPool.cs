@@ -27,6 +27,8 @@ namespace Zoro.TxnPool
         private readonly MemoryPool mem_pool = new MemoryPool(50_000);
         private readonly int reverify_txn_count = 1000;
         private int reverify_waste_count = 0;
+        private HashSet<UInt256> received_hashes = new HashSet<UInt256>();
+        private int error_duplicated_hash_count = 0;
 
         public TransactionPool(ZoroSystem system, UInt160 chainHash)
         {
@@ -153,6 +155,12 @@ namespace Zoro.TxnPool
                 return RelayResultReason.AlreadyExists;
             if (snapshot.ContainsTransaction(transaction.Hash))
                 return RelayResultReason.AlreadyExists;
+            if (!received_hashes.Add(transaction.Hash))
+            {
+                blockchain.Log($"error:tx hash already existed.{error_duplicated_hash_count++}");
+                return RelayResultReason.AlreadyExists;
+            }
+
             if (!transaction.Verify(snapshot))
                 return RelayResultReason.Invalid;
             if (!PluginManager.Singleton.CheckPolicy(transaction))
