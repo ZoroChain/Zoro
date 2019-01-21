@@ -67,7 +67,6 @@ namespace Zoro.Ledger
         private readonly HashSet<IActorRef> subscribers = new HashSet<IActorRef>();
         private Snapshot currentSnapshot;
         private readonly int reverify_txn_count = 1000;
-        private int reverify_waste_count = 0;
         private IActorRef dispatcher;
 
         public Store Store { get; }
@@ -437,7 +436,7 @@ namespace Zoro.Ledger
             PersistCompleted completed = new PersistCompleted { Block = block };
             system.Consensus?.Tell(completed);
             Distribute(completed);
-            Log($"Block Persisted:{block.Index}, tx:{block.Transactions.Length}, mempool:{GetMemoryPoolCount()}, waste:{reverify_waste_count}");
+            Log($"Block Persisted:{block.Index}, tx:{block.Transactions.Length}, mempool:{GetMemoryPoolCount()}");
         }
 
         // 重新验证交易
@@ -468,7 +467,6 @@ namespace Zoro.Ledger
             UInt256 hash = tx.Hash;
             if (!mem_pool.SetVerifyState(hash, verifyResult))
             {
-                reverify_waste_count++;
                 Log($"can't find reverified tx:{hash}, verify result:{verifyResult}", LogLevel.Debug);
             }
             else
