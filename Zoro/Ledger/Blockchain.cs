@@ -30,6 +30,7 @@ namespace Zoro.Ledger
         public class UpdateSnapshot { };
         public class ChangeAppChainSeedList { public UInt160 ChainHash; public string[] SeedList; }
         public class ChangeAppChainValidators { public UInt160 ChainHash; public ECPoint[] Validators; }
+        public class VerifyResult { public Transaction tx; public bool Result; }
 
         public static readonly uint SecondsPerBlock = ProtocolSettings.Default.SecondsPerBlock;
         public static readonly uint MaxSecondsPerBlock = ProtocolSettings.Default.MaxSecondsPerBlock;
@@ -61,9 +62,12 @@ namespace Zoro.Ledger
         private uint stored_header_count = 0;
         private readonly ConcurrentDictionary<UInt256, Block> block_cache = new ConcurrentDictionary<UInt256, Block>();
         private readonly Dictionary<uint, LinkedList<Block>> block_cache_unverified = new Dictionary<uint, LinkedList<Block>>();
+        private readonly MemoryPool mem_pool = new MemoryPool(50_000);
         internal readonly RelayCache RelayCache = new RelayCache(100);
         private readonly HashSet<IActorRef> subscribers = new HashSet<IActorRef>();
         private Snapshot currentSnapshot;
+        private readonly int reverify_txn_count = 1000;
+        private IActorRef dispatcher;
 
         public Store Store { get; }
         public uint Height => currentSnapshot?.Height ?? 0;
@@ -97,6 +101,8 @@ namespace Zoro.Ledger
 
             lock (lockObj)
             {
+                this.dispatcher = Context.ActorOf(TransactionDispatcher.Props(system), "TransactionDispatcher");
+
                 if (chainHash.Equals(UInt160.Zero))
                 {
                     if (root != null)
@@ -170,6 +176,7 @@ namespace Zoro.Ledger
 
         public bool ContainsTransaction(UInt256 hash)
         {
+            if (mem_pool.ContainsKey(hash)) return true;
             return Store.ContainsTransaction(hash);
         }
 
@@ -204,7 +211,55 @@ namespace Zoro.Ledger
 
         public Transaction GetTransaction(UInt256 hash)
         {
+            if (mem_pool.TryGetValue(hash, out Transaction transaction))
+                return transaction;
             return Store.GetTransaction(hash);
+        }
+
+        internal Transaction GetUnverifiedTransaction(UInt256 hash)
+        {
+            mem_pool.TryGetUnverified(hash, out Transaction transaction);
+            return transaction;
+        }
+
+        public IEnumerable<Transaction> GetVerifiedTransactions()
+        {
+            return mem_pool.GetVerified();
+        }
+
+        public IEnumerable<Transaction> GetUnverifiedTransactions()
+        {
+            return mem_pool.GetUnverified();
+        }
+
+        public IEnumerable<Transaction> GetMemoryPool()
+        {
+            return mem_pool.GetAll();
+        }
+
+        public int GetVerifiedTransactionCount()
+        {
+            return mem_pool.VerifiedCount;
+        }
+
+        public int GetUnverifiedTransactionCount()
+        {
+            return mem_pool.UnverifiedCount;
+        }
+
+        public bool HasVerifiedTransaction()
+        {
+            return mem_pool.HasVerified;
+        }
+
+        public bool HasUnverifiedTransaction()
+        {
+            return mem_pool.HasUnverified;
+        }
+
+        public int GetMemoryPoolCount()
+        {
+            return mem_pool.Count;
         }
 
         private void OnImport(IEnumerable<Block> blocks)
@@ -350,15 +405,82 @@ namespace Zoro.Ledger
             Log($"OnNewHeaders end {headers.Length} height:{header_index.Count}", LogLevel.Debug);
         }
 
+        private RelayResultReason OnNewTransaction(Transaction transaction)
+        {
+            transaction.ChainHash = ChainHash;
+            if (transaction.Type == TransactionType.MinerTransaction)
+                return RelayResultReason.Invalid;
+            if (ContainsTransaction(transaction.Hash))
+                return RelayResultReason.AlreadyExists;
+            if (!transaction.Verify(currentSnapshot))
+                return RelayResultReason.Invalid;
+            if (!PluginManager.Singleton.CheckPolicy(transaction))
+                return RelayResultReason.PolicyFail;
+            if (!mem_pool.TryAddVerified(transaction))
+                return RelayResultReason.OutOfMemory;
+
+            //先把交易缓存在队列里，等待批量转发
+            if (ProtocolSettings.Default.EnableRawTxnMsg)
+                dispatcher.Tell(transaction);
+            else
+                system.LocalNode.Tell(new LocalNode.RelayDirectly { Inventory = transaction });
+
+            return RelayResultReason.Succeed;
+        }
+
         private void OnPersistCompleted(Block block)
         {
-            block_cache.TryRemove(block.Hash, out Block _);
-
+            block_cache.TryRemove(block.Hash, out Block _);            
+            ReverifyMemoryPool(block);
             InvokeAppChainNotifications();
             PersistCompleted completed = new PersistCompleted { Block = block };
-            system.TxnPool.Tell(completed);
             system.Consensus?.Tell(completed);
             Distribute(completed);
+            Log($"Block Persisted:{block.Index}, tx:{block.Transactions.Length}, mempool:{GetMemoryPoolCount()}");
+        }
+
+        // 重新验证交易
+        private void ReverifyMemoryPool(Block block)
+        {
+            // 先删除MemPool里已经上链的交易
+            foreach (Transaction tx in block.Transactions)
+                mem_pool.TryRemove(tx.Hash, out _);
+
+            // 把MemPool里未处理的交易设置为未验证状态
+            mem_pool.ResetToUnverified();
+
+            if (!HasUnverifiedTransaction())
+                return;
+
+            Transaction[] txns = mem_pool.TakeUnverifiedTransactions(reverify_txn_count);
+
+            foreach (var tx in txns)
+            {
+                bool result = tx.Reverify(currentSnapshot);
+
+                OnVerifyResult(tx, result);
+            }
+        }
+
+        private void OnVerifyResult(Transaction tx, bool verifyResult)
+        {
+            UInt256 hash = tx.Hash;
+            if (!mem_pool.SetVerifyState(hash, verifyResult))
+            {
+                Log($"can't find reverified tx:{hash}, verify result:{verifyResult}", LogLevel.Debug);
+            }
+            else
+            {
+                if (verifyResult && ProtocolSettings.Default.EnableRawTxnMsg)
+                {
+                    dispatcher.Tell(tx);
+                }
+            }
+
+            if (!verifyResult)
+            {
+                Log($"transaction reverify failed:{hash}");
+            }
         }
 
         protected override void OnReceive(object message)
@@ -377,6 +499,9 @@ namespace Zoro.Ledger
                 case Block block:
                     Sender.Tell(OnNewBlock(block));
                     break;
+                case Transaction transaction:
+                    Sender.Tell(OnNewTransaction(transaction));
+                    break;
                 case ConsensusPayload payload:
                     Sender.Tell(OnNewConsensus(payload));
                     break;
@@ -388,6 +513,9 @@ namespace Zoro.Ledger
                     break;
                 case ChangeAppChainSeedList msg:
                     Sender.Tell(OnChangeAppChainSeedList(msg.ChainHash, msg.SeedList));
+                    break;
+                case VerifyResult result:
+                    OnVerifyResult(result.tx, result.Result);
                     break;
             }
         }
@@ -578,7 +706,6 @@ namespace Zoro.Ledger
         private void UpdateCurrentSnapshot()
         {
             Interlocked.Exchange(ref currentSnapshot, GetSnapshot())?.Dispose();
-            system.TxnPool.Tell(new UpdateSnapshot());
         }
 
         private void SaveAppChainState()

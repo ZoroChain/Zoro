@@ -6,7 +6,6 @@ using Zoro.IO.Actors;
 using Zoro.Ledger;
 using Zoro.Network.P2P;
 using Zoro.Network.P2P.Payloads;
-using Zoro.TxnPool;
 using Zoro.Plugins;
 using Zoro.Wallets;
 using System;
@@ -34,7 +33,6 @@ namespace Zoro.Consensus
         private readonly UInt160 chainHash;
         private readonly Blockchain blockchain;
         private readonly LocalNode localNodeObj;
-        private readonly TransactionPool txnPool;
 
         private readonly List<ConsensusPayload> payload_cache_unhandled = new List<ConsensusPayload>();
 
@@ -45,8 +43,7 @@ namespace Zoro.Consensus
             this.taskManager = taskManager;
             this.blockchain = ZoroChainSystem.Singleton.AskBlockchain(chainHash);
             this.localNodeObj = ZoroChainSystem.Singleton.AskLocalNode(chainHash);
-            this.txnPool = ZoroChainSystem.Singleton.AskTransactionPool(chainHash);
-            this.context = new ConsensusContext(blockchain, txnPool, wallet);
+            this.context = new ConsensusContext(blockchain, wallet);
         }
 
         public ConsensusService(IActorRef localNode, IActorRef taskManager, IConsensusContext context)
@@ -266,7 +263,7 @@ namespace Zoro.Consensus
                     if (!Crypto.Default.VerifySignature(hashData, context.Signatures[i], context.Validators[i].EncodePoint(false)))
                         context.Signatures[i] = null;
             context.Signatures[payload.ValidatorIndex] = message.Signature;
-            Dictionary<UInt256, Transaction> mempool = txnPool.GetVerifiedTransactions().ToDictionary(p => p.Hash);
+            Dictionary<UInt256, Transaction> mempool = blockchain.GetVerifiedTransactions().ToDictionary(p => p.Hash);
             List<Transaction> unverified = new List<Transaction>();
             foreach (UInt256 hash in context.TransactionHashes.Skip(1))
             {
@@ -277,7 +274,7 @@ namespace Zoro.Consensus
                 }
                 else
                 {
-                    tx = txnPool.GetUnverifiedTransaction(hash);
+                    tx = blockchain.GetUnverifiedTransaction(hash);
                     if (tx != null)
                         unverified.Add(tx);
                 }
@@ -354,7 +351,7 @@ namespace Zoro.Consensus
             if (context.State.HasFlag(ConsensusState.Primary) && !context.State.HasFlag(ConsensusState.RequestSent))
             {
                 // 没有新的交易请求，并且没有到最长出块时间
-                if (!txnPool.HasVerifiedTransaction() && TimeProvider.Current.UtcNow - block_received_time < MaxTimeSpanPerBlock)
+                if (!blockchain.HasVerifiedTransaction() && TimeProvider.Current.UtcNow - block_received_time < MaxTimeSpanPerBlock)
                 {
                     // 等待下一次出块时间再判断是否需要出块
                     ChangeTimer(Blockchain.TimePerBlock);
