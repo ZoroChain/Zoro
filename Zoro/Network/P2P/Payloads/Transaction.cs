@@ -36,21 +36,6 @@ namespace Zoro.Network.P2P.Payloads
         public TransactionAttribute[] Attributes;
         public Witness[] Witnesses { get; set; }
 
-        private Fixed8 _feePerByte = -Fixed8.Satoshi;
-        /// <summary>
-        /// The <c>NetworkFee</c> for the transaction divided by its <c>Size</c>.
-        /// <para>Note that this property must be used with care. Getting the value of this property multiple times will return the same result. The value of this property can only be obtained after the transaction has been completely built (no longer modified).</para>
-        /// </summary>
-        public Fixed8 FeePerByte
-        {
-            get
-            {
-                if (_feePerByte == -Fixed8.Satoshi)
-                    _feePerByte = SystemFee / Size;
-                return _feePerByte;
-            }
-        }
-
         private UInt256 _hash = null;
         public UInt256 Hash
         {
@@ -71,6 +56,8 @@ namespace Zoro.Network.P2P.Payloads
         public virtual int Size => sizeof(TransactionType) + sizeof(byte) + sizeof(ulong) + Account.Size + Attributes.GetVarSize() + Witnesses.GetVarSize();
 
         public virtual Fixed8 SystemFee => Fixed8.Zero;
+
+        public virtual Fixed8 FeePrice => Fixed8.Satoshi;
 
         protected Transaction(TransactionType type)
         {
