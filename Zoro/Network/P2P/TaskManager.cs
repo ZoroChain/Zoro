@@ -36,34 +36,29 @@ namespace Zoro.Network.P2P
         public class UpdateSession { public uint Height; public uint Latency; }
         private class Timer { }
 
-        private static readonly TimeSpan TimerInterval = TimeSpan.FromSeconds(3);
+        private static readonly TimeSpan TimerInterval = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan TaskTimeout = TimeSpan.FromSeconds(30);
         private static readonly int MaxKnownHashCount = ProtocolSettings.Default.MaxTaskHashCount;
 
         private readonly ZoroSystem system;
-        private const int MaxConncurrentTasks = 3;
         private readonly HashSet<UInt256> knownHashes = new HashSet<UInt256>();
-        private readonly Dictionary<UInt256, int> globalTasks = new Dictionary<UInt256, int>();
+        private readonly HashSet<UInt256> globalTasks = new HashSet<UInt256>();
         private readonly Dictionary<IActorRef, TaskSession> sessions = new Dictionary<IActorRef, TaskSession>();
         private readonly ICancelable timer = Context.System.Scheduler.ScheduleTellRepeatedlyCancelable(TimerInterval, TimerInterval, Context.Self, new Timer(), ActorRefs.NoSender);
 
         private static readonly int MaxHeaderForwardCount = 5000;
-        private static readonly int MaxBlockForwardCount = 500;
+        private static readonly int MaxBlockForwardCount = 200;
         private static readonly int MaxSyncHeaderTaskCount = 2;
         private static readonly int MaxSyncBlockTaskCount = 50;
         private static readonly TimeSpan SyncHeaderTimeout = TimeSpan.FromSeconds(5);
-        private static readonly TimeSpan SyncBlockTimeout = TimeSpan.FromSeconds(30);
+        private static readonly TimeSpan SyncBlockTimeout = TimeSpan.FromSeconds(15);
+
         private readonly Dictionary<TaskSession, SyncHeaderTask> syncHeaderTasks = new Dictionary<TaskSession, SyncHeaderTask>();
         private readonly Dictionary<UInt256, List<SyncBlockTask>> syncBlockTasks = new Dictionary<UInt256, List<SyncBlockTask>>();
-        private uint syncedBlockHeight = 0;
-
-        //private readonly UInt256 HeaderTaskHash = UInt256.Zero;
-        //private bool HasHeaderTask => globalTasks.ContainsKey(HeaderTaskHash);
+        private uint syncingBlockHeight = 0;
 
         private readonly UInt160 chainHash;
         private readonly Blockchain blockchain;
-
-        //private bool HeaderTask => sessions.Values.Any(p => p.HeaderTask);
 
         public TaskManager(ZoroSystem system, UInt160 chainHash)
         {
@@ -76,8 +71,6 @@ namespace Zoro.Network.P2P
         {
             if (!sessions.TryGetValue(Sender, out TaskSession session))
                 return;
-            //session.Tasks.Remove(HeaderTaskHash);
-            //DecrementGlobalTask(HeaderTaskHash);
             CompleteSyncHeaderTask(session);
             RequestTasks(session);
         }
@@ -94,18 +87,17 @@ namespace Zoro.Network.P2P
             HashSet<UInt256> hashes = new HashSet<UInt256>(payload.Hashes);
             hashes.ExceptWith(knownHashes);
             if (payload.Type == InventoryType.Block)
-                session.AvailableTasks.UnionWith(hashes.Where(p => globalTasks.ContainsKey(p)));
+                session.AvailableTasks.UnionWith(hashes.Where(p => globalTasks.Contains(p)));
 
-            hashes.ExceptWith(globalTasks.Keys);
+            hashes.ExceptWith(globalTasks);
             if (hashes.Count == 0)
             {
                 RequestTasks(session);
                 return;
             }
-
+            globalTasks.UnionWith(hashes);
             foreach (UInt256 hash in hashes)
             {
-                IncrementGlobalTask(hash);
                 session.Tasks[hash] = new TaskSession.Task { Type = payload.Type, BeginTime = DateTime.UtcNow };
             }
             RequestInventoryData(payload.Type, hashes.ToArray(), Sender);
@@ -147,14 +139,12 @@ namespace Zoro.Network.P2P
             Context.Watch(Sender);
             TaskSession session = new TaskSession(Sender, version);
             sessions.Add(Sender, session);
-            //RequestTasks(session);
         }
 
         private void OnRestartTasks(InvPayload payload)
         {
             knownHashes.ExceptWith(payload.Hashes);
-            foreach (UInt256 hash in payload.Hashes)
-                globalTasks.Remove(hash);
+            globalTasks.ExceptWith(payload.Hashes);
             RequestInventoryData(payload.Type, payload.Hashes, system.LocalNode);
         }
 
@@ -183,41 +173,12 @@ namespace Zoro.Network.P2P
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void DecrementGlobalTask(UInt256 hash)
-        {
-            if (globalTasks.ContainsKey(hash))
-            {
-                if (globalTasks[hash] == 1)
-                    globalTasks.Remove(hash);
-                else
-                    globalTasks[hash]--;
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private bool IncrementGlobalTask(UInt256 hash)
-        {
-            if (!globalTasks.ContainsKey(hash))
-            {
-                globalTasks[hash] = 1;
-                return true;
-            }
-            if (globalTasks[hash] >= MaxConncurrentTasks)
-                return false;
-
-            globalTasks[hash]++;
-
-            return true;
-        }
-
         private void OnTerminated(IActorRef actor)
         {
             if (!sessions.TryGetValue(actor, out TaskSession session))
                 return;
             sessions.Remove(actor);
-            foreach (UInt256 hash in session.Tasks.Keys)
-                DecrementGlobalTask(hash);
+            globalTasks.ExceptWith(session.Tasks.Keys);
         }
 
         private void OnTimer()
@@ -228,9 +189,8 @@ namespace Zoro.Network.P2P
                 foreach (var task in session.Tasks.ToArray())
                     if (DateTime.UtcNow - task.Value.BeginTime > TaskTimeout)
                     {
-                        if (session.Tasks.Remove(task.Key))
-                            DecrementGlobalTask(task.Key);
-
+                        globalTasks.Remove(task.Key);
+                        session.Tasks.Remove(task.Key);
                         session.RemoteNode.Tell(RemoteNode.NewCounterMessage(RemoteNode.CounterType.Timeout, task.Value.Type));
                     }
             foreach (TaskSession session in sessions.Values)
@@ -327,15 +287,16 @@ namespace Zoro.Network.P2P
                 task.BeginTime = DateTime.UtcNow;
                 task.HeaderHeight = headerHeight;
             }
-
-            syncHeaderTasks.Add(session, new SyncHeaderTask
+            else
             {
-                HeaderHeight = headerHeight,
-                BeginTime = DateTime.UtcNow,
-                Session = session
-            });
+                syncHeaderTasks.Add(session, new SyncHeaderTask
+                {
+                    HeaderHeight = headerHeight,
+                    BeginTime = DateTime.UtcNow,
+                    Session = session
+                });
+            }
 
-            session.SyncHeaderTasks++;
             session.HasHeaderTask = true;
         }
 
@@ -346,7 +307,7 @@ namespace Zoro.Network.P2P
 
         private void RestartSyncHeaderTask(SyncHeaderTask task, TaskSession session)
         {
-            RemoveSyncHeaderTask(task.Session);
+            RemoveSyncHeaderTask(session);
             AddSyncHeaderTask(task.HeaderHeight, session);
         }
 
@@ -397,10 +358,10 @@ namespace Zoro.Network.P2P
                 return;
 
             uint currentBlockHeight = blockchain.Height;
-            if (syncedBlockHeight >= currentBlockHeight + MaxBlockForwardCount)
+            if (syncingBlockHeight >= currentBlockHeight + MaxBlockForwardCount)
                 return;
 
-            uint startBlockHeight = Math.Max(currentBlockHeight, syncedBlockHeight);
+            uint startBlockHeight = Math.Max(currentBlockHeight, syncingBlockHeight);
             if (startBlockHeight >= blockchain.HeaderHeight)
                 return;
 
@@ -424,14 +385,15 @@ namespace Zoro.Network.P2P
             if (hash == null)
                 return false;
 
-            if (globalTasks.ContainsKey(hash))
+            if (!globalTasks.Add(hash))
                 return true;
 
             AddSyncBlockTask(hash, blockHeight, session);
             session.RemoteNode.Tell(Message.Create(MessageType.GetData, InvPayload.Create(InventoryType.Block, hash)));
             session.RemoteNode.Tell(RemoteNode.NewCounterMessage(RemoteNode.CounterType.Request, InventoryType.Block));
 
-            Log($"SyncBlock, {blockHeight} {session.Version.Nonce}");
+            syncingBlockHeight = blockHeight;
+            Log($"SyncBlock, {blockHeight} {session.Version.Nonce}", LogLevel.Debug);
             return true;
         }
 
@@ -444,13 +406,21 @@ namespace Zoro.Network.P2P
                 syncBlockTasks.Add(hash, list);
             }
 
-            list.Add(new SyncBlockTask
+            SyncBlockTask task = list.Find(p => p.Session == session);
+            if (task != null)
             {
-                Hash = hash,
-                BlockHeight = blockHeight,
-                BeginTime = DateTime.UtcNow,
-                Session = session
-            });
+                task.BeginTime = DateTime.UtcNow;
+            }
+            else
+            {
+                list.Add(new SyncBlockTask
+                {
+                    Hash = hash,
+                    BlockHeight = blockHeight,
+                    BeginTime = DateTime.UtcNow,
+                    Session = session
+                });
+            }
 
             session.SyncBlockTasks++;
         }
@@ -486,8 +456,6 @@ namespace Zoro.Network.P2P
 
                 if (task != null)
                 {
-                    syncedBlockHeight = task.BlockHeight;
-
                     list.Remove(task);
 
                     if (list.Count() == 0)
@@ -544,43 +512,17 @@ namespace Zoro.Network.P2P
                 session.AvailableTasks.ExceptWith(knownHashes);
                 session.AvailableTasks.RemoveWhere(p => blockchain.ContainsBlock(p));
                 HashSet<UInt256> hashes = new HashSet<UInt256>(session.AvailableTasks);
+                hashes.ExceptWith(globalTasks);
                 if (hashes.Count > 0)
                 {
-                    foreach (UInt256 hash in hashes.ToArray())
-                    {
-                        if (!IncrementGlobalTask(hash))
-                            hashes.Remove(hash);
-                    }
                     session.AvailableTasks.ExceptWith(hashes);
+                    globalTasks.UnionWith(hashes);
                     foreach (UInt256 hash in hashes)
                         session.Tasks[hash] = new TaskSession.Task { Type = InventoryType.Block, BeginTime = DateTime.UtcNow }; 
                     RequestInventoryData(InventoryType.Block, hashes.ToArray(), session.RemoteNode);
                     return;
                 }
             }
-            //if ((!HasHeaderTask || globalTasks[HeaderTaskHash] < MaxConncurrentTasks) && blockchain.HeaderHeight < session.Version.StartHeight)
-            //{
-            //    session.Tasks[HeaderTaskHash] = new RequestTask { Type = InventoryType.Block, BeginTime = DateTime.UtcNow };
-            //    IncrementGlobalTask(HeaderTaskHash);
-            //    session.RemoteNode.Tell(Message.Create(MessageType.GetHeaders, GetBlocksPayload.Create(blockchain.CurrentHeaderHash)));
-            //}
-            //else if (blockchain.Height < session.Version.StartHeight && blockchain.Height < blockchain.HeaderHeight)
-            //{
-            //    UInt256 hash = blockchain.CurrentBlockHash;
-            //    for (uint i = blockchain.Height + 1; i <= blockchain.HeaderHeight; i++)
-            //    {
-            //        hash = blockchain.GetBlockHash(i);
-            //        if (!globalTasks.ContainsKey(hash))
-            //        {
-            //            hash = blockchain.GetBlockHash(i - 1);
-            //            break;
-            //        }
-            //    }
-            //    if (hash != null)
-            //    {
-            //        session.RemoteNode.Tell(Message.Create(MessageType.GetBlocks, GetBlocksPayload.Create(hash)));
-            //    }
-            //}
         }
 
         private void RequestInventoryData(InventoryType type, UInt256[] hashes, IActorRef sender)

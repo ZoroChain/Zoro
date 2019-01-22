@@ -19,13 +19,11 @@ namespace Zoro.Network.P2P
         public readonly HashSet<UInt256> AvailableTasks = new HashSet<UInt256>();
 
         public bool HasTask => Tasks.Count > 0;
-        //public bool HeaderTask => Tasks.ContainsKey(UInt256.Zero);
 
         public uint Height = 0;
         public uint Latency = 0;
         public uint Timeout = 0;
         public uint SyncBlockTasks = 0;
-        public uint SyncHeaderTasks = 0;
         public bool HasHeaderTask = false;
 
         public TaskSession(IActorRef node, VersionPayload version)
