@@ -17,11 +17,21 @@ namespace Zoro.Network.P2P
 {
     public class RemoteNode : Connection
     {
+        public enum CounterType : byte
+        {
+            Send,
+            Request,
+            Received,
+            Timeout,
+        }
+
         internal class Relay { public IInventory Inventory; }
-        internal class TaskTimeout { public InventoryType Type; };
-        internal class TaskCompleted { public InventoryType Type; };
-        internal class RequestInventory { public InventoryType Type; public int Count; };
-        internal class InventorySended { public InventoryType Type; public int Count; };
+        internal class TimeoutCounter { public InventoryType Type; };
+        internal class ReceivedCounter { public InventoryType Type; };
+        internal class RequestCounter { public InventoryType Type; public int Count; };
+        internal class SendCounter { public InventoryType Type; public int Count; };
+
+        internal class Counter { public CounterType CounterType; public InventoryType InventoryType; public int Count; }
 
         private readonly ZoroSystem system;
         private readonly IActorRef protocol;
@@ -53,15 +63,7 @@ namespace Zoro.Network.P2P
         private double tx_rate = 0;
         public double TXRate => tx_rate;
 
-        private int[] taskTimeoutStat = new int[3];
-        private int[] taskCompletedStat = new int[3];
-        private int[] dataRequestStat = new int[3];
-        private int[] dataSendedStat = new int[3];
-
-        public int TaskTimeoutStat(int idx) => taskTimeoutStat[idx];
-        public int TaskCompletedStat(int idx) => taskCompletedStat[idx];
-        public int DataRequestStat(int idx) => dataRequestStat[idx];
-        public int DataSendedStat(int idx) => dataSendedStat[idx];
+        private int[,] counters = new int[3, 4] { { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } };
 
         static RemoteNode()
         {
@@ -186,28 +188,10 @@ namespace Zoro.Network.P2P
                 case ProtocolHandler.Pong pong:
                     OnPong(pong.Payload);
                     break;
-                case TaskTimeout msg:
-                    Interlocked.Increment(ref taskTimeoutStat[GetStatIndex(msg.Type)]);
-                    break;
-                case TaskCompleted msg:
-                    Interlocked.Increment(ref taskCompletedStat[GetStatIndex(msg.Type)]);
-                    break;
-                case RequestInventory msg:
-                    Interlocked.Add(ref dataRequestStat[GetStatIndex(msg.Type)], msg.Count);
-                    break;
-                case InventorySended msg:
-                    Interlocked.Add(ref dataSendedStat[GetStatIndex(msg.Type)], msg.Count);
+                case Counter counter:
+                    AddCounter(counter.CounterType, counter.InventoryType, counter.Count);
                     break;
             }
-        }
-
-        private int GetStatIndex(InventoryType type)
-        {
-            if (type == InventoryType.TX)
-                return 0;
-            else if (type == InventoryType.Block)
-                return 1;
-            return 2;
         }
 
         private void OnRelay(IInventory inventory)
@@ -375,15 +359,42 @@ namespace Zoro.Network.P2P
             return message;
         }
 
-        public void ClearRts()
+        private void AddCounter(CounterType counterType, InventoryType inventoryType, int count)
+        {
+            int index = GetCounterIndex(inventoryType);
+
+            Interlocked.Add(ref counters[index, (int)counterType], count);
+        }
+
+        private int GetCounterIndex(InventoryType type)
+        {
+            if (type == InventoryType.TX)
+                return 0;
+            else if (type == InventoryType.Block)
+                return 1;
+            return 2;
+        }
+
+        public int GetCounter(CounterType counterType, InventoryType inventoryType)
+        {
+            int index = GetCounterIndex(inventoryType);
+            return counters[index, (int)counterType];
+        }
+
+        public void ClearCounters()
         {
             for (int i = 0; i < 3; i++)
             {
-                Interlocked.Exchange(ref taskTimeoutStat[i], 0);
-                Interlocked.Exchange(ref taskCompletedStat[i], 0);
-                Interlocked.Exchange(ref dataRequestStat[i], 0);
-                Interlocked.Exchange(ref dataSendedStat[i], 0);
+                for (int j = 0;j < 4;j ++)
+                {
+                    Interlocked.Exchange(ref counters[i, j], 0);
+                }
             }
+        }
+
+        internal static Counter NewCounterMessage(CounterType counterType, InventoryType inventoryType, int count = 1)
+        {
+            return new Counter { CounterType = counterType, InventoryType = inventoryType, Count = count };
         }
     }
 

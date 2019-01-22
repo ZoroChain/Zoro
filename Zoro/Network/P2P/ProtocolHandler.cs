@@ -237,7 +237,7 @@ namespace Zoro.Network.P2P
             {
                 if (OnGetInventoryData(payload.Hashes[0], payload.Type))
                 {
-                    Context.Parent.Tell(new RemoteNode.InventorySended { Type = payload.Type, Count = 1 });
+                    Context.Parent.Tell(RemoteNode.NewCounterMessage(RemoteNode.CounterType.Send, payload.Type, 1));
                 }
             }
         }
@@ -275,7 +275,7 @@ namespace Zoro.Network.P2P
                         Context.Parent.Tell(Message.Create(MessageType.RawTxn, rtx_payload));
                 }
 
-                Context.Parent.Tell(new RemoteNode.InventorySended { Type = payload.Type, Count = count });
+                Context.Parent.Tell(RemoteNode.NewCounterMessage(RemoteNode.CounterType.Send, payload.Type, count));
             }
 
             blockchain.Log($"OnGetTxn end, count:{hashes.Length}=>{count}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
@@ -301,7 +301,7 @@ namespace Zoro.Network.P2P
             }
 
             if (count > 0)
-                Context.Parent.Tell(new RemoteNode.InventorySended { Type = payload.Type, Count = count });
+                Context.Parent.Tell(RemoteNode.NewCounterMessage(RemoteNode.CounterType.Send, payload.Type, count));
 
             blockchain.Log($"OnGetBlk end, count:{hashes.Length}=>{count}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
         }
@@ -367,7 +367,7 @@ namespace Zoro.Network.P2P
             blockchain.Log($"recv rawtxn, count:{payload.Array.Length}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
             foreach (var tx in payload.Array)
             {
-                system.TaskManager.Tell(new TaskManager.TaskCompleted { Hash = tx.Hash }, Context.Parent);
+                system.TaskManager.Tell(new TaskManager.TaskCompleted { Hash = tx.Hash, Type = InventoryType.TX }, Context.Parent);
                 if (!(tx is MinerTransaction))
                     system.LocalNode.Tell(new LocalNode.Relay { Inventory = tx });
             }
@@ -381,7 +381,7 @@ namespace Zoro.Network.P2P
             Transaction[] txn = CompressedTransactionPayload.DecompressTransactions(payload.CompressedData);
             foreach (var tx in txn)
             {
-                system.TaskManager.Tell(new TaskManager.TaskCompleted { Hash = tx.Hash }, Context.Parent);
+                system.TaskManager.Tell(new TaskManager.TaskCompleted { Hash = tx.Hash, Type = InventoryType.TX }, Context.Parent);
                 if (!(tx is MinerTransaction))
                     system.LocalNode.Tell(new LocalNode.Relay { Inventory = tx });
             }
@@ -405,7 +405,7 @@ namespace Zoro.Network.P2P
 
         private void OnInventoryReceived(IInventory inventory)
         {
-            system.TaskManager.Tell(new TaskManager.TaskCompleted { Hash = inventory.Hash }, Context.Parent);
+            system.TaskManager.Tell(new TaskManager.TaskCompleted { Hash = inventory.Hash, Type = inventory.InventoryType }, Context.Parent);
             if (inventory is MinerTransaction) return;
             system.LocalNode.Tell(new LocalNode.Relay { Inventory = inventory });
         }

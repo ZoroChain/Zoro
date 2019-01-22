@@ -380,6 +380,10 @@ namespace Zoro.Ledger
 
         private void OnNewHeaders(Header[] headers)
         {
+            if (headers.Length == 0)
+                return;
+
+            uint startHeight = headers[0].Index;
             Log($"OnNewHeaders begin num:{headers.Length} height:{header_index.Count}", LogLevel.Debug);
             using (Snapshot snapshot = GetSnapshot())
             {
