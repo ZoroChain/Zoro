@@ -232,6 +232,7 @@ namespace Zoro.Network.P2P
         private void OnSetVersion(VersionPayload version)
         {
             this.Version = version;
+            this.height = (int)version.StartHeight;
             // 检查程序名称是否一致
             if (version.UserAgent != LocalNode.UserAgent)
             {

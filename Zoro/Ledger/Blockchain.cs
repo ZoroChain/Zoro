@@ -67,6 +67,7 @@ namespace Zoro.Ledger
         private Snapshot currentSnapshot;
         private readonly int reverify_txn_count = 1000;
         private IActorRef dispatcher;
+        private DateTime persistingTime;
 
         public Store Store { get; }
         public uint Height => currentSnapshot?.Height ?? 0;
@@ -439,7 +440,8 @@ namespace Zoro.Ledger
             PersistCompleted completed = new PersistCompleted { Block = block };
             system.Consensus?.Tell(completed);
             Distribute(completed);
-            Log($"Block Persisted:{block.Index}, tx:{block.Transactions.Length}, mempool:{GetMemoryPoolCount()}");
+            Log(string.Format("block persisted:{0}, tx:{1}, mempool:{2}, timecost:{3:F1}ms", 
+                block.Index, block.Transactions.Length, GetMemoryPoolCount(), (DateTime.UtcNow - persistingTime).TotalMilliseconds));
         }
 
         // 重新验证交易
@@ -528,8 +530,7 @@ namespace Zoro.Ledger
 
         private void Persist(Block block)
         {
-            if (system.Consensus == null)
-                Log($"Persist Block:{block.Index}, tx:{block.Transactions.Length}");
+            persistingTime = DateTime.UtcNow;
 
             using (Snapshot snapshot = GetSnapshot())
             {
