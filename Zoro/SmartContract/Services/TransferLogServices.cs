@@ -36,7 +36,7 @@ namespace Zoro.SmartContract.Services
             {
                 TransferLog transferLog = _interface.GetInterface<TransferLog>();
                 if (transferLog == null) return false;
-                engine.CurrentContext.EvaluationStack.Push((long)transferLog.Value);
+                engine.CurrentContext.EvaluationStack.Push(transferLog.Value.GetData());
                 return true;
             }
             return false;

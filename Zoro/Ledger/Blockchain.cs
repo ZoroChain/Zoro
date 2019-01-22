@@ -30,7 +30,6 @@ namespace Zoro.Ledger
         public class UpdateSnapshot { };
         public class ChangeAppChainSeedList { public UInt160 ChainHash; public string[] SeedList; }
         public class ChangeAppChainValidators { public UInt160 ChainHash; public ECPoint[] Validators; }
-        public class VerifyResult { public Transaction tx; public bool Result; }
 
         public static readonly uint SecondsPerBlock = ProtocolSettings.Default.SecondsPerBlock;
         public static readonly uint MaxSecondsPerBlock = ProtocolSettings.Default.MaxSecondsPerBlock;
@@ -517,9 +516,6 @@ namespace Zoro.Ledger
                     break;
                 case ChangeAppChainSeedList msg:
                     Sender.Tell(OnChangeAppChainSeedList(msg.ChainHash, msg.SeedList));
-                    break;
-                case VerifyResult result:
-                    OnVerifyResult(result.tx, result.Result);
                     break;
             }
         }

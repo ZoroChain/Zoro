@@ -14,10 +14,7 @@ namespace Zoro.Ledger
 
             public int CompareTo(SortedItem other)
             {
-                int r = tx.FeePerByte.CompareTo(other.tx.FeePerByte); 
-                if (r != 0) return r;
-
-                r = tx.SystemFee.CompareTo(other.tx.SystemFee);
+                int r = tx.FeePrice.CompareTo(other.tx.FeePrice); 
                 if (r != 0) return r;
                 
                 return tx.Hash.CompareTo(other.tx.Hash);
@@ -206,7 +203,7 @@ namespace Zoro.Ledger
         {
             SortedItem min = _sorted_items.Min;
 
-            if (min != null && min.tx.FeePerByte < tx.FeePerByte)
+            if (min != null && min.tx.FeePrice < tx.FeePrice)
             {
                 TryRemove(min.tx.Hash, out _);
                 return true;

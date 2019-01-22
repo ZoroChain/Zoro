@@ -15,6 +15,7 @@ namespace Zoro.Network.P2P.Payloads
 
         public override int Size => base.Size + Script.GetVarSize() + GasPrice.Size + GasLimit.Size;
         public override Fixed8 SystemFee => GasPrice * GasLimit;
+        public override Fixed8 FeePrice => GasPrice;
 
         private static Fixed8 GasPriceLowestThreshold = ProtocolSettings.Default.GasPriceLowestThreshold;
         private static Fixed8 GasPriceHighestThreshold = ProtocolSettings.Default.GasPriceHighestThreshold;
