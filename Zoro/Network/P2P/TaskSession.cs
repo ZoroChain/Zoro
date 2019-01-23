@@ -25,6 +25,7 @@ namespace Zoro.Network.P2P
         public uint Timeout = 0;
         public uint SyncBlockTasks = 0;
         public bool HasHeaderTask = false;
+        public uint Weight => Timeout * 2 + SyncBlockTasks;
 
         public TaskSession(IActorRef node, VersionPayload version)
         {

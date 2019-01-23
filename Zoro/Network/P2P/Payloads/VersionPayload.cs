@@ -11,14 +11,14 @@ namespace Zoro.Network.P2P.Payloads
         public ulong Services;
         public uint Timestamp;
         public ushort Port;
-        public uint Nonce;
+        public uint NodeId;
         public string UserAgent;
         public uint StartHeight;
         public bool Relay;
 
         public int Size => ChainHash.Size + sizeof(uint) + sizeof(ulong) + sizeof(uint) + sizeof(ushort) + sizeof(uint) + UserAgent.GetVarSize() + sizeof(uint) + sizeof(bool);
 
-        public static VersionPayload Create(UInt160 chainHash, int port, uint nonce, string userAgent, uint startHeight)
+        public static VersionPayload Create(UInt160 chainHash, int port, uint nodeId, string userAgent, uint startHeight)
         {
             return new VersionPayload
             {
@@ -27,7 +27,7 @@ namespace Zoro.Network.P2P.Payloads
                 Services = NetworkAddressWithTime.NODE_NETWORK,
                 Timestamp = DateTime.Now.ToTimestamp(),
                 Port = (ushort)port,
-                Nonce = nonce,
+                NodeId = nodeId,
                 UserAgent = userAgent,
                 StartHeight = startHeight,
                 Relay = true
@@ -41,7 +41,7 @@ namespace Zoro.Network.P2P.Payloads
             Services = reader.ReadUInt64();
             Timestamp = reader.ReadUInt32();
             Port = reader.ReadUInt16();
-            Nonce = reader.ReadUInt32();
+            NodeId = reader.ReadUInt32();
             UserAgent = reader.ReadVarString(1024);
             StartHeight = reader.ReadUInt32();
             Relay = reader.ReadBoolean();
@@ -54,7 +54,7 @@ namespace Zoro.Network.P2P.Payloads
             writer.Write(Services);
             writer.Write(Timestamp);
             writer.Write(Port);
-            writer.Write(Nonce);
+            writer.Write(NodeId);
             writer.WriteVarString(UserAgent);
             writer.Write(StartHeight);
             writer.Write(Relay);

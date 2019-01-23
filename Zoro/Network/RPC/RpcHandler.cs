@@ -294,7 +294,7 @@ namespace Zoro.Network.RPC
                         {
                             JObject json = new JObject();
                             json["port"] = LocalNode.Root.ListenerPort;
-                            json["nonce"] = LocalNode.Nonce;
+                            json["nonce"] = LocalNode.NodeId;
                             json["useragent"] = LocalNode.UserAgent;
                             return json;
                         }

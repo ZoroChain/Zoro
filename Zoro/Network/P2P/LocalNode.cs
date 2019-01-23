@@ -27,7 +27,7 @@ namespace Zoro.Network.P2P
         public int ConnectedCount => RemoteNodes.Count;
         public int UnconnectedCount => UnconnectedPeers.Count;
         public double TxRate => RemoteNodes.Sum(p => p.Value.TXRate);
-        public static readonly uint Nonce;
+        public static readonly uint NodeId;
         public static string UserAgent { get; set; }
 
         public string[] SeedList { get; private set; }
@@ -48,7 +48,7 @@ namespace Zoro.Network.P2P
         static LocalNode()
         {
             Random rand = new Random();
-            Nonce = (uint)rand.Next();
+            NodeId = (uint)rand.Next();
             UserAgent = $"/{Assembly.GetExecutingAssembly().GetName().Name}:{Assembly.GetExecutingAssembly().GetVersion()}/";
         }
 

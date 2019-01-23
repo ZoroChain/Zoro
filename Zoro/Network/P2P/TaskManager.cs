@@ -16,7 +16,7 @@ namespace Zoro.Network.P2P
         class SyncHeaderTask
         {
             public uint HeaderHeight;
-            public DateTime BeginTime;
+            public DateTime ExpiryTime;
             public TaskSession Session;
         }
 
@@ -24,7 +24,7 @@ namespace Zoro.Network.P2P
         {
             public UInt256 Hash;
             public uint BlockHeight;
-            public DateTime BeginTime;
+            public DateTime ExpiryTime;
             public TaskSession Session;
         }
 
@@ -37,7 +37,7 @@ namespace Zoro.Network.P2P
         private class Timer { }
 
         private static readonly TimeSpan TimerInterval = TimeSpan.FromSeconds(5);
-        private static readonly TimeSpan TaskTimeout = TimeSpan.FromSeconds(30);
+        private static readonly TimeSpan TaskTimeout = TimeSpan.FromSeconds(15);
         private static readonly int MaxKnownHashCount = ProtocolSettings.Default.MaxTaskHashCount;
 
         private readonly ZoroSystem system;
@@ -51,7 +51,7 @@ namespace Zoro.Network.P2P
         private static readonly int MaxSyncHeaderTaskCount = 2;
         private static readonly int MaxSyncBlockTaskCount = 50;
         private static readonly TimeSpan SyncHeaderTimeout = TimeSpan.FromSeconds(5);
-        private static readonly TimeSpan SyncBlockTimeout = TimeSpan.FromSeconds(15);
+        private static readonly TimeSpan SyncBlockTimeout = TimeSpan.FromSeconds(10);
 
         private readonly Dictionary<TaskSession, SyncHeaderTask> syncHeaderTasks = new Dictionary<TaskSession, SyncHeaderTask>();
         private readonly Dictionary<UInt256, List<SyncBlockTask>> syncBlockTasks = new Dictionary<UInt256, List<SyncBlockTask>>();
@@ -243,16 +243,13 @@ namespace Zoro.Network.P2P
 
         private int CompareSession(TaskSession ts1, TaskSession ts2)
         {
-            int r = ts1.Timeout.CompareTo(ts2.Timeout);
-            if (r != 0) return r;
-
-            r = ts1.SyncBlockTasks.CompareTo(ts2.SyncBlockTasks);
+            int r = ts1.Weight.CompareTo(ts2.Weight);
             if (r != 0) return r;
 
             r = ts1.Latency.CompareTo(ts2.Latency);
             if (r != 0) return r;
 
-            return ts1.Version.Nonce.CompareTo(ts2.Version.Nonce);
+            return ts1.Version.NodeId.CompareTo(ts2.Version.NodeId);
         }
 
         private void SyncHeader()
@@ -284,7 +281,7 @@ namespace Zoro.Network.P2P
         {
             if (syncHeaderTasks.TryGetValue(session, out SyncHeaderTask task))
             {
-                task.BeginTime = DateTime.UtcNow;
+                task.ExpiryTime = DateTime.UtcNow + SyncHeaderTimeout;
                 task.HeaderHeight = headerHeight;
             }
             else
@@ -292,7 +289,7 @@ namespace Zoro.Network.P2P
                 syncHeaderTasks.Add(session, new SyncHeaderTask
                 {
                     HeaderHeight = headerHeight,
-                    BeginTime = DateTime.UtcNow,
+                    ExpiryTime = DateTime.UtcNow + SyncHeaderTimeout,
                     Session = session
                 });
             }
@@ -324,11 +321,11 @@ namespace Zoro.Network.P2P
         {
             DateTime now = DateTime.UtcNow;
 
-            SyncHeaderTask[] timeoutTasks = syncHeaderTasks.Values.Where(p => (now - p.BeginTime >= SyncHeaderTimeout)).ToArray();
+            SyncHeaderTask[] timeoutTasks = syncHeaderTasks.Values.Where(p => now >= p.ExpiryTime).ToArray();
             foreach (SyncHeaderTask task in timeoutTasks)
             {
                 task.Session.Timeout++;
-                Log($"SyncHeader timeout, {task.HeaderHeight}");
+                Log($"SyncHeader timeout: {task.HeaderHeight}");
 
                 if (task.HeaderHeight <= blockchain.HeaderHeight)
                 {
@@ -366,7 +363,7 @@ namespace Zoro.Network.P2P
                 return;
 
             int count = MaxSyncBlockTaskCount - taskCount;
-            Log($"SyncBlocks, {startBlockHeight} {count}");            
+            Log($"SyncBlocks: {startBlockHeight}, {count}");
             for (int i = 1;i <= count;i ++)
             {
                 uint nextBlockHeight = startBlockHeight + (uint)i;
@@ -393,7 +390,7 @@ namespace Zoro.Network.P2P
             session.RemoteNode.Tell(RemoteNode.NewCounterMessage(RemoteNode.CounterType.Request, InventoryType.Block));
 
             syncingBlockHeight = blockHeight;
-            Log($"SyncBlock, {blockHeight} {session.Version.Nonce}", LogLevel.Debug);
+            Log($"SyncBlock: {blockHeight}, {session.Version.NodeId}", LogLevel.Debug);
             return true;
         }
 
@@ -409,7 +406,7 @@ namespace Zoro.Network.P2P
             SyncBlockTask task = list.Find(p => p.Session == session);
             if (task != null)
             {
-                task.BeginTime = DateTime.UtcNow;
+                task.ExpiryTime = DateTime.UtcNow + SyncBlockTimeout;
             }
             else
             {
@@ -417,7 +414,7 @@ namespace Zoro.Network.P2P
                 {
                     Hash = hash,
                     BlockHeight = blockHeight,
-                    BeginTime = DateTime.UtcNow,
+                    ExpiryTime = DateTime.UtcNow + SyncBlockTimeout,
                     Session = session
                 });
             }
@@ -473,13 +470,13 @@ namespace Zoro.Network.P2P
         {
             DateTime now = DateTime.UtcNow;
 
-            SyncBlockTask[] timeoutTasks = syncBlockTasks.Values.SelectMany(p => p.Where(q => (now - q.BeginTime >= SyncBlockTimeout))).ToArray();
+            SyncBlockTask[] timeoutTasks = syncBlockTasks.Values.SelectMany(p => p.Where(q => now >= q.ExpiryTime)).ToArray();
             foreach (SyncBlockTask task in timeoutTasks)
             {
                 task.Session.Timeout++;
                 task.Session.RemoteNode.Tell(RemoteNode.NewCounterMessage(RemoteNode.CounterType.Timeout, InventoryType.Block));
 
-                Log($"SyncBlock timeout, {task.BlockHeight} {task.Session.Version.Nonce}");
+                Log($"SyncBlock timeout: {task.BlockHeight}, {task.Session.Version.NodeId}");
 
                 if (task.BlockHeight <= blockchain.Height)
                 {

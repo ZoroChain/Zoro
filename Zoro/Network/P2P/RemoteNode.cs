@@ -80,7 +80,7 @@ namespace Zoro.Network.P2P
             this.protocol = Context.ActorOf(ProtocolHandler.Props(system, localNode, blockchain, this), "RemoteNode");
             localNode.RemoteNodes.TryAdd(Self, this);
             
-            SendMessage(Message.Create(MessageType.Version, VersionPayload.Create(localNode.ChainHash, localNode.ListenerPort, LocalNode.Nonce, LocalNode.UserAgent, blockchain.Height)));
+            SendMessage(Message.Create(MessageType.Version, VersionPayload.Create(localNode.ChainHash, localNode.ListenerPort, LocalNode.NodeId, LocalNode.UserAgent, blockchain.Height)));
 
             Log($"Connected to RemoteNode {blockchain.Name} {remote}");
         }
@@ -251,18 +251,19 @@ namespace Zoro.Network.P2P
                 Disconnect(true);
                 return;
             }
-            if (version.Nonce == LocalNode.Nonce)
+            if (version.NodeId == LocalNode.NodeId)
             {
-                Log($"The nonce value in version message is duplicated:[{Remote.Address}]", LogLevel.Warning);
+                Log($"Peer connect to itself:[{Remote.Address}]", LogLevel.Warning);
                 Disconnect(true);
                 return;
             }
-            if (localNode.RemoteNodes.Values.Where(p => p != this).Any(p => p.Remote.Address.Equals(Remote.Address) && p.Version?.Nonce == version.Nonce))
+            if (localNode.RemoteNodes.Values.Where(p => p != this).Any(p => p.Remote.Address.Equals(Remote.Address) && p.Version?.NodeId == version.NodeId))
             {
-                Log($"Duplicate connection detected:[{Remote.Address}]", LogLevel.Warning);
+                Log($"Peer reconnect:[{Remote.Address}]", LogLevel.Warning);
                 Disconnect(true);
                 return;
             }
+            Log($"OnSetVersion:[{Remote}] {version.NodeId}");
             SendMessage(Message.Create(MessageType.VerAck));
         }
 
