@@ -67,7 +67,8 @@ namespace Zoro.Ledger
         private Snapshot currentSnapshot;
         private readonly int reverify_txn_count = 1000;
         private IActorRef dispatcher;
-        private DateTime persistingTime;
+        private DateTime persistingBeginTime;
+        private DateTime persistingCommitTime;
 
         public Store Store { get; }
         public uint Height => currentSnapshot?.Height ?? 0;
@@ -440,8 +441,10 @@ namespace Zoro.Ledger
             PersistCompleted completed = new PersistCompleted { Block = block };
             system.Consensus?.Tell(completed);
             Distribute(completed);
-            Log(string.Format("block persisted:{0}, tx:{1}, mempool:{2}, timecost:{3:F1}ms", 
-                block.Index, block.Transactions.Length, GetMemoryPoolCount(), (DateTime.UtcNow - persistingTime).TotalMilliseconds));
+
+            DateTime now = DateTime.UtcNow;
+            Log(string.Format("block persisted:{0}, tx:{1}, mempool:{2}, commit:{3:F1}ms, total:{4:F1}ms", 
+                block.Index, block.Transactions.Length, GetMemoryPoolCount(), (now - persistingCommitTime).TotalMilliseconds, (now - persistingBeginTime).TotalMilliseconds));
         }
 
         // 重新验证交易
@@ -530,7 +533,7 @@ namespace Zoro.Ledger
 
         private void Persist(Block block)
         {
-            persistingTime = DateTime.UtcNow;
+            persistingBeginTime = DateTime.UtcNow;
 
             using (Snapshot snapshot = GetSnapshot())
             {
@@ -558,7 +561,7 @@ namespace Zoro.Ledger
                         // 记录手续费转账日志
                         NativeAPI.SaveTransferLog(snapshot, Genesis.BcpContractAddress, minerTx.Hash, UInt160.Zero, minerTx.Account, sysfeeAmount);
                     }
-                }
+                }                
 
                 snapshot.BlockHashIndex.GetAndChange().Hash = block.Hash;
                 snapshot.BlockHashIndex.GetAndChange().Index = block.Index;
@@ -571,6 +574,7 @@ namespace Zoro.Ledger
                 foreach (IPersistencePlugin plugin in PluginManager.PersistencePlugins)
                     plugin.OnPersist(snapshot, all_application_executed);
 
+                persistingCommitTime = DateTime.UtcNow;
                 snapshot.Commit();
             }
             UpdateCurrentSnapshot();

@@ -263,7 +263,6 @@ namespace Zoro.Network.P2P
                 Disconnect(true);
                 return;
             }
-            Log($"OnSetVersion:[{Remote}] {version.NodeId}");
             SendMessage(Message.Create(MessageType.VerAck));
         }
 

@@ -182,6 +182,7 @@ namespace Zoro.Network.P2P
 
             if (payload.Headers.Length == 0) return;
             system.Blockchain.Tell(payload.Headers, Context.Parent);
+            system.TaskManager.Tell(new TaskManager.HeaderMessageReceived(), Context.Parent);
         }
 
         private void OnGetBlocksMessageReceived(Message msg)

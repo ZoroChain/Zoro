@@ -32,9 +32,11 @@ namespace Zoro.Network.P2P
         public class NewTasks { public InvPayload Payload; }
         public class TaskCompleted { public UInt256 Hash; public InventoryType Type; }
         public class HeaderTaskCompleted { }
+        public class HeaderMessageReceived { }
         public class RestartTasks { public InvPayload Payload; }
         public class UpdateSession { public uint Height; public uint Latency; }
         private class Timer { }
+        private class SyncTimer { }
 
         private static readonly TimeSpan TimerInterval = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan TaskTimeout = TimeSpan.FromSeconds(15);
@@ -45,13 +47,15 @@ namespace Zoro.Network.P2P
         private readonly HashSet<UInt256> globalTasks = new HashSet<UInt256>();
         private readonly Dictionary<IActorRef, TaskSession> sessions = new Dictionary<IActorRef, TaskSession>();
         private readonly ICancelable timer = Context.System.Scheduler.ScheduleTellRepeatedlyCancelable(TimerInterval, TimerInterval, Context.Self, new Timer(), ActorRefs.NoSender);
+        private readonly ICancelable syncTimer = Context.System.Scheduler.ScheduleTellRepeatedlyCancelable(SyncTimerInterval, SyncTimerInterval, Context.Self, new SyncTimer(), ActorRefs.NoSender);
 
         private static readonly int MaxHeaderForwardCount = 5000;
-        private static readonly int MaxBlockForwardCount = 200;
-        private static readonly int MaxSyncHeaderTaskCount = 2;
+        private static readonly int MaxBlockForwardCount = 1000;
+        private static readonly int MaxSyncHeaderTaskCount = 1;
         private static readonly int MaxSyncBlockTaskCount = 50;
-        private static readonly TimeSpan SyncHeaderTimeout = TimeSpan.FromSeconds(5);
+        private static readonly TimeSpan SyncHeaderTimeout = TimeSpan.FromSeconds(10);
         private static readonly TimeSpan SyncBlockTimeout = TimeSpan.FromSeconds(10);
+        private static readonly TimeSpan SyncTimerInterval = TimeSpan.FromSeconds(1);
 
         private readonly Dictionary<TaskSession, SyncHeaderTask> syncHeaderTasks = new Dictionary<TaskSession, SyncHeaderTask>();
         private readonly Dictionary<UInt256, List<SyncBlockTask>> syncBlockTasks = new Dictionary<UInt256, List<SyncBlockTask>>();
@@ -73,6 +77,14 @@ namespace Zoro.Network.P2P
                 return;
             CompleteSyncHeaderTask(session);
             RequestTasks(session);
+        }
+
+        private void OnHeaderMessageReceived()
+        {
+            if (sessions.TryGetValue(Sender, out TaskSession session))
+            {
+                SetSyncHeaderTaskNeverExpire(session);
+            }
         }
 
         private void OnNewTasks(InvPayload payload)
@@ -119,11 +131,17 @@ namespace Zoro.Network.P2P
                 case HeaderTaskCompleted completed:
                     OnHeaderTaskCompleted();
                     break;
+                case HeaderMessageReceived _:
+                    OnHeaderMessageReceived();
+                    break;
                 case RestartTasks restart:
                     OnRestartTasks(restart.Payload);
                     break;
                 case Timer _:
                     OnTimer();
+                    break;
+                case SyncTimer _:
+                    OnSyncTimer();
                     break;
                 case Terminated terminated:
                     OnTerminated(terminated.ActorRef);
@@ -183,7 +201,7 @@ namespace Zoro.Network.P2P
 
         private void OnTimer()
         {
-            UpdateSyncTasks();
+            CheckSyncTimeout();
 
             foreach (TaskSession session in sessions.Values)
                 foreach (var task in session.Tasks.ToArray())
@@ -199,13 +217,19 @@ namespace Zoro.Network.P2P
             ClearKnownHashes();
         }
 
-        private void UpdateSyncTasks()
+        private void CheckSyncTimeout()
         {
             if (sessions.Count() <= 0)
                 return;
 
             CheckSyncHeaderTimeout();
             CheckSyncBlockTimeout();
+        }
+
+        private void OnSyncTimer()
+        {
+            if (sessions.Count() <= 0)
+                return;
 
             SyncHeader();
             SyncBlocks();
@@ -215,6 +239,7 @@ namespace Zoro.Network.P2P
         {
             Log($"OnStop TaskManager {blockchain.Name}");
             timer.CancelIfNotNull();
+            syncTimer.CancelIfNotNull();
             base.PostStop();
         }
 
@@ -273,7 +298,7 @@ namespace Zoro.Network.P2P
 
                 AddSyncHeaderTask(nextHeaderHeight, session);
                 session.RemoteNode.Tell(Message.Create(MessageType.GetHeaders, GetBlocksPayload.Create(blockchain.CurrentHeaderHash)));
-                Log($"SyncHeader {nextHeaderHeight}");
+                Log($"SyncHeader {nextHeaderHeight} {session.Version.NodeId}");
             }
         }
 
@@ -302,10 +327,13 @@ namespace Zoro.Network.P2P
             return syncHeaderTasks.Remove(session);
         }
 
-        private void RestartSyncHeaderTask(SyncHeaderTask task, TaskSession session)
+        private void SetSyncHeaderTaskNeverExpire(TaskSession session)
         {
-            RemoveSyncHeaderTask(session);
-            AddSyncHeaderTask(task.HeaderHeight, session);
+            if (syncHeaderTasks.TryGetValue(session, out SyncHeaderTask task))
+            {
+                task.ExpiryTime = DateTime.MaxValue;
+                Log($"SyncHeader received");
+            }
         }
 
         private void CompleteSyncHeaderTask(TaskSession session)
@@ -314,6 +342,7 @@ namespace Zoro.Network.P2P
             {
                 session.HasHeaderTask = false;
                 Log($"SyncHeader completed");
+                SyncHeader();
             }
         }
 
@@ -325,27 +354,12 @@ namespace Zoro.Network.P2P
             foreach (SyncHeaderTask task in timeoutTasks)
             {
                 task.Session.Timeout++;
-                Log($"SyncHeader timeout: {task.HeaderHeight}");
-
-                if (task.HeaderHeight <= blockchain.HeaderHeight)
-                {
-                    RemoveSyncHeaderTask(task.Session);
-                }
-                else
-                {
-                    TaskSession session = GetSyncSession(task.HeaderHeight, true);
-
-                    if (session != null)
-                    {
-                        RestartSyncHeaderTask(task, session);
-                        session.RemoteNode.Tell(Message.Create(MessageType.GetHeaders, GetBlocksPayload.Create(blockchain.CurrentHeaderHash)));
-                    }
-                    else
-                    {
-                        RemoveSyncHeaderTask(task.Session);
-                    }
-                }
+                Log($"SyncHeader timeout: {task.HeaderHeight} {task.Session.Version.NodeId}");
+                RemoveSyncHeaderTask(task.Session);
             }
+
+            if (timeoutTasks.Length > 0)
+                SyncHeader();
         }
 
         private void SyncBlocks()
@@ -475,7 +489,6 @@ namespace Zoro.Network.P2P
             {
                 task.Session.Timeout++;
                 task.Session.RemoteNode.Tell(RemoteNode.NewCounterMessage(RemoteNode.CounterType.Timeout, InventoryType.Block));
-
                 Log($"SyncBlock timeout: {task.BlockHeight}, {task.Session.Version.NodeId}");
 
                 if (task.BlockHeight <= blockchain.Height)
