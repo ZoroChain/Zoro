@@ -446,6 +446,9 @@ namespace Zoro.AppChain
         // 判断本地节点是否在共识节点列表中
         private bool CheckStartConsensus(ECPoint[] Validators)
         {
+            if (wallet == null)
+                return false;
+
             for (int i = 0; i < Validators.Length; i++)
             {
                 WalletAccount account = wallet.GetAccount(Validators[i]);
