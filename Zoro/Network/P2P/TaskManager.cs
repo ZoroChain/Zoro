@@ -377,16 +377,14 @@ namespace Zoro.Network.P2P
                 return;
 
             int count = MaxSyncBlockTaskCount - taskCount;
-            int syncCount = 0;
             for (int i = 1;i <= count;i ++)
             {
                 uint nextBlockHeight = startBlockHeight + (uint)i;
                 if (!SyncBlock(nextBlockHeight))
                     break;
-                syncCount++;
             }
-            if (syncCount > 0)
-                Log($"SyncBlocks:{startBlockHeight}, {syncCount}");
+            if (syncingBlockHeight > startBlockHeight)
+                Log($"SyncBlocks:{startBlockHeight}, {syncingBlockHeight}, {syncingBlockHeight - startBlockHeight}");
         }
 
         public bool SyncBlock(uint blockHeight)
