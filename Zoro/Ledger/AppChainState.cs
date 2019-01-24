@@ -1,6 +1,7 @@
 ﻿using Zoro.Cryptography.ECC;
 using Zoro.IO;
 using Zoro.IO.Json;
+using Zoro.AppChain;
 using Neo.VM;
 using System;
 using System.Collections.Generic;
@@ -15,12 +16,13 @@ namespace Zoro.Ledger
         public UInt160 Hash;
         public string Name;
         public ECPoint Owner;
+        public AppChainType Type;
         public uint Timestamp;
         public uint LastModified;
         public string[] SeedList;
         public ECPoint[] StandbyValidators;
 
-        public override int Size => base.Size + Hash.Size + Name.GetVarSize() + Owner.Size + sizeof(uint) + SeedList.GetVarSize() + StandbyValidators.GetVarSize();
+        public override int Size => base.Size + Hash.Size + Name.GetVarSize() + Owner.Size + sizeof(byte) + sizeof(uint) + SeedList.GetVarSize() + StandbyValidators.GetVarSize();
 
         public AppChainState()
         {
@@ -33,6 +35,7 @@ namespace Zoro.Ledger
             this.Hash = hash;
             this.Name = "";
             this.Owner = ECCurve.Secp256r1.Infinity;
+            this.Type = AppChainType.None;
             this.Timestamp = 0;
             this.LastModified = 0;
             this.SeedList = new string[0];
@@ -47,6 +50,7 @@ namespace Zoro.Ledger
                 Hash = Hash,
                 Name = Name,
                 Owner = Owner,
+                Type = Type,
                 Timestamp = Timestamp,
                 LastModified = LastModified,
                 SeedList = SeedList,
@@ -64,6 +68,7 @@ namespace Zoro.Ledger
             Hash = reader.ReadSerializable<UInt160>();
             Name = reader.ReadVarString();
             Owner = ECPoint.DeserializeFrom(reader, ECCurve.Secp256r1);
+            Type = (AppChainType)reader.ReadByte();
             Timestamp = reader.ReadUInt32();
             LastModified = version >= 1 ? reader.ReadUInt32() : Timestamp;
             SeedList = new string[reader.ReadVarInt()];
@@ -79,6 +84,7 @@ namespace Zoro.Ledger
             Hash = replica.Hash;
             Name = replica.Name;
             Owner = replica.Owner;
+            Type = replica.Type;
             Timestamp = replica.Timestamp;
             LastModified = replica.LastModified;
             SeedList = replica.SeedList;
@@ -91,6 +97,7 @@ namespace Zoro.Ledger
             Hash = state.Hash;
             Name = state.Name;
             Owner = state.Owner;
+            Type = state.Type;
             Timestamp = state.Timestamp;
             LastModified = state.LastModified;
             SeedList = state.SeedList;
@@ -140,6 +147,7 @@ namespace Zoro.Ledger
             writer.Write(Hash);
             writer.WriteVarString(Name);
             writer.Write(Owner);
+            writer.Write((byte)Type);
             writer.Write(Timestamp);
             writer.Write(LastModified);
             writer.WriteVarStringArray(SeedList);
@@ -159,6 +167,7 @@ namespace Zoro.Ledger
                 json["name"] = Name;
             }
             json["owner"] = Owner.ToString();
+            json["type"] = Type;
             json["timestamp"] = Timestamp;
             json["lastmodified"] = LastModified;
             json["seedlist"] = new JArray(SeedList.Select(p => (JObject)p));

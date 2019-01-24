@@ -402,6 +402,7 @@ namespace Zoro.Network.RPC
                                 obj["name"] = p.Name;
                                 obj["hash"] = p.Hash.ToString();
                                 obj["owner"] = p.Owner.ToString();
+                                obj["type"] = p.Type.ToString();
                                 obj["createtime"] = $"{ p.Timestamp.ToDateTime():yyyy-MM-dd:hh\\:mm\\:ss}";
                                 obj["lastmodified"] = $"{ p.LastModified.ToDateTime():yyyy-MM-dd:hh\\:mm\\:ss}";
                                 obj["validators"] = new JArray(p.StandbyValidators.Select(q => (JObject)q.ToString()));

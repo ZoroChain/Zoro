@@ -1,5 +1,6 @@
 ﻿using Zoro.Cryptography.ECC;
 using Zoro.Ledger;
+using Zoro.AppChain;
 using Zoro.Persistence;
 using Neo.VM;
 using System;
@@ -45,6 +46,8 @@ namespace Zoro.SmartContract.Services
                 if (!Service.CheckWitness(engine, owner))
                     return false;
 
+                AppChainType type = (AppChainType)(byte)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
+
                 // 创建时间
                 uint timestamp = (uint)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
 
@@ -88,6 +91,7 @@ namespace Zoro.SmartContract.Services
                         Hash = hash,
                         Name = name,
                         Owner = owner,
+                        Type = type,
                         Timestamp = timestamp,
                         LastModified = timestamp,
                         SeedList = seedList,

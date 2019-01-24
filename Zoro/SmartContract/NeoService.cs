@@ -1,5 +1,6 @@
 ﻿using Zoro.Cryptography.ECC;
 using Zoro.Ledger;
+using Zoro.AppChain;
 using Zoro.Network.P2P.Payloads;
 using Zoro.Persistence;
 using Zoro.SmartContract.Enumerators;
@@ -452,6 +453,19 @@ namespace Zoro.SmartContract
             string email = Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
             if (engine.CurrentContext.EvaluationStack.Peek().GetByteArray().Length > 65536) return false;
             string description = Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+
+            // 在应用链上发合约要检查应用链的类型设置和所有员签名
+            if (!Snapshot.Blockchain.ChainHash.Equals(UInt160.Zero))
+            {
+                AppChainState state = Snapshot.AppChainState.GetAndChange();
+                if (state.Hash == null)
+                    return false;
+
+                // 对于私有链，只有应用链的所有者有权限发布合约
+                if (state.Type.HasFlag(AppChainType.Private) && !CheckWitness(engine, state.Owner))
+                    return false;
+            }
+
             UInt160 hash = script.ToScriptHash();
             ContractState contract = Snapshot.Contracts.TryGet(hash);
             if (contract == null)
@@ -494,6 +508,19 @@ namespace Zoro.SmartContract
             string email = Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
             if (engine.CurrentContext.EvaluationStack.Peek().GetByteArray().Length > 65536) return false;
             string description = Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+
+            // 在应用链上更改合约要检查应用链的类型设置和所有员签名
+            if (!Snapshot.Blockchain.ChainHash.Equals(UInt160.Zero))
+            {
+                AppChainState state = Snapshot.AppChainState.GetAndChange();
+                if (state.Hash == null)
+                    return false;
+
+                // 对于私有链，只有应用链的所有者有权限发布合约
+                if (state.Type.HasFlag(AppChainType.Private) && !CheckWitness(engine, state.Owner))
+                    return false;
+            }
+
             UInt160 hash = script.ToScriptHash();
             ContractState contract = Snapshot.Contracts.TryGet(hash);
             if (contract == null)
