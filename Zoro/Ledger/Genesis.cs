@@ -1,6 +1,5 @@
 ﻿using System;
 using Neo.VM;
-using Zoro.SmartContract;
 using Zoro.Cryptography.ECC;
 using Zoro.Network.P2P.Payloads;
 
@@ -10,24 +9,21 @@ namespace Zoro.Ledger
     {
         public static UInt160 BcpContractAddress = new UInt160(new byte[] { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 });
         public static UInt160 BctContractAddress = new UInt160(new byte[] { 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 });
+        public static UInt160 BcsContractAddress = new UInt160(new byte[] { 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 });
 
         public static Block BuildGenesisBlock(UInt160 ChainHash, ECPoint[] validators)
         {
             ECPoint owner = ECCurve.Secp256r1.Infinity;
             UInt160 admin = UInt160.Zero;
-
-            if (ChainHash.Equals(UInt160.Zero))
-            {
-                admin = Contract.CreateMultiSigRedeemScript(validators.Length / 2 + 1, validators).ToScriptHash();
-            }
-
-            InvocationTransaction CreateBCPTransaction = CreateNativeNEP5Transaction("BlaCat Point", "BCP", Fixed8.FromDecimal(2000000000), 8, owner, admin, BcpContractAddress);
+            
+            InvocationTransaction CreateBCPTransaction = CreateNativeNEP5Transaction("BlaCat Point", "BCP", Fixed8.FromDecimal(2000000000), 8, owner, admin, BcpContractAddress);            
             InvocationTransaction CreateBCTTransaction = CreateNativeNEP5Transaction("BlaCat Token", "BCT", Fixed8.Zero, 8, owner, admin, BctContractAddress);
+            InvocationTransaction CreateBCSTransaction = CreateNativeNEP5Transaction("BlaCat Share", "BCS", Fixed8.FromDecimal(600000000), 8, owner, admin, BcsContractAddress);
 
             Block genesisBlock = new Block
             {
                 PrevHash = UInt256.Zero,
-                Timestamp = (new DateTime(2016, 7, 15, 15, 8, 21, DateTimeKind.Utc)).ToTimestamp(),
+                Timestamp = (new DateTime(2019, 1, 11, 0, 0, 0, DateTimeKind.Utc)).ToTimestamp(),
                 Index = 0,
                 ConsensusData = 2083236893, //向比特币致敬
                 NextConsensus = Blockchain.GetConsensusAddress(validators),
@@ -47,6 +43,7 @@ namespace Zoro.Ledger
                     },
                     CreateBCPTransaction,
                     CreateBCTTransaction,
+                    CreateBCSTransaction
                 }
             };
 
