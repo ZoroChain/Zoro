@@ -5,10 +5,13 @@ using Zoro.Network.P2P.Payloads;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Net;
 using System.Reflection;
 using System.Threading;
+using System.IO;
+using System.Text;
 
 namespace Zoro.Network.P2P
 {
@@ -28,6 +31,7 @@ namespace Zoro.Network.P2P
         public int UnconnectedCount => UnconnectedPeers.Count;
         public double TxRate => RemoteNodes.Sum(p => p.Value.TXRate);
         public static readonly uint NodeId;
+        public static readonly string RecentPeersFile = "RecentPeers_{0}.dat";
         public static string UserAgent { get; set; }
 
         public string[] SeedList { get; private set; }
@@ -77,6 +81,8 @@ namespace Zoro.Network.P2P
 
                 Blockchain = ZoroChainSystem.Singleton.AskBlockchain(chainHash);
             }
+
+            LoadRecentPeers();
         }
 
         private void BroadcastMessage(string command, ISerializable payload = null)
@@ -210,6 +216,64 @@ namespace Zoro.Network.P2P
 
             // 通知根链更新应用链的种子节点
             ZoroSystem.Root.Blockchain.Tell(new Blockchain.ChangeAppChainSeedList { ChainHash = ChainHash, SeedList = seedList });
+        }
+
+        public void SaveRecentPeers()
+        {
+            List<IPEndPoint> seedlist = new List<IPEndPoint>();
+            foreach (string hostAndPort in SeedList)
+            {
+                try
+                {
+                    string[] p = hostAndPort.Split(':');
+                    IPEndPoint seed = Zoro.Helper.GetIPEndpointFromHostPort(p[0], int.Parse(p[1]));
+                    seedlist.Add(seed);
+                }
+                catch (Exception)
+                {
+                    continue;
+                }
+            }
+
+            IPEndPoint[] peers = ConnectedPeers.Values.Where(p => !seedlist.Contains(p)).ToArray();
+            if (peers.Length == 0)
+                return;
+
+            string path = string.Format(RecentPeersFile, ChainHash.ToString());
+            using (FileStream fs = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                using (BinaryWriter writer = new BinaryWriter(fs, Encoding.ASCII, true))
+                {
+                    writer.Write(peers.Length);
+                    foreach (IPEndPoint endpoint in peers)
+                    {
+                        writer.Write(endpoint.Address.MapToIPv4().GetAddressBytes());
+                        writer.Write((ushort)endpoint.Port);
+                    }
+                }
+            }
+        }
+
+        private void LoadRecentPeers()
+        {
+            string path = string.Format(RecentPeersFile, ChainHash.ToString());
+            if (!File.Exists(path))
+                return;
+
+            using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                UnconnectedPeers.Clear();
+                using (BinaryReader reader = new BinaryReader(fs, Encoding.ASCII, true))
+                {
+                    int count = reader.ReadInt32();
+                    for (int i = 0; i < count; i++)
+                    {
+                        IPAddress address = new IPAddress(reader.ReadBytes(4));
+                        int port = reader.ReadUInt16();
+                        ImmutableInterlocked.Update(ref UnconnectedPeers, p => p.Add(new IPEndPoint(address.MapToIPv6(), port)));
+                    }
+                }
+            }
         }
     }
 }
