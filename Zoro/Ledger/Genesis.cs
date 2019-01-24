@@ -1,5 +1,6 @@
 ﻿using System;
 using Neo.VM;
+using Zoro.SmartContract;
 using Zoro.Cryptography.ECC;
 using Zoro.Network.P2P.Payloads;
 
@@ -15,7 +16,10 @@ namespace Zoro.Ledger
         {
             ECPoint owner = ECCurve.Secp256r1.Infinity;
             UInt160 admin = UInt160.Zero;
-            
+
+            if (ChainHash.Equals(UInt160.Zero))
+                admin = Contract.CreateMultiSigRedeemScript(validators.Length / 2 + 1, validators).ToScriptHash();
+
             InvocationTransaction CreateBCPTransaction = CreateNativeNEP5Transaction("BlaCat Point", "BCP", Fixed8.FromDecimal(2000000000), 8, owner, admin, BcpContractAddress);            
             InvocationTransaction CreateBCTTransaction = CreateNativeNEP5Transaction("BlaCat Token", "BCT", Fixed8.Zero, 8, owner, admin, BctContractAddress);
             InvocationTransaction CreateBCSTransaction = CreateNativeNEP5Transaction("BlaCat Share", "BCS", Fixed8.FromDecimal(600000000), 8, owner, admin, BcsContractAddress);
