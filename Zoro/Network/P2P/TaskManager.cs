@@ -298,7 +298,7 @@ namespace Zoro.Network.P2P
 
                 AddSyncHeaderTask(nextHeaderHeight, session);
                 session.RemoteNode.Tell(Message.Create(MessageType.GetHeaders, GetBlocksPayload.Create(blockchain.CurrentHeaderHash)));
-                Log($"SyncHeader {nextHeaderHeight} {session.Version.NodeId}");
+                Log($"SyncHeader:{nextHeaderHeight}, nodeId:{session.Version.NodeId}");
             }
         }
 
@@ -332,7 +332,7 @@ namespace Zoro.Network.P2P
             if (syncHeaderTasks.TryGetValue(session, out SyncHeaderTask task))
             {
                 task.ExpiryTime = DateTime.MaxValue;
-                Log($"SyncHeader received");
+                Log($"SyncHeader received: {task.HeaderHeight}, nodeId:{session.Version.NodeId}");
             }
         }
 
@@ -354,7 +354,7 @@ namespace Zoro.Network.P2P
             foreach (SyncHeaderTask task in timeoutTasks)
             {
                 task.Session.Timeout++;
-                Log($"SyncHeader timeout: {task.HeaderHeight} {task.Session.Version.NodeId}");
+                Log($"SyncHeader timeout:{task.HeaderHeight}, nodeId:{task.Session.Version.NodeId}");
                 RemoveSyncHeaderTask(task.Session);
             }
 
@@ -377,13 +377,16 @@ namespace Zoro.Network.P2P
                 return;
 
             int count = MaxSyncBlockTaskCount - taskCount;
-            Log($"SyncBlocks: {startBlockHeight}, {count}");
+            int syncCount = 0;
             for (int i = 1;i <= count;i ++)
             {
                 uint nextBlockHeight = startBlockHeight + (uint)i;
                 if (!SyncBlock(nextBlockHeight))
                     break;
+                syncCount++;
             }
+            if (syncCount > 0)
+                Log($"SyncBlocks:{startBlockHeight}, {syncCount}");
         }
 
         public bool SyncBlock(uint blockHeight)
@@ -404,7 +407,7 @@ namespace Zoro.Network.P2P
             session.RemoteNode.Tell(RemoteNode.NewCounterMessage(RemoteNode.CounterType.Request, InventoryType.Block));
 
             syncingBlockHeight = blockHeight;
-            Log($"SyncBlock: {blockHeight}, {session.Version.NodeId}", LogLevel.Debug);
+            Log($"SyncBlock:{blockHeight}, nodeId:{session.Version.NodeId}", LogLevel.Debug);
             return true;
         }
 
@@ -489,7 +492,7 @@ namespace Zoro.Network.P2P
             {
                 task.Session.Timeout++;
                 task.Session.RemoteNode.Tell(RemoteNode.NewCounterMessage(RemoteNode.CounterType.Timeout, InventoryType.Block));
-                Log($"SyncBlock timeout: {task.BlockHeight}, {task.Session.Version.NodeId}");
+                Log($"SyncBlock timeout:{task.BlockHeight}, nodeId:{task.Session.Version.NodeId}");
 
                 if (task.BlockHeight <= blockchain.Height)
                 {
