@@ -64,6 +64,14 @@ namespace Zoro.SmartContract.Services
             // 管理员
             UInt160 admin = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
 
+            // 创世块不做检查
+            if (Snapshot.PersistingBlock.Index != 0)
+            {
+                // 检查管理员的Hash
+                if (admin.Equals(UInt160.Zero))
+                    return false;
+            }
+
             UInt160 assetId;
             if (Snapshot.PersistingBlock.Index == 0)
             {
