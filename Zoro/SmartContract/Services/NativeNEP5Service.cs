@@ -124,21 +124,20 @@ namespace Zoro.SmartContract.Services
             string method = Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Peek().GetByteArray());
             switch (method)
             {
+                case "Deploy":
                 case "Transfer":
                 case "Transfer_App":
                     price = 1000;
                     break;
+                case "MintToken":
                 case "BalanceOf":
+                case "TotalSupply":
                 case "GetTransferLog":
                     price = 100;
                     break;
                 case "Name":
                 case "Symbol":
-                case "TotalSupply":
                 case "Decimals":
-                    price = 1;
-                    break;
-                case "MintToken":
                     price = 1;
                     break;
             }

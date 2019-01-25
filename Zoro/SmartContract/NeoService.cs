@@ -32,7 +32,7 @@ namespace Zoro.SmartContract
             Register("Neo.Blockchain.GetBlock", Blockchain_GetBlock, 200);
             Register("Neo.Blockchain.GetTransaction", Blockchain_GetTransaction, 100);
             Register("Neo.Blockchain.GetTransactionHeight", Blockchain_GetTransactionHeight, 100);
-            Register("Neo.Blockchain.GetAccount", Blockchain_GetAccount, 100);
+            Register("Neo.Blockchain.GetAccount", Blockchain_GetAccount, 1);
             Register("Neo.Blockchain.GetValidators", Blockchain_GetValidators, 200);
             Register("Neo.Blockchain.GetAsset", Blockchain_GetAsset, 1);
             Register("Neo.Blockchain.GetContract", Blockchain_GetContract, 100);
@@ -67,7 +67,7 @@ namespace Zoro.SmartContract
             Register("Neo.Account.GetScriptHash", Account_GetScriptHash, 1);
             Register("Neo.Account.GetVotes", Account_GetVotes, 1);
             Register("Neo.Account.GetBalance", Account_GetBalance, 1);
-            Register("Neo.Account.IsStandard", Account_IsStandard, 100);
+            Register("Neo.Account.IsStandard", Account_IsStandard, 1);
             Register("Neo.Asset.Create", Asset_Create, 1);
             Register("Neo.Asset.Renew", Asset_Renew, 1);
             Register("Neo.Asset.GetAssetId", Asset_GetAssetId, 1);
@@ -88,7 +88,7 @@ namespace Zoro.SmartContract
             Register("Neo.Storage.GetReadOnlyContext", Storage_GetReadOnlyContext, 1);
             Register("Neo.Storage.Get", Storage_Get, 100);
             Register("Neo.Storage.Put", Storage_Put);
-            Register("Neo.Storage.Delete", Storage_Delete, 100);
+            Register("Neo.Storage.Delete", Storage_Delete, 10);
             Register("Neo.Storage.Find", Storage_Find, 1);
             Register("Neo.StorageContext.AsReadOnly", StorageContext_AsReadOnly, 1);
             Register("Neo.Enumerator.Create", Enumerator_Create, 1);
@@ -113,9 +113,9 @@ namespace Zoro.SmartContract
             Register("AntShares.Blockchain.GetHeader", Blockchain_GetHeader, 100);
             Register("AntShares.Blockchain.GetBlock", Blockchain_GetBlock, 200);
             Register("AntShares.Blockchain.GetTransaction", Blockchain_GetTransaction, 100);
-            Register("AntShares.Blockchain.GetAccount", Blockchain_GetAccount, 100);
+            Register("AntShares.Blockchain.GetAccount", Blockchain_GetAccount, 1);
             Register("AntShares.Blockchain.GetValidators", Blockchain_GetValidators, 200);
-            Register("AntShares.Blockchain.GetAsset", Blockchain_GetAsset, 100);
+            Register("AntShares.Blockchain.GetAsset", Blockchain_GetAsset, 1);
             Register("AntShares.Blockchain.GetContract", Blockchain_GetContract, 100);
             Register("AntShares.Header.GetHash", Header_GetHash, 1);
             Register("AntShares.Header.GetVersion", Header_GetVersion, 1);
@@ -161,7 +161,7 @@ namespace Zoro.SmartContract
             Register("AntShares.Storage.GetContext", Storage_GetContext, 1);
             Register("AntShares.Storage.Get", Storage_Get, 100);
             Register("AntShares.Storage.Put", Storage_Put);
-            Register("AntShares.Storage.Delete", Storage_Delete, 100);
+            Register("AntShares.Storage.Delete", Storage_Delete, 10);
             #endregion
         }
 

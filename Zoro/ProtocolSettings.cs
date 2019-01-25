@@ -47,7 +47,7 @@ namespace Zoro
             this.ListenMessages = section.GetSection("ListenMessages").GetChildren().Select(p => p.Value).ToList();
             this.EnableRawTxnMsg = GetValueOrDefault(section.GetSection("EnableRawTxnMsg"), true, p => bool.Parse(p));
             this.EnableCompressedRawTxn = GetValueOrDefault(section.GetSection("EnableCompressedRawTxn"), true, p => bool.Parse(p));
-            this.GasPriceLowestThreshold = GetValueOrDefault(section.GetSection("GasPriceLowestThreshold"), Fixed8.FromDecimal(0.0001m), p => Fixed8.Parse(p));
+            this.GasPriceLowestThreshold = GetValueOrDefault(section.GetSection("GasPriceLowestThreshold"), Fixed8.FromDecimal(0.00001m), p => Fixed8.Parse(p));
             this.GasPriceHighestThreshold = GetValueOrDefault(section.GetSection("GasPriceHighestThreshold"), Fixed8.FromDecimal(100), p => Fixed8.Parse(p));
         }
 

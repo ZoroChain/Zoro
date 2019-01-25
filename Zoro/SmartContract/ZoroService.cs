@@ -33,9 +33,9 @@ namespace Zoro.SmartContract
             Register("Zoro.Blockchain.GetBlock", Blockchain_GetBlock, 200);
             Register("Zoro.Blockchain.GetTransaction", Blockchain_GetTransaction, 100);
             Register("Zoro.Blockchain.GetTransactionHeight", Blockchain_GetTransactionHeight, 100);
-            Register("Zoro.Blockchain.GetAccount", Blockchain_GetAccount, 100);
+            Register("Zoro.Blockchain.GetAccount", Blockchain_GetAccount, 1);
             Register("Zoro.Blockchain.GetValidators", Blockchain_GetValidators, 200);
-            Register("Zoro.Blockchain.GetAsset", Blockchain_GetAsset, 100);
+            Register("Zoro.Blockchain.GetAsset", Blockchain_GetAsset, 1);
             Register("Zoro.Blockchain.GetContract", Blockchain_GetContract, 100);
             Register("Zoro.Header.GetHash", Header_GetHash, 1);
             Register("Zoro.Header.GetVersion", Header_GetVersion, 1);
@@ -66,7 +66,7 @@ namespace Zoro.SmartContract
             Register("Zoro.Storage.GetReadOnlyContext", Storage_GetReadOnlyContext, 1);
             Register("Zoro.Storage.Get", Storage_Get, 100);
             Register("Zoro.Storage.Put", Storage_Put);
-            Register("Zoro.Storage.Delete", Storage_Delete, 100);
+            Register("Zoro.Storage.Delete", Storage_Delete, 10);
             Register("Zoro.Storage.Find", Storage_Find, 1);
             Register("Zoro.StorageContext.AsReadOnly", StorageContext_AsReadOnly, 1);
             Register("Zoro.Enumerator.Create", Enumerator_Create, 1);
@@ -83,11 +83,11 @@ namespace Zoro.SmartContract
             Register("Zoro.Iterator.Value", Enumerator_Value, 1);
             #endregion
 
-            Register("Zoro.AppChain.Create", appchainService.CreateAppChain, 5000 * 1000);
-            Register("Zoro.AppChain.ChangeSeedList", appchainService.ChangeSeedList, 1000);
-            Register("Zoro.AppChain.ChangeValidators", appchainService.ChangeValidators, 1000);
+            Register("Zoro.AppChain.Create", appchainService.CreateAppChain, 1_000_000L);
+            Register("Zoro.AppChain.ChangeSeedList", appchainService.ChangeSeedList, 10_000L);
+            Register("Zoro.AppChain.ChangeValidators", appchainService.ChangeValidators, 10_000L);
 
-            Register("Zoro.NativeNEP5.Create", nativeNEP5Service.Create, 1000 * 1000);
+            Register("Zoro.NativeNEP5.Create", nativeNEP5Service.Create, 100_000L);
             Register("Zoro.NativeNEP5.Call", nativeNEP5Service.Call);
             Register("Zoro.NativeNEP5.GetTransferLog", nativeNEP5Service.GetTransferLog, 100);
 
@@ -122,19 +122,19 @@ namespace Zoro.SmartContract
             {
                 if (IsUnpricedMethod(api_hash, "Contract.Create") || IsUnpricedMethod(api_hash, "Contract.Migrate"))
                 {
-                    long fee = 100L;
+                    long fee = 10_000L;
 
                     ContractPropertyState contract_properties = (ContractPropertyState)(byte)engine.CurrentContext.EvaluationStack.Peek(3).GetBigInteger();
 
                     if (contract_properties.HasFlag(ContractPropertyState.HasStorage))
                     {
-                        fee += 400L;
+                        fee += 40_000L;
                     }
                     if (contract_properties.HasFlag(ContractPropertyState.HasDynamicInvoke))
                     {
-                        fee += 500L;
+                        fee += 50_000L;
                     }
-                    return fee * 100000000L / 100000;
+                    return fee;
                 }
 
                 if (IsUnpricedMethod(api_hash, "Storage.Put") || IsUnpricedMethod(api_hash, "Storage.PutEx"))

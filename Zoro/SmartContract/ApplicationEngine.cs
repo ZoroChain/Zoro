@@ -45,8 +45,7 @@ namespace Zoro.SmartContract
         public const uint MaxArraySize = 1024;
         #endregion
 
-        private const long ratio = 100000;
-        private const long gas_free = 0 * 100000000;
+        private const long ratio = 100000000;
         private readonly long gas_amount;
         private long gas_consumed = 0;
         private readonly bool testMode;
@@ -62,7 +61,7 @@ namespace Zoro.SmartContract
         public ApplicationEngine(TriggerType trigger, IScriptContainer container, Snapshot snapshot, Fixed8 gas, bool testMode = false)
             : base(container, Cryptography.Crypto.Default, snapshot, new ZoroService(trigger, snapshot))
         {
-            this.gas_amount = gas_free + gas.GetData();
+            this.gas_amount = gas.GetData();
             this.testMode = testMode;
             this.snapshot = snapshot;
         }

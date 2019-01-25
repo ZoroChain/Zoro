@@ -69,7 +69,7 @@ namespace Zoro.SmartContract
             Register("System.Storage.Get", Storage_Get, 100);
             Register("System.Storage.Put", Storage_Put);
             Register("System.Storage.PutEx", Storage_PutEx);
-            Register("System.Storage.Delete", Storage_Delete, 100);
+            Register("System.Storage.Delete", Storage_Delete, 10);
             Register("System.StorageContext.AsReadOnly", StorageContext_AsReadOnly, 1);
         }
 
