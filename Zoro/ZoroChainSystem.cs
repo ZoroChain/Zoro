@@ -492,5 +492,14 @@ namespace Zoro
                 return null;
             }
         }
+
+        public void SaveRecentPeers()
+        {
+            LocalNode.Root?.SaveRecentPeers();
+            foreach (var node in appLocalNodes.Values)
+            {
+                node.SaveRecentPeers();
+            }
+        }
     }
 }
