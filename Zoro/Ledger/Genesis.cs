@@ -19,8 +19,8 @@ namespace Zoro.Ledger
             if (ChainHash.Equals(UInt160.Zero))
                 admin = Contract.CreateMultiSigRedeemScript(validators.Length / 2 + 1, validators).ToScriptHash();
 
-            InvocationTransaction CreateBCPTransaction = CreateNativeNEP5Transaction("BlaCat Point", "BCP", Fixed8.FromDecimal(2000000000), 8, owner, admin, BcpContractAddress);            
-            InvocationTransaction CreateBCTTransaction = CreateNativeNEP5Transaction("BlaCat Token", "BCT", Fixed8.Zero, 8, owner, admin, BctContractAddress);
+            InvocationTransaction CreateBCPTransaction = CreateNativeNEP5Transaction("BlaCat Point", "BCP", 20_000_000_000L, 8, owner, admin, BcpContractAddress);            
+            InvocationTransaction CreateBCTTransaction = CreateNativeNEP5Transaction("BlaCat Token", "BCT", 0, 8, owner, admin, BctContractAddress);
 
             Block genesisBlock = new Block
             {
@@ -51,7 +51,7 @@ namespace Zoro.Ledger
             return genesisBlock;
         }
  
-        private static InvocationTransaction CreateNativeNEP5Transaction(string name, string symbol, Fixed8 amount, byte precision, ECPoint owner, UInt160 admin, UInt160 assetId)
+        private static InvocationTransaction CreateNativeNEP5Transaction(string name, string symbol, long amount, byte precision, ECPoint owner, UInt160 admin, UInt160 assetId)
         {
             using (ScriptBuilder sb = new ScriptBuilder())
             {
