@@ -39,16 +39,15 @@ namespace Zoro.SmartContract.Services
             if (engine.CurrentContext.EvaluationStack.Peek().GetByteArray().Length > 252) return false;
             string symbol = Encoding.UTF8.GetString(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
 
-            // 货币总量（不包括精度）
-            long amount = (long)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
-            if (amount < 0) return false;
+            // 货币总量
+            Fixed8 amount = new Fixed8((long)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger());
+            if (amount < Fixed8.Zero) return false;
 
             // 货币精度
             byte precision = (byte)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger();
             if (precision > 8) return false;
-
-            // 带小数精度的货币总量
-            Fixed8 totalSupply = new Fixed8(amount * (long)Math.Pow(10, precision));
+            if (amount.GetData() % (long)Math.Pow(10, precision) != 0)
+                return false;
 
             // 发行人
             ECPoint owner = ECPoint.DecodePoint(engine.CurrentContext.EvaluationStack.Pop().GetByteArray(), ECCurve.Secp256r1);
@@ -93,7 +92,7 @@ namespace Zoro.SmartContract.Services
                     AssetId = assetId,
                     Name = name,
                     Symbol = symbol,
-                    TotalSupply = totalSupply,
+                    TotalSupply = amount,
                     Decimals = precision,
                     Owner = owner,
                     Admin = admin,
