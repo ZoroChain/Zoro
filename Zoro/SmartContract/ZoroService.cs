@@ -33,9 +33,7 @@ namespace Zoro.SmartContract
             Register("Zoro.Blockchain.GetBlock", Blockchain_GetBlock, 200);
             Register("Zoro.Blockchain.GetTransaction", Blockchain_GetTransaction, 100);
             Register("Zoro.Blockchain.GetTransactionHeight", Blockchain_GetTransactionHeight, 100);
-            Register("Zoro.Blockchain.GetAccount", Blockchain_GetAccount, 1);
             Register("Zoro.Blockchain.GetValidators", Blockchain_GetValidators, 200);
-            Register("Zoro.Blockchain.GetAsset", Blockchain_GetAsset, 1);
             Register("Zoro.Blockchain.GetContract", Blockchain_GetContract, 100);
             Register("Zoro.Header.GetHash", Header_GetHash, 1);
             Register("Zoro.Header.GetVersion", Header_GetVersion, 1);
