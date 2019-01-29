@@ -620,10 +620,10 @@ namespace Zoro.Ledger
                                 Notifications = engine.Service.Notifications.ToArray()
                             });
 
-                            // 如果在GAS足够的情况下，脚本发生异常中断，需要退回手续费（这种情况脚本执行的结果不会存盘）
+                            // 如果在GAS足够的情况下，脚本发生异常中断，只收取最低手续费（这种情况脚本执行的结果不会存盘）
                             if (engine.State.HasFlag(VMState.FAULT) && engine.GasConsumed <= tx_invocation.GasLimit)
                             {
-                                sysfee = Fixed8.Zero;
+                                sysfee = tx_invocation.GasPrice * Fixed8.One;
                             }
                             else
                             {
