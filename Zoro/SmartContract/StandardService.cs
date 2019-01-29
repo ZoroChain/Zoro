@@ -114,7 +114,7 @@ namespace Zoro.SmartContract
         {
             if (unpricedMethods.TryGetValue(api_func, out List<uint> list))
             {
-                return list.IndexOf(api_hash) > 0;
+                return list.IndexOf(api_hash) >= 0;
             }
 
             return false;
