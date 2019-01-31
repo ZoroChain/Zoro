@@ -254,7 +254,7 @@ namespace Zoro.Network.RPC
                                 throw new RpcException(-100, "Invalid chain hash");
 
                             UInt160 script_hash = UInt160.Parse(_params[1].AsString());
-                            byte[] key = _params[1].AsString().HexToBytes();
+                            byte[] key = _params[2].AsString().HexToBytes();
                             StorageItem item = blockchain.Store.GetStorages().TryGet(new StorageKey
                             {
                                 ScriptHash = script_hash,
