@@ -432,18 +432,12 @@ namespace Zoro.Network.RPC
                             if (!(tx is InvocationTransaction tx_invocation))
                                 throw new RpcException(-100, "Invalid transaction type");
 
-                            using (Snapshot snapshot = blockchain.GetSnapshot())
+                            using (ApplicationEngine engine = ApplicationEngine.Run(tx_invocation.Script, blockchain, tx, testMode: true))
                             {
-                                using (ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, tx_invocation, snapshot, Fixed8.Zero, true))
-                                {
-                                    engine.LoadScript(tx_invocation.Script);
-                                    engine.Execute();
-
-                                    JObject json = new JObject();
-                                    json["state"] = engine.State;
-                                    json["gas_consumed"] = engine.GasConsumed.ToString();
-                                    return json;
-                                }
+                                JObject json = new JObject();
+                                json["state"] = engine.State;
+                                json["gas_consumed"] = engine.GasConsumed.ToString();
+                                return json;
                             }
                         }
                     default:
@@ -466,7 +460,7 @@ namespace Zoro.Network.RPC
             if (blockchain == null)
                 throw new RpcException(-100, "Invalid chain hash");
 
-            ApplicationEngine engine = ApplicationEngine.Run(script, blockchain.GetSnapshot(), null, null, true);
+            ApplicationEngine engine = ApplicationEngine.Run(script, blockchain, testMode: true);
 
             JObject json = new JObject();
             json["script"] = script.ToHexString();
