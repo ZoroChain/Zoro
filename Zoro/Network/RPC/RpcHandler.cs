@@ -422,6 +422,24 @@ namespace Zoro.Network.RPC
                                 }));
                             return json;
                         }
+                    case "estimategas":
+                        {
+                            Blockchain blockchain = GetTargetChain(_params[0]);
+                            if (blockchain == null)
+                                throw new RpcException(-100, "Invalid chain hash");
+
+                            Transaction tx = Transaction.DeserializeFrom(_params[1].AsString().HexToBytes());
+                            if (!(tx is InvocationTransaction tx_invocation))
+                                throw new RpcException(-100, "Invalid transaction type");
+
+                            using (ApplicationEngine engine = ApplicationEngine.Run(tx_invocation.Script, blockchain, tx, testMode: true))
+                            {
+                                JObject json = new JObject();
+                                json["state"] = engine.State;
+                                json["gas_consumed"] = engine.GasConsumed.ToString();
+                                return json;
+                            }
+                        }
                     default:
                         throw new RpcException(-32601, "Method not found");
                 }
@@ -442,7 +460,7 @@ namespace Zoro.Network.RPC
             if (blockchain == null)
                 throw new RpcException(-100, "Invalid chain hash");
 
-            ApplicationEngine engine = ApplicationEngine.Run(script, blockchain.GetSnapshot(), null, null, true);
+            ApplicationEngine engine = ApplicationEngine.Run(script, blockchain, testMode: true);
 
             JObject json = new JObject();
             json["script"] = script.ToHexString();
