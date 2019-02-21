@@ -126,13 +126,16 @@ namespace Zoro.SmartContract.Services
             {
                 case "Deploy":
                 case "Transfer":
-                case "Transfer_App":
+                case "TransferApp":
+                case "TransferFrom":
                     price = 1000;
                     break;
                 case "MintToken":
                 case "BalanceOf":
                 case "TotalSupply":
                 case "GetTransferLog":
+                case "Allowance":
+                case "Approve":
                     price = 100;
                     break;
                 case "Name":
@@ -183,8 +186,14 @@ namespace Zoro.SmartContract.Services
                     return API_BalanceOf(engine, state);
                 case "Transfer":
                     return API_Transfer(engine, state);
-                case "Transfer_App":
-                    return API_Transfer_App(engine, state);
+                case "TransferApp":
+                    return API_TransferApp(engine, state);
+                case "Approve":
+                    return API_Approve(engine, state);
+                case "TransferFrom":
+                    return API_TransferFrom(engine, state);
+                case "Allowance":
+                    return API_Allowance(engine, state);
                 case "GetTransferLog":
                     return API_GetTransferLog(engine, state);
                 case "Deploy":
@@ -228,6 +237,16 @@ namespace Zoro.SmartContract.Services
             return true;
         }
 
+        private bool API_Allowance(ExecutionEngine engine, NativeNEP5State state)
+        {
+            UInt160 from = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            UInt160 to = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+
+            var keyApprove = from.ToArray().Concat(to.ToArray()).ToArray();
+            engine.CurrentContext.EvaluationStack.Push(NativeAPI.StorageGet(Snapshot, state.AssetId, keyApprove).AsBigInteger());
+            return true;
+        }
+
         private bool API_Transfer(ExecutionEngine engine, NativeNEP5State state)
         {
             UInt160 from = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
@@ -258,7 +277,54 @@ namespace Zoro.SmartContract.Services
             return result;
         }
 
-        private bool API_Transfer_App(ExecutionEngine engine, NativeNEP5State state)
+        private bool API_TransferFrom(ExecutionEngine engine, NativeNEP5State state)
+        {
+            UInt160 from = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            UInt160 to = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            Fixed8 value = new Fixed8((long)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger());
+                        
+            bool result = NativeAPI.TransferFrom(Snapshot, state.AssetId, from, to, value);
+
+            if (result)
+            {
+                if (engine.ScriptContainer is Transaction tx)
+                {
+                    NativeAPI.SaveTransferLog(Snapshot, state.AssetId, tx.Hash, from, to, value);
+                }
+
+                Service.AddTransferNotification(engine, state.AssetId, from, to, value);
+            }
+
+            engine.CurrentContext.EvaluationStack.Push(result);
+
+            return result;
+        }
+
+        private bool API_Approve(ExecutionEngine engine, NativeNEP5State state)
+        {
+            UInt160 from = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            UInt160 to = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            Fixed8 value = new Fixed8((long)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger());
+
+            if (!Service.CheckWitness(engine, from))
+                return false;
+
+            if (engine.EntryContext.ScriptHash != engine.CurrentContext.ScriptHash)
+                return false;
+
+            bool result = NativeAPI.Approve(Snapshot, state.AssetId, from, to, value);
+
+            if (result)
+            {
+                Service.AddApproveNotification(engine, state.AssetId, from, to, value);
+            }
+
+            engine.CurrentContext.EvaluationStack.Push(result);
+
+            return result;
+        }
+
+        private bool API_TransferApp(ExecutionEngine engine, NativeNEP5State state)
         {
             UInt160 from = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
             UInt160 to = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
