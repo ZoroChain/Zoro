@@ -3,7 +3,6 @@ using Zoro.Ledger;
 using Zoro.Persistence;
 using System.Linq;
 using System.Numerics;
-using System;
 
 namespace Zoro.SmartContract.NativeNEP5
 {
@@ -61,7 +60,7 @@ namespace Zoro.SmartContract.NativeNEP5
                 return false;
 
             if (from.Equals(to))
-                return true;
+                return false;
 
             if (from.ToArray().Length != 20 || to.ToArray().Length != 20)
                 return false;
@@ -94,7 +93,7 @@ namespace Zoro.SmartContract.NativeNEP5
                 return false;
 
             if (from.Equals(to))
-                return true;
+                return false;
 
             if (from.ToArray().Length != 20 || to.ToArray().Length != 20)
                 return false;
@@ -118,7 +117,7 @@ namespace Zoro.SmartContract.NativeNEP5
                 return false;
 
             if (from.Equals(to))
-                return true;
+                return false;
 
             if (from.ToArray().Length != 20 || to.ToArray().Length != 20)
                 return false;
