@@ -79,7 +79,7 @@ namespace Zoro.Network.RPC
                             }
                             if (block == null)
                                 throw new RpcException(-100, "Unknown block");
-                            bool verbose = _params.Count >= 3 && _params[2].AsBooleanOrDefault(false);
+                            bool verbose = _params.Count >= 3 && _params[2].AsBoolean();
                             if (verbose)
                             {
                                 JObject json = block.ToJson();
@@ -129,7 +129,7 @@ namespace Zoro.Network.RPC
                             if (header == null)
                                 throw new RpcException(-100, "Unknown block");
 
-                            bool verbose = _params.Count >= 3 && _params[2].AsBooleanOrDefault(false);
+                            bool verbose = _params.Count >= 3 && _params[2].AsBoolean();
                             if (verbose)
                             {
                                 JObject json = header.ToJson();
@@ -228,7 +228,7 @@ namespace Zoro.Network.RPC
                                 throw new RpcException(-100, "Invalid chain hash");
 
                             UInt256 hash = UInt256.Parse(_params[1].AsString());
-                            bool verbose = _params.Count >= 3 && _params[2].AsBooleanOrDefault(false);
+                            bool verbose = _params.Count >= 3 && _params[2].AsBoolean();
                             Transaction tx = blockchain.GetTransaction(hash);
                             if (tx == null)
                                 throw new RpcException(-100, "Unknown transaction");
