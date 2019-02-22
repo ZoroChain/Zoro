@@ -144,6 +144,14 @@ namespace Zoro.Network.RPC
                 if (result == null)
                     result = Process(method, _params);
             }
+            catch (FormatException)
+            {
+                return CreateErrorResponse(request["id"], -32602, "Invalid params");
+            }
+            catch (IndexOutOfRangeException)
+            {
+                return CreateErrorResponse(request["id"], -32602, "Invalid params");
+            }
             catch (Exception ex)
             {
 #if DEBUG
