@@ -85,17 +85,17 @@ namespace Zoro.SmartContract.NativeNEP5
             return true;
         }
 
-        public static bool Approve(Snapshot snapshot, UInt160 assetId, UInt160 from, UInt160 to, Fixed8 amount)
+        public static bool Approve(Snapshot snapshot, UInt160 assetId, UInt160 from, UInt160 spender, Fixed8 amount)
         {
             BigInteger value = new BigInteger(amount.GetData());
 
             if (value <= 0)
                 return false;
 
-            if (from.Equals(to))
+            if (from.Equals(spender))
                 return false;
 
-            if (from.ToArray().Length != 20 || to.ToArray().Length != 20)
+            if (from.ToArray().Length != 20 || spender.ToArray().Length != 20)
                 return false;
 
             var keyFrom = new byte[] { 0x11 }.Concat(from.ToArray()).ToArray();
@@ -103,13 +103,13 @@ namespace Zoro.SmartContract.NativeNEP5
             if (from_value < value)
                 return false;
 
-            var keyApprove = from.ToArray().Concat(to.ToArray()).ToArray();
+            var keyApprove = from.ToArray().Concat(spender.ToArray()).ToArray();
             StoragePut(snapshot, assetId, keyApprove, value);
 
             return true;
         }
 
-        public static bool TransferFrom(Snapshot snapshot, UInt160 assetId, UInt160 from, UInt160 to, Fixed8 amount)
+        public static bool TransferFrom(Snapshot snapshot, UInt160 assetId, UInt160 spender, UInt160 from, UInt160 to, Fixed8 amount)
         {
             BigInteger value = new BigInteger(amount.GetData());
 
@@ -125,7 +125,7 @@ namespace Zoro.SmartContract.NativeNEP5
             var keyFrom = new byte[] { 0x11 }.Concat(from.ToArray()).ToArray();
             BigInteger from_value = StorageGet(snapshot, assetId, keyFrom).AsBigInteger();
 
-            var keyApprove = from.ToArray().Concat(to.ToArray()).ToArray();
+            var keyApprove = from.ToArray().Concat(spender.ToArray()).ToArray();
             BigInteger approve_value = StorageGet(snapshot, assetId, keyApprove).AsBigInteger();
 
             if (from_value < value || approve_value < value)

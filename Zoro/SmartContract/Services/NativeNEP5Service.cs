@@ -240,9 +240,9 @@ namespace Zoro.SmartContract.Services
         private bool API_Allowance(ExecutionEngine engine, NativeNEP5State state)
         {
             UInt160 from = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
-            UInt160 to = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            UInt160 spender = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
 
-            var keyApprove = from.ToArray().Concat(to.ToArray()).ToArray();
+            var keyApprove = from.ToArray().Concat(spender.ToArray()).ToArray();
             engine.CurrentContext.EvaluationStack.Push(NativeAPI.StorageGet(Snapshot, state.AssetId, keyApprove).AsBigInteger());
             return true;
         }
@@ -282,8 +282,10 @@ namespace Zoro.SmartContract.Services
             UInt160 from = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
             UInt160 to = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
             Fixed8 value = new Fixed8((long)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger());
-                        
-            bool result = NativeAPI.TransferFrom(Snapshot, state.AssetId, from, to, value);
+
+            UInt160 spender = new UInt160(engine.CurrentContext.ScriptHash);
+
+            bool result = NativeAPI.TransferFrom(Snapshot, state.AssetId, spender, from, to, value);
 
             if (result)
             {
@@ -303,7 +305,7 @@ namespace Zoro.SmartContract.Services
         private bool API_Approve(ExecutionEngine engine, NativeNEP5State state)
         {
             UInt160 from = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
-            UInt160 to = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
+            UInt160 spender = new UInt160(engine.CurrentContext.EvaluationStack.Pop().GetByteArray());
             Fixed8 value = new Fixed8((long)engine.CurrentContext.EvaluationStack.Pop().GetBigInteger());
 
             if (!Service.CheckWitness(engine, from))
@@ -312,11 +314,11 @@ namespace Zoro.SmartContract.Services
             if (engine.EntryContext.ScriptHash != engine.CurrentContext.ScriptHash)
                 return false;
 
-            bool result = NativeAPI.Approve(Snapshot, state.AssetId, from, to, value);
+            bool result = NativeAPI.Approve(Snapshot, state.AssetId, from, spender, value);
 
             if (result)
             {
-                Service.AddApproveNotification(engine, state.AssetId, from, to, value);
+                Service.AddApproveNotification(engine, state.AssetId, from, spender, value);
             }
 
             engine.CurrentContext.EvaluationStack.Push(result);
