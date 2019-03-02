@@ -85,17 +85,17 @@ namespace Zoro.SmartContract.NativeNEP5
             return true;
         }
 
-        public static bool Approve(Snapshot snapshot, UInt160 assetId, UInt160 from, UInt160 spender, Fixed8 amount)
+        public static bool Approve(Snapshot snapshot, UInt160 assetId, UInt160 from, UInt160 to, Fixed8 amount)
         {
             BigInteger value = new BigInteger(amount.GetData());
 
-            if (value <= 0)
+            if (value < 0)
                 return false;
 
-            if (from.Equals(spender))
+            if (from.Equals(to))
                 return false;
 
-            if (from.ToArray().Length != 20 || spender.ToArray().Length != 20)
+            if (from.ToArray().Length != 20 || to.ToArray().Length != 20)
                 return false;
 
             var keyFrom = new byte[] { 0x11 }.Concat(from.ToArray()).ToArray();
@@ -103,13 +103,15 @@ namespace Zoro.SmartContract.NativeNEP5
             if (from_value < value)
                 return false;
 
-            var keyApprove = from.ToArray().Concat(spender.ToArray()).ToArray();
-            StoragePut(snapshot, assetId, keyApprove, value);
-
+            var keyApprove = from.ToArray().Concat(to.ToArray()).ToArray();
+            if (value == 0)
+                StorageDelete(snapshot, assetId, keyApprove);
+            else
+                StoragePut(snapshot, assetId, keyApprove, value);
             return true;
         }
 
-        public static bool TransferFrom(Snapshot snapshot, UInt160 assetId, UInt160 spender, UInt160 from, UInt160 to, Fixed8 amount)
+        public static bool TransferFrom(Snapshot snapshot, UInt160 assetId, UInt160 from, UInt160 to, Fixed8 amount)
         {
             BigInteger value = new BigInteger(amount.GetData());
 
@@ -125,13 +127,13 @@ namespace Zoro.SmartContract.NativeNEP5
             var keyFrom = new byte[] { 0x11 }.Concat(from.ToArray()).ToArray();
             BigInteger from_value = StorageGet(snapshot, assetId, keyFrom).AsBigInteger();
 
-            var keyApprove = from.ToArray().Concat(spender.ToArray()).ToArray();
+            var keyApprove = from.ToArray().Concat(to.ToArray()).ToArray();
             BigInteger approve_value = StorageGet(snapshot, assetId, keyApprove).AsBigInteger();
 
             if (from_value < value || approve_value < value)
                 return false;
 
-            //更新 Allowance
+            //update Allowance
             if (approve_value == value)
             {
                 StorageDelete(snapshot, assetId, keyApprove);
@@ -141,7 +143,7 @@ namespace Zoro.SmartContract.NativeNEP5
                 StoragePut(snapshot, assetId, keyApprove, approve_value - value);
             }
 
-            //更新 from balance
+            //update from balance
             if (from_value == value)
             {
                 StorageDelete(snapshot, assetId, keyFrom);
@@ -151,6 +153,7 @@ namespace Zoro.SmartContract.NativeNEP5
                 StoragePut(snapshot, assetId, keyFrom, from_value - value);
             }
 
+            //update to balance
             var keyTo = new byte[] { 0x11 }.Concat(to.ToArray()).ToArray();
             BigInteger to_value = StorageGet(snapshot, assetId, keyTo).AsBigInteger();
             StoragePut(snapshot, assetId, keyTo, to_value + value);
