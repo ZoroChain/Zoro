@@ -102,7 +102,7 @@ namespace Zoro.SmartContract.Services
                     Snapshot.AppChains.Add(hash, state);
 
                     // 添加通知事件，等待上链后处理
-                    if (engine.ScriptContainer != null)
+                    if (IsPersisting(engine))
                         Snapshot.Blockchain.AddAppChainNotification("Create", state);
                 }
 
@@ -156,7 +156,7 @@ namespace Zoro.SmartContract.Services
             state.LastModified = DateTime.UtcNow.ToTimestamp();
 
             // 添加通知事件，等待上链后处理
-            if (engine.ScriptContainer != null)
+            if (IsPersisting(engine))
                 Snapshot.Blockchain.AddAppChainNotification("ChangeValidators", state);
 
             // 设置脚本的返回值
@@ -205,7 +205,7 @@ namespace Zoro.SmartContract.Services
             state.LastModified = DateTime.UtcNow.ToTimestamp();
 
             // 添加通知事件，等待上链后处理
-            if (engine.ScriptContainer != null)
+            if (IsPersisting(engine))
                 Snapshot.Blockchain.AddAppChainNotification("ChangeSeedList", state);
 
             // 设置脚本的返回值
@@ -281,6 +281,11 @@ namespace Zoro.SmartContract.Services
             }
             if (seed == null) return false;
             return true;
+        }
+
+        private bool IsPersisting(ExecutionEngine engine)
+        {
+            return engine.ScriptContainer != null && Snapshot.PersistingBlock.ConsensusData != 0;
         }
     }
 }
