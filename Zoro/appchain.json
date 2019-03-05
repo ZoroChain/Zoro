@@ -3,6 +3,7 @@
     "Port": 25001,
     "WsPort": 0,
     "KeyNames": [],
-    "KeyHashes": []
+    "KeyHashes": [],
+    "Whitelist": []
   }
 }

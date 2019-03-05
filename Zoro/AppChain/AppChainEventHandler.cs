@@ -19,6 +19,7 @@ namespace Zoro.AppChain
         private int wsport = AppChainSettings.Default.WsPort;
         private string[] keyNames = AppChainSettings.Default.KeyNames;
         private UInt160[] keyHashes = AppChainSettings.Default.KeyHashes;
+        private ECPoint[] whitelist = AppChainSettings.Default.Whitelist;
 
         private readonly HashSet<int> listeningPorts = new HashSet<int>();
         private readonly HashSet<int> listeningWsPorts = new HashSet<int>();
@@ -367,6 +368,11 @@ namespace Zoro.AppChain
             return keyHashes.Contains(chainHash);
         }
 
+        private bool IsInWhitelist(ECPoint pubkey)
+        {
+            return whitelist.Contains(pubkey);
+        }
+
         // 判断本地节点是否是应用链的种子节点
         private bool IsSeedList(AppChainState state)
         {
@@ -401,8 +407,17 @@ namespace Zoro.AppChain
 
         private bool ShouldStartAppChain(AppChainState state)
         {
-            // 判断是否是关注的应用链，或者是该应用链的种子节点或共识节点
-            return IsInterestedChainName(state.Name.ToLower()) || IsInterestedChainHash(state.Hash) || IsSeedList(state) || CheckStartConsensus(state.StandbyValidators);
+            // 判断是否是关注的应用链
+            if (IsInterestedChainName(state.Name.ToLower()) || IsInterestedChainHash(state.Hash))
+                return true;
+
+            // 判断是该应用链的种子节点或共识节点
+            if (IsSeedList(state) || CheckStartConsensus(state.StandbyValidators))
+            {
+                return IsInWhitelist(state.Owner);
+            }
+
+            return false;
         }
 
         // 检查种子节点的地址和端口是否有效
