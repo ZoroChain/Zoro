@@ -106,6 +106,18 @@ namespace Zoro.SmartContract
             InvokeNotification(notification);
         }
 
+        public void AddApproveNotification(ExecutionEngine engine, UIntBase assetId, UInt160 from, UInt160 to, Fixed8 value)
+        {
+            VMArray array = new VMArray();
+            array.Add("approve");
+            array.Add(new ByteArray(from.ToArray()));
+            array.Add(new ByteArray(to.ToArray()));
+            array.Add(new ByteArray(new BigInteger(value.GetData()).ToByteArray()));
+
+            NotifyEventArgs notification = new NotifyEventArgs(engine.ScriptContainer, assetId, array);
+            InvokeNotification(notification);
+        }
+
         public long GetPrice(uint api_hash, ExecutionEngine engine)
         {
             long price = base.GetPrice(api_hash);
