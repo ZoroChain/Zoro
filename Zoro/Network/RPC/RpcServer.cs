@@ -23,10 +23,15 @@ namespace Zoro.Network.RPC
 {
     public sealed class RpcServer : RpcHandler, IDisposable
     {
+        private Wallet wallet;
         private IWebHost host;
 
         public RpcServer(Wallet wallet = null)
-            : base(wallet)
+        {
+            this.wallet = wallet;
+        }
+
+        public void SetWallet(Wallet wallet)
         {
             this.wallet = wallet;
         }

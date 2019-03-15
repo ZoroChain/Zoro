@@ -28,7 +28,6 @@ namespace Zoro.Plugins
 
         public virtual void Dispose() { }
 
-        public virtual void SetWallet(Wallet wallet) { }
         protected IConfigurationSection GetConfiguration()
         {
             return new ConfigurationBuilder().AddJsonFile(ConfigFile, optional: true).Build().GetSection("PluginConfiguration");

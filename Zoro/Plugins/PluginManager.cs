@@ -170,11 +170,5 @@ namespace Zoro.Plugins
             }
             return result;
         }
-
-        public void SetWallet(Wallet wallet)
-        {
-            foreach (Plugin plugin in Plugins)
-                plugin.SetWallet(wallet);
-        }
     }
 }

@@ -9,7 +9,6 @@ using Zoro.Network.P2P.Payloads;
 using Zoro.Persistence;
 using Zoro.SmartContract;
 using Zoro.Wallets;
-using Zoro.Wallets.NEP6;
 using Neo.VM;
 using Akka.Actor;
 
@@ -17,20 +16,8 @@ namespace Zoro.Network.RPC
 {
     public class RpcHandler
     {
-        protected Wallet wallet;
-
         public RpcHandler()
         {
-        }
-
-        public RpcHandler(Wallet wallet)
-        {
-            this.wallet = wallet;
-        }
-
-        public void SetWallet(Wallet wallet)
-        {
-            this.wallet = wallet;
         }
 
         public JObject Process(string method, JArray _params)
@@ -40,20 +27,6 @@ namespace Zoro.Network.RPC
 
                 switch (method)
                 {
-                    case "getbalance":
-                        if (wallet == null)
-                            throw new RpcException(-400, "Access denied.");
-                        else
-                        {
-                            JObject json = new JObject();
-                            switch (UIntBase.Parse(_params[0].AsString()))
-                            {
-                                case UInt160 asset_id_160: //NEP-5 balance
-                                    json["balance"] = wallet.GetAvailable(asset_id_160).ToString();
-                                    break;
-                            }
-                            return json;
-                        }
                     case "getbestblockhash":
                         {
                             Blockchain blockchain = GetTargetChain(_params[0]);
@@ -169,16 +142,6 @@ namespace Zoro.Network.RPC
                             UInt160 script_hash = UInt160.Parse(_params[1].AsString());
                             ContractState contract = blockchain.Store.GetContracts().TryGet(script_hash);
                             return contract?.ToJson() ?? throw new RpcException(-100, "Unknown contract");
-                        }
-                    case "getnewaddress":
-                        if (wallet == null)
-                            throw new RpcException(-400, "Access denied");
-                        else
-                        {
-                            WalletAccount account = wallet.CreateAccount();
-                            if (wallet is NEP6Wallet nep6)
-                                nep6.Save();
-                            return account.Address;
                         }
                     case "getpeers":
                         {
@@ -326,19 +289,6 @@ namespace Zoro.Network.RPC
                             byte[] script = _params[1].AsString().HexToBytes();
                             return GetInvokeResult(_params[0], script);
                         }
-                    case "listaddress":
-                        if (wallet == null)
-                            throw new RpcException(-400, "Access denied.");
-                        else
-                            return wallet.GetAccounts().Select(p =>
-                            {
-                                JObject account = new JObject();
-                                account["address"] = p.Address;
-                                account["haskey"] = p.HasKey;
-                                account["label"] = p.Label;
-                                account["watchonly"] = p.WatchOnly;
-                                return account;
-                            }).ToArray();
                     case "sendrawtransaction":
                         {
                             ZoroSystem targetSystem = GetTargetSystem(_params[0]);
@@ -473,26 +423,6 @@ namespace Zoro.Network.RPC
             catch (InvalidOperationException)
             {
                 json["stack"] = "error: recursive reference";
-            }
-            if (wallet != null)
-            {
-                InvocationTransaction tx = new InvocationTransaction
-                {
-                    ChainHash = blockchain.ChainHash,
-                    Script = json["script"].AsString().HexToBytes(),
-                    GasLimit = InvocationTransaction.GetGasLimit(Fixed8.Parse(json["gas_consumed"].AsString()))
-                };
-                tx = wallet.MakeTransaction(tx);
-                if (tx != null)
-                {
-                    ContractParametersContext context = new ContractParametersContext(tx, blockchain);
-                    wallet.Sign(context);
-                    if (context.Completed)
-                        tx.Witnesses = context.GetWitnesses();
-                    else
-                        tx = null;
-                }
-                json["tx"] = tx?.ToArray().ToHexString();
             }
             return json;
         }

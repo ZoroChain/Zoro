@@ -99,8 +99,6 @@ namespace Zoro
         {
             rpcserver?.SetWallet(wallet);
 
-            pluginmgr.SetWallet(wallet);
-
             eventHandler.SetWallet(wallet);
         }
 
