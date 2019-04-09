@@ -96,7 +96,7 @@ namespace Zoro.SmartContract
             {
                 Transaction tx = _interface.GetInterface<Transaction>();
                 if (tx == null) return false;
-                if (tx.Attributes.Length > ApplicationEngine.MaxArraySize)
+                if (tx.Attributes.Length > engine.MaxArraySize)
                     return false;
                 engine.CurrentContext.EvaluationStack.Push(tx.Attributes.Select(p => StackItem.FromInterface(p)).ToArray());
                 return true;
@@ -110,7 +110,7 @@ namespace Zoro.SmartContract
             {
                 Transaction tx = _interface.GetInterface<Transaction>();
                 if (tx == null) return false;
-                if (tx.Witnesses.Length > ApplicationEngine.MaxArraySize)
+                if (tx.Witnesses.Length > engine.MaxArraySize)
                     return false;
                 engine.CurrentContext.EvaluationStack.Push(WitnessWrapper.Create(tx, Snapshot).Select(p => StackItem.FromInterface(p)).ToArray());
                 return true;

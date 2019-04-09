@@ -81,7 +81,7 @@ namespace Zoro.SmartContract.Services
             else
             {
                 // 用ScriptHash作为assetId
-                assetId = engine.CurrentContext.Script.ToScriptHash();
+                assetId = new UInt160(engine.CurrentContext.ScriptHash);
             }            
 
             NativeNEP5State state = Snapshot.NativeNEP5s.TryGet(assetId);
