@@ -102,7 +102,7 @@ namespace Zoro.Network.P2P
             {
                 if (msg.Command != MessageType.Version)
                     throw new ProtocolViolationException();
-                OnVersionMessageReceived(msg.Payload.AsSerializable<VersionPayload>());
+                OnVersionMessageReceived(msg.GetPayload<VersionPayload>());
                 return;
             }
             if (!verack)
@@ -136,7 +136,7 @@ namespace Zoro.Network.P2P
 
         private void OnAddrMessageReceived(Message msg)
         {
-            AddrPayload payload = msg.Payload.AsSerializable<AddrPayload>();
+            AddrPayload payload = msg.GetPayload<AddrPayload>();
 
             // 过滤掉已经建立了连接的地址
             IEnumerable<IPEndPoint> Listeners = localNode.RemoteNodes.Values.Select(p => p.Listener);
@@ -153,7 +153,7 @@ namespace Zoro.Network.P2P
 
         private void OnGetHeadersMessageReceived(Message msg)
         {
-            GetBlocksPayload payload = msg.Payload.AsSerializable<GetBlocksPayload>();
+            GetBlocksPayload payload = msg.GetPayload<GetBlocksPayload>();
 
             UInt256 hash = payload.HashStart[0];
             if (hash == payload.HashStop) return;
@@ -178,7 +178,7 @@ namespace Zoro.Network.P2P
 
         private void OnHeadersMessageReceived(Message msg)
         {
-            HeadersPayload payload = msg.Payload.AsSerializable<HeadersPayload>();
+            HeadersPayload payload = msg.GetPayload<HeadersPayload>();
 
             if (payload.Headers.Length == 0) return;
             system.Blockchain.Tell(payload.Headers, Context.Parent);
@@ -187,7 +187,7 @@ namespace Zoro.Network.P2P
 
         private void OnGetBlocksMessageReceived(Message msg)
         {
-            GetBlocksPayload payload = msg.Payload.AsSerializable<GetBlocksPayload>();
+            GetBlocksPayload payload = msg.GetPayload<GetBlocksPayload>();
 
             UInt256 hash = payload.HashStart[0];
             if (hash == payload.HashStop) return;
@@ -211,7 +211,7 @@ namespace Zoro.Network.P2P
 
         private void OnInvMessageReceived(Message msg)
         {
-            InvPayload payload = msg.Payload.AsSerializable<InvPayload>();
+            InvPayload payload = msg.GetPayload<InvPayload>();
 
             UInt256[] hashes = payload.Hashes.Where(p => knownHashes.Add(p)).ToArray();
             if (hashes.Length == 0) return;
@@ -232,7 +232,7 @@ namespace Zoro.Network.P2P
 
         private void OnGetDataMessageReceived(Message msg)
         {
-            InvPayload payload = msg.Payload.AsSerializable<InvPayload>();
+            InvPayload payload = msg.GetPayload<InvPayload>();
             
             if (sentHashes.Add(payload.Hashes[0]))
             {
@@ -245,7 +245,7 @@ namespace Zoro.Network.P2P
 
         private void OnGetTxnMessageReceived(Message msg)
         {
-            InvPayload payload = msg.Payload.AsSerializable<InvPayload>();
+            InvPayload payload = msg.GetPayload<InvPayload>();
             if (payload.Type != InventoryType.TX)
                 throw new InvalidOperationException();
 
@@ -284,7 +284,7 @@ namespace Zoro.Network.P2P
 
         private void OnGetBlkMessageReceived(Message msg)
         {
-            InvPayload payload = msg.Payload.AsSerializable<InvPayload>();
+            InvPayload payload = msg.GetPayload<InvPayload>();
             if (payload.Type != InventoryType.Block)
                 throw new InvalidOperationException();
 
@@ -364,7 +364,7 @@ namespace Zoro.Network.P2P
 
         private void OnRawTransactionMessageReceived(Message msg)
         {
-            RawTransactionPayload payload = msg.Payload.AsSerializable<RawTransactionPayload>();
+            RawTransactionPayload payload = msg.GetPayload<RawTransactionPayload>();
             blockchain.Log($"recv rawtxn, count:{payload.Array.Length}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
             foreach (var tx in payload.Array)
             {
@@ -376,7 +376,7 @@ namespace Zoro.Network.P2P
 
         private void OnCompressedTransactionMessageReceived(Message msg)
         {
-            CompressedTransactionPayload payload = msg.Payload.AsSerializable<CompressedTransactionPayload>();
+            CompressedTransactionPayload payload = msg.GetPayload<CompressedTransactionPayload>();
             blockchain.Log($"recv ziptxn, count:{payload.TransactionCount}, [{remoteNode.Remote.Address}]", Plugins.LogLevel.Debug);
 
             Transaction[] txn = CompressedTransactionPayload.DecompressTransactions(payload.CompressedData);
@@ -391,17 +391,17 @@ namespace Zoro.Network.P2P
         private void OnTxMessageReceived(Message msg)
         {
             if (msg.Payload.Length <= Transaction.MaxTransactionSize)
-                OnInventoryReceived(Transaction.DeserializeFrom(msg.Payload));           
+                OnInventoryReceived(msg.GetTransaction());
         }
 
         private void OnBlockMessageReceived(Message msg)
         {
-            OnInventoryReceived(msg.Payload.AsSerializable<Block>());
+            OnInventoryReceived(msg.GetPayload<Block>());
         }
 
         private void OnConsensusMessageReceived(Message msg)
         {
-            OnInventoryReceived(msg.Payload.AsSerializable<ConsensusPayload>());
+            OnInventoryReceived(msg.GetPayload<ConsensusPayload>());
         }
 
         private void OnInventoryReceived(IInventory inventory)
@@ -413,7 +413,7 @@ namespace Zoro.Network.P2P
 
         private void OnFilterAddMessageReceived(Message msg)
         {
-            FilterAddPayload payload = msg.Payload.AsSerializable<FilterAddPayload>();
+            FilterAddPayload payload = msg.GetPayload<FilterAddPayload>();
 
             if (bloom_filter != null)
                 bloom_filter.Add(payload.Data);
@@ -427,7 +427,7 @@ namespace Zoro.Network.P2P
 
         private void OnFilterLoadMessageReceived(Message msg)
         {
-            FilterLoadPayload payload = msg.Payload.AsSerializable<FilterLoadPayload>();
+            FilterLoadPayload payload = msg.GetPayload<FilterLoadPayload>();
 
             bloom_filter = new BloomFilter(payload.Filter.Length * 8, payload.K, payload.Tweak, payload.Filter);
             Context.Parent.Tell(new SetFilter { Filter = bloom_filter });
@@ -453,13 +453,13 @@ namespace Zoro.Network.P2P
 
         private void OnPingMessageReceived(Message msg)
         {
-            PingPayload payload = msg.Payload.AsSerializable<PingPayload>();
+            PingPayload payload = msg.GetPayload<PingPayload>();
             Context.Parent.Tell(new Ping { Payload = payload });
         }
 
         private void OnPongMessageReceived(Message msg)
         {
-            PongPayload payload = msg.Payload.AsSerializable<PongPayload>();
+            PongPayload payload = msg.GetPayload<PongPayload>();
             Context.Parent.Tell(new Pong { Payload = payload });
         }
 
