@@ -22,7 +22,6 @@ namespace Zoro.Ledger
 {
     public sealed class Blockchain : UntypedActor
     {
-        public class Register { }
         public class ApplicationExecuted { public Transaction Transaction; public ApplicationExecutionResult[] ExecutionResults; }
         public class PersistCompleted { public Block Block; }
         public class Import { public IEnumerable<Block> Blocks; }
@@ -63,7 +62,6 @@ namespace Zoro.Ledger
         private readonly Dictionary<uint, LinkedList<Block>> block_cache_unverified = new Dictionary<uint, LinkedList<Block>>();
         private readonly MemoryPool mem_pool = new MemoryPool(50_000);
         internal readonly RelayCache RelayCache = new RelayCache(100);
-        private readonly HashSet<IActorRef> subscribers = new HashSet<IActorRef>();
         private Snapshot currentSnapshot;
         private readonly int reverify_txn_count = 1000;
         private IActorRef dispatcher;
@@ -179,12 +177,6 @@ namespace Zoro.Ledger
         {
             if (mem_pool.ContainsKey(hash)) return true;
             return Store.ContainsTransaction(hash);
-        }
-
-        private void Distribute(object message)
-        {
-            foreach (IActorRef subscriber in subscribers)
-                subscriber.Tell(message);
         }
 
         public Block GetBlock(UInt256 hash)
@@ -439,9 +431,7 @@ namespace Zoro.Ledger
             block_cache.TryRemove(block.Hash, out Block _);            
             ReverifyMemoryPool(block);
             InvokeAppChainNotifications();
-            PersistCompleted completed = new PersistCompleted { Block = block };
-            system.Consensus?.Tell(completed);
-            Distribute(completed);
+            Context.System.EventStream.Publish(new PersistCompleted { Block = block });
 
             DateTime now = DateTime.UtcNow;
             Log(string.Format("block persisted:{0}, tx:{1}, mempool:{2}, commit:{3:F1}ms, total:{4:F1}ms", 
@@ -496,9 +486,6 @@ namespace Zoro.Ledger
         {
             switch (message)
             {
-                case Register _:
-                    OnRegister();
-                    break;
                 case Import import:
                     OnImport(import.Blocks);
                     break;
@@ -514,9 +501,6 @@ namespace Zoro.Ledger
                 case ConsensusPayload payload:
                     Sender.Tell(OnNewConsensus(payload));
                     break;
-                case Terminated terminated:
-                    subscribers.Remove(terminated.ActorRef);
-                    break;
                 case ChangeAppChainValidators msg:
                     Sender.Tell(OnChangeAppChainValidators(msg.ChainHash, msg.Validators));
                     break;
@@ -524,12 +508,6 @@ namespace Zoro.Ledger
                     Sender.Tell(OnChangeAppChainSeedList(msg.ChainHash, msg.SeedList));
                     break;
             }
-        }
-
-        private void OnRegister()
-        {
-            subscribers.Add(Sender);
-            Context.Watch(Sender);
         }
 
         private void Persist(Block block)
@@ -645,7 +623,7 @@ namespace Zoro.Ledger
                         Transaction = tx,
                         ExecutionResults = execution_results.ToArray()
                     };
-                    Distribute(application_executed);
+                    Context.System.EventStream.Publish(application_executed);
                     all_application_executed.Add(application_executed);
                 }                
             }

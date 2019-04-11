@@ -44,6 +44,7 @@ namespace Zoro.Consensus
             this.blockchain = ZoroChainSystem.Singleton.AskBlockchain(chainHash);
             this.localNodeObj = ZoroChainSystem.Singleton.AskLocalNode(chainHash);
             this.context = new ConsensusContext(blockchain, wallet);
+            Context.System.EventStream.Subscribe(Self, typeof(Blockchain.PersistCompleted));
         }
 
         public ConsensusService(IActorRef localNode, IActorRef taskManager, IConsensusContext context)
@@ -391,6 +392,7 @@ namespace Zoro.Consensus
         protected override void PostStop()
         {
             Log($"OnStop Consensus {blockchain.Name}");
+            Context.System.EventStream.Unsubscribe(Self);
             context.Dispose();
             base.PostStop();
         }
