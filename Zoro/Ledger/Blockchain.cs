@@ -580,7 +580,8 @@ namespace Zoro.Ledger
                         using (ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, tx_invocation, snapshot.Clone(), tx_invocation.GasLimit, block.Index == 0))
                         {
                             engine.LoadScript(tx_invocation.Script);
-                            if (engine.Execute())
+                            engine.Execute();
+                            if (!engine.State.HasFlag(VMState.FAULT))
                             {
                                 engine.Service.Commit();
                             }

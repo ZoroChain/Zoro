@@ -96,7 +96,8 @@ namespace Zoro.Persistence
                                 using (ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, tx_invocation, snapshot, tx_invocation.GasLimit, true))
                                 {
                                     engine.LoadScript(tx_invocation.Script);
-                                    if (engine.Execute())
+                                    engine.Execute();
+                                    if (!engine.State.HasFlag(VMState.FAULT))
                                     {
                                         // 获取脚本的返回值
                                         if (engine.ResultStack.Peek() is InteropInterface _interface)
