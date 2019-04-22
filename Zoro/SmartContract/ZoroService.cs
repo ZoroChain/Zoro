@@ -75,6 +75,7 @@ namespace Zoro.SmartContract
             Register("Zoro.Iterator.Key", Iterator_Key, 1);
             Register("Zoro.Iterator.Keys", Iterator_Keys, 1);
             Register("Zoro.Iterator.Values", Iterator_Values, 1);
+            Register("Zoro.Iterator.Concat", Iterator_Concat, 1);
 
             #region Aliases
             Register("Zoro.Iterator.Next", Enumerator_Next, 1);

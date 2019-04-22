@@ -440,5 +440,16 @@ namespace Zoro.SmartContract
             }
             return false;
         }
+
+        protected bool Iterator_Concat(ExecutionEngine engine)
+        {
+            if (!(engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface1)) return false;
+            if (!(engine.CurrentContext.EvaluationStack.Pop() is InteropInterface _interface2)) return false;
+            IIterator first = _interface1.GetInterface<IIterator>();
+            IIterator second = _interface2.GetInterface<IIterator>();
+            IIterator result = new ConcatenatedIterator(first, second);
+            engine.CurrentContext.EvaluationStack.Push(StackItem.FromInterface(result));
+            return true;
+        }
     }
 }
