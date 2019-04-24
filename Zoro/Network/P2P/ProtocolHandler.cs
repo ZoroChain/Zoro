@@ -29,15 +29,11 @@ namespace Zoro.Network.P2P
         private readonly Blockchain blockchain;
         private readonly RemoteNode remoteNode;
 
-        private readonly HashSet<UInt256> knownHashes = new HashSet<UInt256>();
-        private readonly HashSet<UInt256> sentHashes = new HashSet<UInt256>();
+        private readonly FIFOSet<UInt256> knownHashes;
+        private readonly FIFOSet<UInt256> sentHashes;
         private VersionPayload version;
         private bool verack = false;
         private BloomFilter bloom_filter;
-
-        private static readonly TimeSpan TimerInterval = TimeSpan.FromMinutes(1);
-        private static readonly int MaxHashCount = ProtocolSettings.Default.MaxProtocolHashCount;
-        private readonly ICancelable timer = Context.System.Scheduler.ScheduleTellRepeatedlyCancelable(TimerInterval, TimerInterval, Context.Self, new Timer(), ActorRefs.NoSender);
 
         private readonly Dictionary<string, Action<Message>> msgHandlers = new Dictionary<string, Action<Message>>();
         
@@ -49,6 +45,9 @@ namespace Zoro.Network.P2P
             this.remoteNode = remoteNode;
 
             InitMessageHandlers();
+
+            this.knownHashes = new FIFOSet<UInt256>(blockchain.MemPool.Capacity * 2);
+            this.sentHashes = new FIFOSet<UInt256>(blockchain.MemPool.Capacity * 2);
         }
 
         private void InitMessageHandlers()
@@ -92,11 +91,6 @@ namespace Zoro.Network.P2P
 
         protected override void OnReceive(object message)
         {
-            if (message is Timer _)
-            {
-                OnTimer();
-                return;
-            }
             if (!(message is Message msg)) return;
             if (version == null)
             {
@@ -463,27 +457,9 @@ namespace Zoro.Network.P2P
             Context.Parent.Tell(new Pong { Payload = payload });
         }
 
-        protected override void PostStop()
-        {
-            timer.CancelIfNotNull();
-            base.PostStop();
-        }
-
         public static Props Props(ZoroSystem system, LocalNode localNode, Blockchain blockchain, RemoteNode remoteNode)
         {
             return Akka.Actor.Props.Create(() => new ProtocolHandler(system, localNode, blockchain, remoteNode)).WithMailbox("protocol-handler-mailbox");
-        }
-
-        private void OnTimer()
-        {
-            if (MaxHashCount > 0)
-            {
-                if (knownHashes.Count > MaxHashCount)
-                    knownHashes.Clear();
-
-                if (sentHashes.Count > MaxHashCount)
-                    sentHashes.Clear();
-            }
         }
     }
 

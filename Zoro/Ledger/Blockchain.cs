@@ -73,6 +73,7 @@ namespace Zoro.Ledger
         public uint HeaderHeight => (uint)header_index.Count - 1;
         public UInt256 CurrentBlockHash => currentSnapshot?.CurrentBlockHash ?? UInt256.Zero;
         public UInt256 CurrentHeaderHash => header_index[header_index.Count - 1];
+        public MemoryPool MemPool => mem_pool;
 
         private readonly List<AppChainEventArgs> appchainNotifications = new List<AppChainEventArgs>();
         public static event EventHandler<AppChainEventArgs> AppChainNofity;
