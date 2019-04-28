@@ -153,7 +153,7 @@ namespace Zoro
         }
 
         public void StartNode(UInt160 chainHash, int port = 0, int wsPort = 0, int minDesiredConnections = Peer.DefaultMinDesiredConnections,
-            int maxConnections = Peer.DefaultMaxConnections)
+            int maxConnections = Peer.DefaultMaxConnections, int maxConnectionsPerAddress = Peer.DefaultMaxConnectionsPerAddress)
         {
             IActorRef system = GetChainActor(chainHash);
 
@@ -162,7 +162,8 @@ namespace Zoro
                 Port = port,
                 WsPort = wsPort,
                 MinDesiredConnections = minDesiredConnections,
-                MaxConnections = maxConnections
+                MaxConnections = maxConnections,
+                MaxConnectionsPerAddress = maxConnectionsPerAddress,
             });
         }
 

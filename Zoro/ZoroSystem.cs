@@ -13,7 +13,7 @@ namespace Zoro
     {
         public class ChainStarted { public UInt160 ChainHash; public int Port; public int WsPort; }
 
-        public class Start { public int Port = 0; public int WsPort = 0; public int MinDesiredConnections; public int MaxConnections; }
+        public class Start { public int Port = 0; public int WsPort = 0; public int MinDesiredConnections; public int MaxConnections; public int MaxConnectionsPerAddress; }
         public class StartConsensus { public Wallet Wallet; };
         public class StopConsensus { };
 
@@ -64,14 +64,15 @@ namespace Zoro
             return Context.ActorOf(props, name);
         }
 
-        private void StartNode(int port, int wsPort, int minDesiredConnections, int maxConnections)
+        private void StartNode(int port, int wsPort, int minDesiredConnections, int maxConnections, int maxConnectionsPerAddress)
         {
             LocalNode.Tell(new Peer.Start
             {
                 Port = port,
                 WsPort = wsPort,
                 MinDesiredConnections = minDesiredConnections,
-                MaxConnections = maxConnections
+                MaxConnections = maxConnections,
+                MaxConnectionsPerAddress = maxConnectionsPerAddress
             });
 
             // 向插件发送消息通知
@@ -109,7 +110,7 @@ namespace Zoro
             switch (message)
             {
                 case Start start:
-                    StartNode(start.Port, start.WsPort, start.MinDesiredConnections, start.MaxConnections);
+                    StartNode(start.Port, start.WsPort, start.MinDesiredConnections, start.MaxConnections, start.MaxConnectionsPerAddress);
                     break;
                 case StartConsensus startConsensus:
                     _StartConsensus(startConsensus.Wallet);
