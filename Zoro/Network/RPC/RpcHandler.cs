@@ -119,12 +119,6 @@ namespace Zoro.Network.RPC
                         {
                             return GetVersion();
                         }
-                    case "invoke":
-                        {
-                            UInt160 script_hash = UInt160.Parse(_params[1].AsString());
-                            ContractParameter[] parameters = ((JArray)_params[2]).Select(p => ContractParameter.FromJson(p)).ToArray();
-                            return Invoke(_params[0], script_hash, parameters);
-                        }
                     case "invokefunction":
                         {
                             UInt160 script_hash = UInt160.Parse(_params[1].AsString());
@@ -447,16 +441,6 @@ namespace Zoro.Network.RPC
             json["nonce"] = LocalNode.NodeId;
             json["useragent"] = LocalNode.UserAgent;
             return json;
-        }
-
-        private JObject Invoke(JObject param, UInt160 script_hash, ContractParameter[] parameters)
-        {
-            byte[] script;
-            using (ScriptBuilder sb = new ScriptBuilder())
-            {
-                script = sb.EmitAppCall(script_hash, parameters).ToArray();
-            }
-            return GetInvokeResult(param, script);
         }
 
         private JObject InvokeFunction(JObject param, UInt160 script_hash, string operation, ContractParameter[] args)
