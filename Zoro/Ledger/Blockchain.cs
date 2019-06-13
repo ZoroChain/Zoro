@@ -558,7 +558,11 @@ namespace Zoro.Ledger
                         // 把手续费奖励给矿工
                         BcpToken.AddBalance(snapshot, minerTx.Account, sysfeeAmount);
 
-                        // 记录手续费转账日志
+                        //挖矿奖励
+                        //Fixed8 minerRewardAmount = GetMinerRewardAmount(block.Index);
+                        //BcpToken.AddBalance(snapshot, minerTx.Account, minerRewardAmount);
+
+                        // 记录手续费
                         NativeAPI.SaveTransferLog(snapshot, Genesis.BcpContractAddress, minerTx.Hash, UInt160.Zero, minerTx.Account, sysfeeAmount);
                     }
                 }                
@@ -579,7 +583,7 @@ namespace Zoro.Ledger
             }
             UpdateCurrentSnapshot();
             OnPersistCompleted(block);
-        }
+        }        
 
         private Fixed8 PersistTransaction(Block block, Snapshot snapshot, Transaction tx, List<ApplicationExecuted> all_application_executed)
         {

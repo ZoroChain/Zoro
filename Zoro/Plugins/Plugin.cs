@@ -2,7 +2,6 @@
 using System.IO;
 using System.Reflection;
 using Microsoft.Extensions.Configuration;
-using Zoro.Wallets;
 
 namespace Zoro.Plugins
 {
