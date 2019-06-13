@@ -18,15 +18,15 @@ namespace Zoro.Network.P2P
 {
     public abstract class Peer : UntypedActor
     {
-        public class Start { public int Port; public int WsPort; public int MinDesiredConnections; public int MaxConnections; }
+        public class Start { public int Port; public int WsPort; public int MinDesiredConnections; public int MaxConnections; public int MaxConnectionsPerAddress; }
         public class Peers { public IEnumerable<IPEndPoint> EndPoints; }
         public class Connect { public IPEndPoint EndPoint; public bool IsTrusted = false; }
         private class Timer { }
         private class WsConnected { public WebSocket Socket; public IPEndPoint Remote; public IPEndPoint Local; }
 
-        private const int MaxConnectionsPerAddress = 5;
         public const int DefaultMinDesiredConnections = 10;
         public const int DefaultMaxConnections = DefaultMinDesiredConnections * 4;
+        public const int DefaultMaxConnectionsPerAddress = 5;
 
         private static readonly IActorRef tcp_manager = Context.System.Tcp();
         private IActorRef tcp_listener;
@@ -43,6 +43,7 @@ namespace Zoro.Network.P2P
         protected HashSet<IPAddress> TrustedIpAddresses { get; } = new HashSet<IPAddress>();
 
         public int ListenerPort { get; private set; }
+        public int MaxConnectionsPerAddress { get; private set; } = DefaultMaxConnectionsPerAddress;
         public int MinDesiredConnections { get; private set; } = DefaultMinDesiredConnections;
         public int MaxConnections { get; private set; } = DefaultMaxConnections;
         protected int UnconnectedMax { get; } = 1000;
@@ -115,7 +116,7 @@ namespace Zoro.Network.P2P
             switch (message)
             {
                 case Start start:
-                    OnStart(start.Port, start.WsPort, start.MinDesiredConnections, start.MaxConnections);
+                    OnStart(start.Port, start.WsPort, start.MinDesiredConnections, start.MaxConnections, start.MaxConnectionsPerAddress);
                     break;
                 case Timer _:
                     OnTimer();
@@ -144,11 +145,13 @@ namespace Zoro.Network.P2P
             }
         }
 
-        private void OnStart(int port, int wsPort, int minDesiredConnections, int maxConnections)
+        private void OnStart(int port, int wsPort, int minDesiredConnections, int maxConnections, int maxConnectionsPerAddress)
         {
             ListenerPort = port;
             MinDesiredConnections = minDesiredConnections;
             MaxConnections = maxConnections;
+            MaxConnectionsPerAddress = maxConnectionsPerAddress;
+
             timer = Context.System.Scheduler.ScheduleTellRepeatedlyCancelable(0, 5000, Context.Self, new Timer(), ActorRefs.NoSender);
             if ((port > 0 || wsPort > 0)
                 && localAddresses.All(p => !p.IsIPv4MappedToIPv6 || IsIntranetAddress(p))
