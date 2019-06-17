@@ -51,6 +51,30 @@ namespace Zoro.Wallets.NEP6
             }
         }
 
+        public NEP6Wallet(string data)
+        {
+            if (!string.IsNullOrEmpty(data))
+            {
+                JObject wallet;
+
+                wallet = JObject.Parse(data);
+                
+                this.name = wallet["name"]?.AsString();
+                this.version = Version.Parse(wallet["version"].AsString());
+                this.Scrypt = ScryptParameters.FromJson(wallet["scrypt"]);
+                this.accounts = ((JArray)wallet["accounts"]).Select(p => NEP6Account.FromJson(p, this)).ToDictionary(p => p.ScriptHash);
+                this.extra = wallet["extra"];
+            }
+            else
+            {
+                this.name = null;
+                this.version = Version.Parse("1.0");
+                this.Scrypt = ScryptParameters.Default;
+                this.accounts = new Dictionary<UInt160, NEP6Account>();
+                this.extra = JObject.Null;
+            }
+        }
+
         private void AddAccount(NEP6Account account, bool is_import)
         {
             lock (accounts)
