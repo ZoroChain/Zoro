@@ -33,6 +33,7 @@ namespace Zoro.Ledger
         public static readonly uint SecondsPerBlock = ProtocolSettings.Default.SecondsPerBlock;
         public static readonly uint MaxSecondsPerBlock = ProtocolSettings.Default.MaxSecondsPerBlock;
         public const uint DecrementInterval = 2000000;
+        public const int MaxValidators = 1024;
         public static readonly uint[] GenerationAmount = { 8, 7, 6, 5, 4, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
         public static readonly TimeSpan TimePerBlock = TimeSpan.FromSeconds(SecondsPerBlock);
         public ECPoint[] StandbyValidators { get; private set; }

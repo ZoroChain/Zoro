@@ -16,7 +16,7 @@ using System.Numerics;
 
 namespace Zoro.Network.P2P.Payloads
 {
-    public abstract class Transaction : IEquatable<Transaction>, IInventory
+    public class Transaction : IEquatable<Transaction>, IInventory
     {
         public const int MaxTransactionSize = 102400;
         /// <summary>
@@ -57,12 +57,7 @@ namespace Zoro.Network.P2P.Payloads
 
         public virtual Fixed8 SystemFee => Fixed8.Zero;
 
-        public virtual Fixed8 FeePrice => Fixed8.Satoshi;
-
-        protected Transaction(TransactionType type)
-        {
-            this.Type = type;
-        }
+        public virtual Fixed8 FeePrice => Fixed8.Satoshi;               
 
         public static ulong GetNonce()
         {

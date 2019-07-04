@@ -11,6 +11,10 @@ namespace Zoro.Network.P2P.Payloads
 {
     public class Block : BlockBase, IInventory, IEquatable<Block>
     {
+        public const int MaxContentsPerBlock = ushort.MaxValue;
+        public const int MaxTransactionsPerBlock = MaxContentsPerBlock - 1;
+
+        public ConsensusData ConsensusData;
         public Transaction[] Transactions;
 
         private Header _header = null;

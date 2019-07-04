@@ -5,7 +5,7 @@ using System.IO;
 
 namespace Zoro.Consensus
 {
-    internal abstract class ConsensusMessage : ISerializable
+    public abstract class ConsensusMessage : ISerializable
     {
         /// <summary>
         /// Reflection cache for ConsensusMessageType

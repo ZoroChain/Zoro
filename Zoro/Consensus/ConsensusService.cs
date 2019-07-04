@@ -16,19 +16,20 @@ namespace Zoro.Consensus
 {
     public sealed class ConsensusService : UntypedActor
     {
-        public class Start { }
+        public class Start { public bool IgnoreRecoveryLogs; }
         public class SetViewNumber { public byte ViewNumber; }
         internal class Timer { public uint Height; public ushort ViewNumber; }
 
         private static readonly uint MaxSecondsPerBlock = ProtocolSettings.Default.MaxSecondsPerBlock;
         private static readonly TimeSpan MaxTimeSpanPerBlock = TimeSpan.FromSeconds(MaxSecondsPerBlock);
 
-        private readonly IConsensusContext context;
+        private readonly ConsensusContext context;
         private readonly IActorRef localNode;
         private readonly IActorRef taskManager;
 
         private ICancelable timer_token;
         private DateTime block_received_time;
+        private bool started = false;
 
         private readonly UInt160 chainHash;
         private readonly Blockchain blockchain;
@@ -47,7 +48,7 @@ namespace Zoro.Consensus
             Context.System.EventStream.Subscribe(Self, typeof(Blockchain.PersistCompleted));
         }
 
-        public ConsensusService(IActorRef localNode, IActorRef taskManager, IConsensusContext context)
+        internal ConsensusService(IActorRef localNode, IActorRef taskManager, ConsensusContext context)
         {
             this.localNode = localNode;
             this.taskManager = taskManager;
@@ -315,32 +316,42 @@ namespace Zoro.Consensus
 
         protected override void OnReceive(object message)
         {
-            switch (message)
+            if (message is Start options)
             {
-                case Start _:
-                    OnStart();
-                    break;
-                case SetViewNumber setView:
-                    InitializeConsensus(setView.ViewNumber);
-                    break;
-                case Timer timer:
-                    OnTimer(timer);
-                    break;
-                case ConsensusPayload payload:
-                    OnConsensusPayload(payload);
-                    break;
-                case Transaction transaction:
-                    OnTransaction(transaction);
-                    break;
-                case Blockchain.PersistCompleted completed:
-                    OnPersistCompleted(completed.Block);
-                    break;
+                if (started) return;
+                OnStart(options);
+            }
+            else
+            {
+                if (!started) return;
+                switch (message)
+                {                    
+                    case SetViewNumber setView:
+                        InitializeConsensus(setView.ViewNumber);
+                        break;
+                    case Timer timer:
+                        OnTimer(timer);
+                        break;
+                    case ConsensusPayload payload:
+                        OnConsensusPayload(payload);
+                        break;
+                    case Transaction transaction:
+                        OnTransaction(transaction);
+                        break;
+                    case Blockchain.PersistCompleted completed:
+                        OnPersistCompleted(completed.Block);
+                        break;
+                }
             }
         }
 
-        private void OnStart()
+        private void OnStart(Start options)
         {
             Log("OnStart hash:" + chainHash.ToString());
+            started = true;
+            if (!options.IgnoreRecoveryLogs && context.Load())
+            { }
+
             InitializeConsensus(0);
         }
 

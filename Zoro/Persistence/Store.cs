@@ -19,6 +19,7 @@ namespace Zoro.Persistence
         MetaDataCache<HashIndexState> IPersistence.HeaderHashIndex => GetHeaderHashIndex();
         MetaDataCache<AppChainState> IPersistence.AppChainState => GetAppChainState();
 
+        public abstract byte[] Get(byte prefix, byte[] key);
         public abstract DataCache<UInt256, BlockState> GetBlocks();
         public abstract DataCache<UInt256, TransactionState> GetTransactions();
         public abstract DataCache<UInt160, AppChainState> GetAppChains();
@@ -29,6 +30,9 @@ namespace Zoro.Persistence
         public abstract MetaDataCache<HashIndexState> GetBlockHashIndex();
         public abstract MetaDataCache<HashIndexState> GetHeaderHashIndex();
         public abstract MetaDataCache<AppChainState> GetAppChainState();
+
+        public abstract void Put(byte prefix, byte[] key, byte[] value);
+        public abstract void PutSync(byte prefix, byte[] key, byte[] value);
 
         public abstract Snapshot GetSnapshot();
         public abstract void Dispose();

@@ -34,6 +34,13 @@ namespace Zoro.Persistence.LevelDB
             db.Dispose();
         }
 
+        public override byte[] Get(byte prefix, byte[] key)
+        {
+            if (!db.TryGet(ReadOptions.Default, SliceBuilder.Begin(prefix).Add(key), out Slice slice))
+                return null;
+            return slice.ToArray();
+        }
+
         public override DataCache<UInt160, AppChainState> GetAppChains()
         {
             return new DbCache<UInt160, AppChainState>(db, null, null, Prefixes.ST_Appchain);
@@ -87,6 +94,16 @@ namespace Zoro.Persistence.LevelDB
         public override DataCache<UInt160, NativeNEP5State> GetNativeNEP5s()
         {
             return new DbCache<UInt160, NativeNEP5State>(db, null, null, Prefixes.ST_NativeNEP5);
+        }
+
+        public override void Put(byte prefix, byte[] key, byte[] value)
+        {
+            db.Put(WriteOptions.Default, SliceBuilder.Begin(prefix).Add(key), value);
+        }
+
+        public override void PutSync(byte prefix, byte[] key, byte[] value)
+        {
+            db.Put(new WriteOptions { Sync = true }, SliceBuilder.Begin(prefix).Add(key), value);
         }
     }
 }

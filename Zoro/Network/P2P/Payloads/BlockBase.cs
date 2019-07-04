@@ -17,7 +17,7 @@ namespace Zoro.Network.P2P.Payloads
         public UInt256 MerkleRoot;
         public uint Timestamp;
         public uint Index;
-        public ulong ConsensusData;
+        public ConsensusData ConsensusData;
         public UInt160 NextConsensus;
         public Witness Witness;
 
