@@ -42,6 +42,12 @@ namespace Zoro.Network.P2P.Payloads
             {
                 return new[] { Witness };
             }
+
+            set
+            {
+                if (value.Length != 1) throw new ArgumentException();
+                Witness = value[0];
+            }
         }
 
         public int Size => sizeof(uint) + PrevHash.Size + sizeof(uint) + sizeof(ushort) + sizeof(uint) + Data.GetVarSize() + 1 + Witness.Size;

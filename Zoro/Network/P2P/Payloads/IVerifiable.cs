@@ -7,7 +7,7 @@ namespace Zoro.Network.P2P.Payloads
 {
     public interface IVerifiable : ISerializable, IScriptContainer
     {
-        Witness[] Witnesses { get; }
+        Witness[] Witnesses { get; set; }
 
         void DeserializeUnsigned(BinaryReader reader);
 
